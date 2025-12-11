@@ -207,6 +207,12 @@ const userSchema = new mongoose.Schema(
         publicId: { type: String },
         uploadedAt: { type: Date, default: Date.now },
       }],
+      // Generated QR for student (uploaded to Cloudinary)
+      qr: {
+        url: { type: String },
+        publicId: { type: String },
+        uploadedAt: { type: Date },
+      },
     },
     
     // ==================== TEACHER PROFILE ====================

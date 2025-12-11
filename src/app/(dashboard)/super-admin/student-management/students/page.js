@@ -1,6 +1,7 @@
-'use client';
+ 'use client';
 
 import { useState, useEffect } from 'react';
+import Modal from '@/components/ui/modal';
 import {
   Users,
   Plus,
@@ -27,118 +28,115 @@ export default function StudentsPage() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [branchFilter, setBranchFilter] = useState('');
-  const [classFilter, setClassFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [genderFilter, setGenderFilter] = useState('');
+
   const [showModal, setShowModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showQrPreview, setShowQrPreview] = useState(false);
+  const [qrUrl, setQrUrl] = useState('');
+
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [editingStudent, setEditingStudent] = useState(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [formData, setFormData] = useState({});
   const [activeTab, setActiveTab] = useState('basic');
 
-  const [formData, setFormData] = useState({
-    registrationNumber: '',
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    dateOfBirth: '',
-    gender: 'male',
-    bloodGroup: '',
-    religion: '',
-    nationality: 'Pakistani',
-    address: {
-      street: '',
-      city: '',
-      state: '',
-      postalCode: '',
-      country: 'Pakistan',
-    },
-    branchId: '',
-    classId: '',
-    section: '',
-    rollNumber: '',
-    admissionDate: new Date().toISOString().split('T')[0],
-    academicYear: new Date().getFullYear().toString(),
-    father: {
-      name: '',
-      occupation: '',
-      phone: '',
-      email: '',
-      cnic: '',
-    },
-    mother: {
-      name: '',
-      occupation: '',
-      phone: '',
-      email: '',
-      cnic: '',
-    },
-    status: 'active',
-    remarks: '',
-  });
+  const [pendingProfileFile, setPendingProfileFile] = useState(null);
+  const [pendingDocuments, setPendingDocuments] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [searchTerm, branchFilter, classFilter, statusFilter, genderFilter]);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const loadData = async () => {
+  const [branchFilter, setBranchFilter] = useState('');
+  const [classFilter, setClassFilter] = useState('');
+  const [genderFilter, setGenderFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [total, setTotal] = useState(0);
+
+  const loadClasses = async (selectedBranchId = null) => {
     try {
-      setLoading(true);
-      await Promise.all([loadStudents(), loadBranches(), loadClasses()]);
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadStudents = async () => {
-    try {
+      const branchToUse = selectedBranchId || branchFilter || '';
       const params = new URLSearchParams();
-      params.append('role', 'student');
-      if (searchTerm) params.append('search', searchTerm);
-      if (branchFilter) params.append('branchId', branchFilter);
-      if (classFilter) params.append('classId', classFilter);
-      if (statusFilter) params.append('status', statusFilter);
-      if (genderFilter) params.append('gender', genderFilter);
-      params.append('limit', '50');
+      if (branchToUse) params.append('branchId', branchToUse);
+      params.append('limit', '100');
 
-      const data = await apiClient.get(`/api/users?${params}`);
+      const data = await apiClient.get(`/api/super-admin/classes?${params}`);
+      if (data && data.success) {
+        const payload = data.data;
+        // classes route returns data as an array (data.data) or wrapped in { classes }
+        let items = [];
+        if (Array.isArray(payload)) {
+          items = payload;
+        } else if (Array.isArray(payload?.classes)) {
+          items = payload.classes;
+        }
 
-      if (data.success) {
-        setStudents(data.data);
+        setClasses(items);
       } else {
-        toast.error(data.message || 'Failed to load students');
+        setClasses([]);
       }
     } catch (error) {
-      console.error('Error loading students:', error);
-      toast.error('Failed to load students');
+      // apiClient throws a friendly error object in many cases; log useful details
+      console.error('Error loading classes:', error?.message ? error.message : error);
+      setClasses([]);
     }
   };
 
   const loadBranches = async () => {
     try {
-      const data = await apiClient.get('/super-admin/branches?limit=100');
-      if (data.success) {
-        setBranches(data.data);
+      const res = await apiClient.get('/api/super-admin/branches?limit=200');
+      if (res && res.success) {
+        const payload = res.data;
+        setBranches(Array.isArray(payload) ? payload : payload?.branches || []);
+      } else {
+        setBranches([]);
       }
-    } catch (error) {
-      console.error('Error loading branches:', error);
+    } catch (err) {
+      console.error('Error loading branches:', err);
+      setBranches([]);
     }
   };
 
-  const loadClasses = async () => {
+  const loadStudents = async () => {
+    setLoading(true);
     try {
-      const data = await apiClient.get('/super-admin/classes?limit=100');
-      if (data.success) {
-        setClasses(data.data);
+      const params = new URLSearchParams();
+      params.append('page', String(page || 1));
+      params.append('limit', String(limit || 50));
+      if (branchFilter) params.append('branchId', branchFilter);
+      if (classFilter) params.append('classId', classFilter);
+      if (genderFilter) params.append('gender', genderFilter);
+      if (statusFilter) params.append('status', statusFilter);
+      if (searchTerm) params.append('search', searchTerm);
+
+      const res = await apiClient.get(`/api/super-admin/users/students?${params.toString()}`);
+      if (res && res.success) {
+        const studentsData = Array.isArray(res.data) ? res.data : res.data?.students || [];
+        setStudents(studentsData);
+        setTotal(res.pagination?.total || (Array.isArray(res.data) ? res.data.length : 0));
+      } else {
+        setStudents([]);
+        setTotal(0);
       }
-    } catch (error) {
-      console.error('Error loading classes:', error);
+    } catch (err) {
+      console.error('Error loading students:', err);
+      setStudents([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
     }
   };
+
+  // Load initial data and whenever filters/pagination change
+  useEffect(() => {
+    loadBranches();
+  }, []);
+
+  useEffect(() => {
+    loadStudents();
+  }, [page, limit, branchFilter, classFilter, genderFilter, statusFilter, searchTerm]);
 
   const handleAddNew = () => {
     setEditingStudent(null);
@@ -187,7 +185,7 @@ export default function StudentsPage() {
     setShowModal(true);
   };
 
-  const handleEdit = (student) => {
+  const handleEdit = async (student) => {
     setEditingStudent(student);
     setFormData({
       registrationNumber: student.studentProfile?.registrationNumber || '',
@@ -208,8 +206,8 @@ export default function StudentsPage() {
         postalCode: '',
         country: 'Pakistan',
       },
-      branchId: student.branchId?._id || '',
-      classId: student.studentProfile?.classId?._id || '',
+  branchId: student.branchId?._id || student.branchId || '',
+  classId: student.studentProfile?.classId?._id || student.studentProfile?.classId || '',
       departmentId: student.studentProfile?.departmentId?._id || '',
       section: student.studentProfile?.section || '',
       rollNumber: student.studentProfile?.rollNumber || '',
@@ -224,8 +222,89 @@ export default function StudentsPage() {
       status: student.status,
       remarks: student.remarks || '',
     });
+    // Ensure classes for this student's branch are loaded so class/section selects populate
+    try {
+      await loadClasses(student.branchId?._id || student.branchId || '');
+    } catch (err) {
+      // ignore - classes will be empty
+    }
+
     setActiveTab('basic');
     setShowModal(true);
+  };
+
+  const openView = async (student) => {
+    setSelectedStudent(student);
+    // ensure classes loaded for the branch to display class name/sections properly
+    try { await loadClasses(student.branchId?._id || student.branchId || ''); } catch (e) {}
+    setShowViewModal(true);
+  };
+
+  const closeView = () => {
+    setShowViewModal(false);
+    setSelectedStudent(null);
+  };
+
+  const handleProfileUpload = async (file) => {
+    if (!selectedStudent) return;
+    try {
+      setUploading(true);
+      const form = new FormData();
+      form.append('file', file);
+      form.append('fileType', 'profile');
+      form.append('userId', selectedStudent._id);
+
+      const res = await apiClient.post('/api/upload', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (res && res.success) {
+        toast.success('Profile photo uploaded');
+        // server returns updated user in some responses; if so, update selectedStudent
+        if (res.data) setSelectedStudent(res.data);
+        loadStudents();
+      } else {
+        toast.error(res?.message || 'Upload failed');
+      }
+    } catch (err) {
+      console.error('Profile upload error:', err);
+      toast.error(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDocumentUpload = async (file, documentType = 'other') => {
+    if (!selectedStudent) return;
+    try {
+      setUploading(true);
+      const form = new FormData();
+      form.append('file', file);
+      form.append('fileType', 'student_document');
+      form.append('documentType', documentType);
+      form.append('userId', selectedStudent._id);
+
+      const res = await apiClient.post('/api/upload', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (res && res.success) {
+        toast.success('Document uploaded');
+        // merge new document into selectedStudent if returned
+        const newDoc = res.data?.document;
+        if (newDoc) {
+          setSelectedStudent(prev => ({ ...prev, studentProfile: { ...prev.studentProfile, documents: [...(prev.studentProfile?.documents||[]), newDoc] } }));
+        }
+        loadStudents();
+      } else {
+        toast.error(res?.message || 'Upload failed');
+      }
+    } catch (err) {
+      console.error('Document upload error:', err);
+      toast.error(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleFormSubmit = async (e) => {
@@ -278,8 +357,56 @@ export default function StudentsPage() {
 
       if (data.success) {
         toast.success(data.message);
+        // After create/update, upload any pending files (profile/documents)
+        try {
+          const userId = editingStudent ? editingStudent._id : (data.data?._id || data.data?._id);
+
+          if (pendingProfileFile && userId) {
+            const form = new FormData();
+            form.append('file', pendingProfileFile);
+            form.append('fileType', 'profile');
+            form.append('userId', userId);
+            const upRes = await apiClient.post('/api/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+            if (upRes && upRes.success) {
+              toast.success('Profile photo uploaded');
+            }
+          }
+
+          if (pendingDocuments.length > 0 && userId) {
+            for (const d of pendingDocuments) {
+              const form = new FormData();
+              form.append('file', d.file);
+              form.append('fileType', 'student_document');
+              form.append('documentType', d.type || 'other');
+              form.append('userId', userId);
+              try {
+                const docRes = await apiClient.post('/api/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+                if (docRes && docRes.success) {
+                  toast.success(`${d.file.name} uploaded`);
+                }
+              } catch (err) {
+                console.error('Doc upload failed:', err);
+                toast.error(`Failed to upload ${d.file.name}`);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Pending uploads error:', err);
+          toast.error('Some uploads failed');
+        } finally {
+          // clear pending uploads
+          setPendingProfileFile(null);
+          setPendingDocuments([]);
+        }
+
         setShowModal(false);
         loadStudents();
+
+        // If a QR was generated and uploaded, show preview to the admin
+        if (!editingStudent && data.data?.studentProfile?.qr?.url) {
+          setQrUrl(data.data.studentProfile.qr.url);
+          setShowQrPreview(true);
+        }
       } else {
         toast.error(data.message || 'Operation failed');
       }
@@ -310,10 +437,10 @@ export default function StudentsPage() {
   };
 
   // Calculate stats
-  const totalStudents = students.length;
-  const maleStudents = students.filter(s => s.gender === 'male').length;
-  const femaleStudents = students.filter(s => s.gender === 'female').length;
-  const activeStudents = students.filter(s => s.status === 'active').length;
+  const totalStudents = Array.isArray(students) ? students.length : 0;
+  const maleStudents = Array.isArray(students) ? students.filter(s => s.gender === 'male').length : 0;
+  const femaleStudents = Array.isArray(students) ? students.filter(s => s.gender === 'female').length : 0;
+  const activeStudents = Array.isArray(students) ? students.filter(s => s.status === 'active').length : 0;
 
   if (loading) {
     return (
@@ -546,6 +673,13 @@ export default function StudentsPage() {
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={() => openView(student)}
+                          className="p-2 text-gray-700 hover:bg-gray-50 rounded"
+                          title="View"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => {
                             setStudentToDelete(student);
                             setShowDeleteModal(true);
@@ -567,60 +701,46 @@ export default function StudentsPage() {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {editingStudent ? 'Edit Student' : 'Add New Student'}
-                </h2>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              {/* Tabs */}
-              <div className="flex gap-4 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('basic')}
-                  className={`px-4 py-2 rounded-lg font-medium ${
-                    activeTab === 'basic'
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  Basic Info
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('academic')}
-                  className={`px-4 py-2 rounded-lg font-medium ${
-                    activeTab === 'academic'
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  Academic Info
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('parent')}
-                  className={`px-4 py-2 rounded-lg font-medium ${
-                    activeTab === 'parent'
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  Parent Info
-                </button>
-              </div>
+        <Modal open={showModal} title={editingStudent ? 'Edit Student' : 'Add New Student'} onClose={() => setShowModal(false)}>
+          <div className="space-y-4">
+            {/* Tabs */}
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => setActiveTab('basic')}
+                className={`px-4 py-2 rounded-lg font-medium ${
+                  activeTab === 'basic'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Basic Info
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('academic')}
+                className={`px-4 py-2 rounded-lg font-medium ${
+                  activeTab === 'academic'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Academic Info
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('parent')}
+                className={`px-4 py-2 rounded-lg font-medium ${
+                  activeTab === 'parent'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Parent Info
+              </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleFormSubmit} className="p-2">
               {/* Basic Info Tab */}
               {activeTab === 'basic' && (
                 <>
@@ -864,7 +984,17 @@ export default function StudentsPage() {
                       </label>
                       <select
                         value={formData.branchId}
-                        onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                        onChange={async (e) => {
+                          const b = e.target.value;
+                          // reset dependent selects
+                          setFormData(prev => ({ ...prev, branchId: b, classId: '', section: '' }));
+                          // load classes for selected branch so class select updates immediately
+                          try {
+                            await loadClasses(b);
+                          } catch (err) {
+                            console.error('Failed to load classes for branch:', err);
+                          }
+                        }}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="">Select Branch</option>
@@ -882,7 +1012,7 @@ export default function StudentsPage() {
                       </label>
                       <select
                         value={formData.classId}
-                        onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, classId: e.target.value, section: '' }))}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="">Select Class</option>
@@ -900,13 +1030,16 @@ export default function StudentsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Section
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={formData.section}
                         onChange={(e) => setFormData({ ...formData, section: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="A"
-                      />
+                      >
+                        <option value="">Select Section</option>
+                        {(classes.find(c => c._id === formData.classId)?.sections || []).map((s, idx) => (
+                          <option key={s._id || s.name || idx} value={s.name || s._id}>{s.name}</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
@@ -955,16 +1088,80 @@ export default function StudentsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Remarks
-                    </label>
-                    <textarea
-                      value={formData.remarks}
-                      onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      rows="3"
-                      placeholder="Any additional notes..."
-                    />
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Remarks
+                        </label>
+                        <textarea
+                          value={formData.remarks}
+                          onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          rows="3"
+                          placeholder="Any additional notes..."
+                        />
+
+                        {/* Uploads in Add/Edit form */}
+                        <div className="mt-4 border-t pt-4">
+                          <p className="text-sm font-medium text-gray-700 mb-2">Profile Photo (optional)</p>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setPendingProfileFile(e.target.files?.[0] || null)}
+                          />
+                          {pendingProfileFile && (
+                            <div className="mt-2 flex items-center justify-between bg-gray-50 p-2 rounded">
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-white overflow-hidden rounded">
+                                  <img src={URL.createObjectURL(pendingProfileFile)} alt="preview" className="w-full h-full object-cover" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium">{pendingProfileFile.name}</p>
+                                  <p className="text-xs text-gray-500">{Math.round(pendingProfileFile.size/1024)} KB</p>
+                                </div>
+                              </div>
+                              <button type="button" className="text-sm text-red-600" onClick={() => setPendingProfileFile(null)}>Remove</button>
+                            </div>
+                          )}
+
+                          <div className="mt-4">
+                            <p className="text-sm font-medium text-gray-700 mb-2">Attach Documents (optional)</p>
+                            <div className="flex items-center gap-2">
+                              <select id="addDocType" className="px-3 py-2 border rounded">
+                                <option value="b_form">B-Form</option>
+                                <option value="birth_certificate">Birth Certificate</option>
+                                <option value="previous_result">Previous Result</option>
+                                <option value="other">Other</option>
+                              </select>
+                              <input type="file" id="addDocFile" />
+                              <button type="button" className="px-3 py-2 bg-blue-600 text-white rounded" onClick={() => {
+                                const fileInput = document.getElementById('addDocFile');
+                                const typeSelect = document.getElementById('addDocType');
+                                const file = fileInput?.files?.[0];
+                                const type = typeSelect?.value || 'other';
+                                if (file) {
+                                  setPendingDocuments(prev => [...prev, { file, type }]);
+                                  // clear inputs
+                                  fileInput.value = '';
+                                }
+                              }}>Add</button>
+                            </div>
+
+                            {pendingDocuments.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                {pendingDocuments.map((d, idx) => (
+                                  <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                    <div>
+                                      <p className="text-sm font-medium">{d.file.name}</p>
+                                      <p className="text-xs text-gray-500">Type: {d.type}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <button type="button" className="text-sm text-red-600" onClick={() => setPendingDocuments(prev => prev.filter((_, i) => i !== idx))}>Remove</button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                   </div>
                 </>
               )}
@@ -1166,7 +1363,7 @@ export default function StudentsPage() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Delete Modal */}
@@ -1193,6 +1390,156 @@ export default function StudentsPage() {
             </div>
           </div>
         </div>
+      )}
+      {/* QR Preview Modal */}
+      {showQrPreview && (
+        <Modal open={showQrPreview} title="Student QR" onClose={() => { setShowQrPreview(false); setQrUrl(''); }}>
+          <div className="p-4">
+            {qrUrl ? (
+              <div className="flex flex-col items-center">
+                <img src={qrUrl} alt="Student QR" className="max-w-full h-auto" />
+                <div className="mt-4 flex items-center gap-2">
+                  <a href={qrUrl} target="_blank" rel="noreferrer" className="px-4 py-2 bg-blue-600 text-white rounded-lg">Open</a>
+                  <a href={qrUrl} download className="px-4 py-2 bg-green-600 text-white rounded-lg">Download</a>
+                  <button onClick={() => { setShowQrPreview(false); setQrUrl(''); }} className="px-4 py-2 bg-gray-100 rounded-lg">Close</button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-600">No QR available</p>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Student View Modal */}
+      {showViewModal && selectedStudent && (
+        <Modal open={showViewModal} title="" onClose={closeView} size="lg">
+          <div className="p-6">
+            <div className="flex flex-col md:flex-row gap-6">
+              {/* Left: Avatar & basic */}
+              <div className="md:w-1/3 bg-gray-50 rounded-lg p-4 flex flex-col items-center gap-4">
+                <div className="w-36 h-36 rounded-full overflow-hidden bg-white border">
+                  {selectedStudent.profilePhoto?.url ? (
+                    <img src={selectedStudent.profilePhoto.url} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">No Photo</div>
+                  )}
+                </div>
+
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-gray-900">{selectedStudent.firstName} {selectedStudent.lastName}</h3>
+                  <p className="text-sm text-gray-500">{selectedStudent.email || selectedStudent.phone || ''}</p>
+                  <div className="mt-2">
+                    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded ${selectedStudent.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                      {selectedStudent.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="w-full mt-3 text-sm">
+                  <div className="flex justify-between py-1 border-b"><span className="text-gray-500">Registration</span><span className="font-medium">{selectedStudent.studentProfile?.registrationNumber || '-'}</span></div>
+                  <div className="flex justify-between py-1 border-b"><span className="text-gray-500">Class</span><span className="font-medium">{(() => { const id = selectedStudent.studentProfile?.classId?._id || selectedStudent.studentProfile?.classId || selectedStudent.classId?._id || selectedStudent.classId; const found = classes.find(c => String(c._id) === String(id)); return found?.name || '-'; })()}</span></div>
+                  <div className="flex justify-between py-1 border-b"><span className="text-gray-500">Branch</span><span className="font-medium">{selectedStudent.branchId?.name || '-'}</span></div>
+                  <div className="flex justify-between py-1"><span className="text-gray-500">Roll</span><span className="font-medium">{selectedStudent.studentProfile?.rollNumber || '-'}</span></div>
+                </div>
+
+                {/* QR preview if exists */}
+                {selectedStudent.studentProfile?.qr?.url && (
+                  <div className="w-full mt-4">
+                    <p className="text-xs text-gray-500 mb-2">QR Code</p>
+                    <img src={selectedStudent.studentProfile.qr.url} alt="QR" className="mx-auto w-28 h-28 object-contain" />
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Details & Documents */}
+              <div className="flex-1 flex flex-col gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white border rounded p-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Contact</h4>
+                    <p className="text-sm"><strong>Phone:</strong> {selectedStudent.phone || '-'}</p>
+                    <p className="text-sm mt-1"><strong>Email:</strong> {selectedStudent.email || '-'}</p>
+                    <p className="text-sm mt-2"><strong>DOB:</strong> {selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString() : '-'}</p>
+                  </div>
+
+                  <div className="bg-white border rounded p-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Parents</h4>
+                    <p className="text-sm"><strong>Father:</strong> {selectedStudent.studentProfile?.father?.name || '-'}</p>
+                    <p className="text-sm text-gray-500">{selectedStudent.studentProfile?.father?.phone || ''}</p>
+                    <p className="text-sm mt-2"><strong>Mother:</strong> {selectedStudent.studentProfile?.mother?.name || '-'}</p>
+                    <p className="text-sm text-gray-500">{selectedStudent.studentProfile?.mother?.phone || ''}</p>
+                  </div>
+                </div>
+
+                <div className="bg-white border rounded p-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-gray-700">Documents</h4>
+                    <div className="flex items-center gap-2">
+                      <select id="viewDocType" className="px-2 py-1 border rounded text-sm">
+                        <option value="b_form">B-Form</option>
+                        <option value="birth_certificate">Birth Certificate</option>
+                        <option value="previous_result">Previous Result</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <input type="file" id="viewDocFile" className="text-sm" />
+                      <button type="button" className="px-3 py-1 bg-blue-600 text-white rounded text-sm" onClick={() => {
+                        const fileInput = document.getElementById('viewDocFile');
+                        const type = document.getElementById('viewDocType')?.value || 'other';
+                        const file = fileInput?.files?.[0];
+                        if (file) handleDocumentUpload(file, type);
+                      }}>Upload</button>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {selectedStudent.studentProfile?.documents?.length > 0 ? selectedStudent.studentProfile.documents.map((d, i) => (
+                      <div key={d.publicId || i} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-white rounded overflow-hidden border flex items-center justify-center">
+                            {d.url && d.url.match(/\.jpg$|\.jpeg$|\.png$|\.gif$/i) ? (
+                              <img src={d.url} alt={d.name || d.type} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="text-xs text-gray-500 px-2">{d.type}</div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{d.name || d.type}</p>
+                            <p className="text-xs text-gray-500">{d.uploadedAt ? new Date(d.uploadedAt).toLocaleString() : ''}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <a href={d.url} target="_blank" rel="noreferrer" className="text-blue-600 text-sm">Open</a>
+                          <button type="button" className="text-sm text-red-600" onClick={async () => {
+                            if (!d.publicId) return;
+                            try {
+                              const del = await apiClient.delete(`/api/upload?publicId=${encodeURIComponent(d.publicId)}&fileType=student_document&documentId=${d._id}`);
+                              if (del && del.success) {
+                                toast.success('Document deleted');
+                                setSelectedStudent(prev => ({ ...prev, studentProfile: { ...prev.studentProfile, documents: prev.studentProfile.documents.filter(doc => doc.publicId !== d.publicId) } }));
+                                loadStudents();
+                              } else {
+                                toast.error(del?.message || 'Delete failed');
+                              }
+                            } catch (err) {
+                              console.error('Delete doc error', err);
+                              toast.error('Delete failed');
+                            }
+                          }}>Delete</button>
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="col-span-2 text-sm text-gray-500">No documents uploaded</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button onClick={closeView} className="px-4 py-2 bg-gray-100 rounded">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

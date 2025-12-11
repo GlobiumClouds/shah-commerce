@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse as NextResp } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import {
   uploadProfilePhoto,
@@ -9,6 +9,8 @@ import {
 } from '@/lib/cloudinary';
 import User from '@/backend/models/User';
 import dbConnect from '@/lib/database';
+// Ensure Node runtime so Buffer is available for binary handling
+export const runtime = 'nodejs';
 
 /**
  * POST - Upload file to Cloudinary
@@ -25,14 +27,14 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
     const userId = formData.get('userId') || authenticatedUser.userId;
 
     if (!file) {
-      return NextResponse.json(
+      return NextResp.json(
         { success: false, message: 'No file provided' },
         { status: 400 }
       );
     }
 
     if (!fileType) {
-      return NextResponse.json(
+      return NextResp.json(
         { success: false, message: 'File type is required' },
         { status: 400 }
       );
@@ -61,7 +63,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
 
       case 'student_document':
         if (!documentType) {
-          return NextResponse.json(
+          return NextResp.json(
             { success: false, message: 'Document type is required for student documents' },
             { status: 400 }
           );
@@ -71,7 +73,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
         // Add to studentProfile.documents array
         const studentUser = await User.findById(userId);
         if (!studentUser || studentUser.role !== 'student') {
-          return NextResponse.json(
+          return NextResp.json(
             { success: false, message: 'User is not a student' },
             { status: 400 }
           );
@@ -89,7 +91,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
 
         await studentUser.save();
         
-        return NextResponse.json({
+        return NextResp.json({
           success: true,
           message: 'Student document uploaded successfully',
           data: uploadResult,
@@ -97,7 +99,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
 
       case 'teacher_document':
         if (!documentType) {
-          return NextResponse.json(
+          return NextResp.json(
             { success: false, message: 'Document type is required for teacher documents' },
             { status: 400 }
           );
@@ -107,7 +109,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
         // Add to teacherProfile.documents array
         const teacherUser = await User.findById(userId);
         if (!teacherUser || teacherUser.role !== 'teacher') {
-          return NextResponse.json(
+          return NextResp.json(
             { success: false, message: 'User is not a teacher' },
             { status: 400 }
           );
@@ -125,7 +127,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
 
         await teacherUser.save();
         
-        return NextResponse.json({
+        return NextResp.json({
           success: true,
           message: 'Teacher document uploaded successfully',
           data: uploadResult,
@@ -133,7 +135,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
 
       case 'staff_document':
         if (!documentType) {
-          return NextResponse.json(
+          return NextResp.json(
             { success: false, message: 'Document type is required for staff documents' },
             { status: 400 }
           );
@@ -143,7 +145,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
         // Add to staffProfile.documents array
         const staffUser = await User.findById(userId);
         if (!staffUser || staffUser.role !== 'staff') {
-          return NextResponse.json(
+          return NextResp.json(
             { success: false, message: 'User is not a staff member' },
             { status: 400 }
           );
@@ -161,14 +163,14 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
 
         await staffUser.save();
         
-        return NextResponse.json({
+        return NextResp.json({
           success: true,
           message: 'Staff document uploaded successfully',
           data: uploadResult,
         });
 
       default:
-        return NextResponse.json(
+        return NextResp.json(
           { success: false, message: 'Invalid file type' },
           { status: 400 }
         );
@@ -179,14 +181,14 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       await User.findByIdAndUpdate(userId, updateQuery);
     }
 
-    return NextResponse.json({
+      return NextResp.json({
       success: true,
       message: 'File uploaded successfully',
       data: uploadResult,
     });
-  } catch (error) {
+    } catch (error) {
     console.error('File upload error:', error);
-    return NextResponse.json(
+    return NextResp.json(
       { success: false, message: 'Failed to upload file', error: error.message },
       { status: 500 }
     );
@@ -207,7 +209,7 @@ export const DELETE = withAuth(async (request, authenticatedUser, userDoc) => {
     const documentId = searchParams.get('documentId');
 
     if (!publicId) {
-      return NextResponse.json(
+      return NextResp.json(
         { success: false, message: 'Public ID is required' },
         { status: 400 }
       );
@@ -219,7 +221,7 @@ export const DELETE = withAuth(async (request, authenticatedUser, userDoc) => {
     // Remove from database
     const user = await User.findById(userId);
     if (!user) {
-      return NextResponse.json(
+      return NextResp.json(
         { success: false, message: 'User not found' },
         { status: 404 }
       );
@@ -244,15 +246,10 @@ export const DELETE = withAuth(async (request, authenticatedUser, userDoc) => {
 
     await user.save();
 
-    return NextResponse.json({
-      success: true,
-      message: 'File deleted successfully',
-    });
+    return NextResp.json({ success: true, message: 'File deleted' });
   } catch (error) {
-    console.error('File deletion error:', error);
-    return NextResponse.json(
-      { success: false, message: 'Failed to delete file', error: error.message },
-      { status: 500 }
-    );
+    console.error('Delete error:', error);
+  return NextResp.json({ success: false, message: error.message || 'Delete failed' }, { status: 500 });
   }
 });
+
