@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useApi, useFormSubmit } from '@/hooks/useApi';
+import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import { Plus, Search, Edit, Trash2, Eye, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -27,8 +27,6 @@ export default function BranchesPage() {
     status: 'active',
   });
 
-  const { execute } = useApi();
-
   useEffect(() => {
     loadBranches();
   }, []);
@@ -36,13 +34,16 @@ export default function BranchesPage() {
   const loadBranches = async () => {
     try {
       setLoading(true);
-      const response = await execute({ url: API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST });
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST);
       
       if (response?.success) {
-        setBranches(response.data.branches || []);
+        // Handle both nested and direct data structures
+        const branchesData = response.data.branches || response.data || [];
+        setBranches(branchesData);
       }
     } catch (error) {
       console.error('Failed to load branches:', error);
+      toast.error(error.message || 'Failed to load branches');
     } finally {
       setLoading(false);
     }
@@ -84,10 +85,7 @@ export default function BranchesPage() {
     if (!confirm('Are you sure you want to delete this branch?')) return;
     
     try {
-      const response = await execute({
-        url: `${API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST}/${branchId}`,
-        method: 'DELETE',
-      });
+      const response = await apiClient.delete(`${API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST}/${branchId}`);
       
       if (response?.success) {
         toast.success('Branch deleted successfully');
@@ -126,9 +124,12 @@ export default function BranchesPage() {
         ? `${API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST}/${editingBranch._id}`
         : API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST;
       
-      const method = editingBranch ? 'PUT' : 'POST';
-      
-      const response = await execute({ url, method, body: branchData });
+      let response;
+      if (editingBranch) {
+        response = await apiClient.put(url, branchData);
+      } else {
+        response = await apiClient.post(url, branchData);
+      }
       
       if (response?.success) {
         toast.success(editingBranch ? 'Branch updated successfully' : 'Branch created successfully');
@@ -139,7 +140,7 @@ export default function BranchesPage() {
       }
     } catch (error) {
       console.error('Form submission failed:', error);
-      toast.error('Failed to save branch. Please try again.');
+      toast.error(error.message || 'Failed to save branch. Please try again.');
     } finally {
       setSubmitting(false);
     }

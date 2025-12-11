@@ -66,13 +66,24 @@ export async function authenticate(request) {
     }
 
     // Verify token
-    const decoded = verifyToken(token);
+    let decoded;
+    try {
+      decoded = verifyToken(token);
+    } catch (error) {
+      return {
+        error: true,
+        message: error.message || 'Invalid or expired token',
+        status: 401,
+      };
+    }
     
     // Connect to database
     await connectDB();
     
     // Find user and check if active
-    const user = await User.findById(decoded.userId).select('+refreshToken');
+    const user = await User.findById(decoded.userId)
+      .select('+refreshToken')
+      .populate('branchId', 'name code');
     
     if (!user) {
       return {
@@ -90,19 +101,27 @@ export async function authenticate(request) {
       };
     }
 
+    // Get full name based on new schema
+    const fullName = user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim();
+
     return {
       error: false,
       user: {
         userId: user._id.toString(),
         email: user.email,
-        fullName: user.fullName,
+        fullName: fullName,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.role,
-        branchId: user.branchId?.toString(),
-        permissions: user.permissions,
+        branchId: user.branchId?._id?.toString() || user.branchId?.toString(),
+        branchName: user.branchId?.name,
+        permissions: user.adminProfile?.permissions || [],
+        profilePhoto: user.profilePhoto?.url,
       },
       userDoc: user,
     };
   } catch (error) {
+    console.error('Authentication error:', error);
     return {
       error: true,
       message: error.message || 'Authentication failed',

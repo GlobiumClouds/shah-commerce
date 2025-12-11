@@ -21,6 +21,20 @@ import {
   Banknote,
   BarChart3,
   Briefcase,
+  Shield,
+  Receipt,
+  Wallet,
+  TrendingUp,
+  Cog,
+  Activity,
+  Bell,
+  UserPlus,
+  UserCog,
+  GraduationCap,
+  Keyboard,
+  QrCode,
+  UserCheck,
+  LayoutDashboardIcon,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -28,22 +42,102 @@ import { Button } from '@/components/ui/button';
 const ROLE_MENUS = {
   super_admin: [
     {
-      category: 'Management',
+      category: 'Overview',
       items: [
         { name: 'Dashboard', path: '/super-admin', icon: LayoutDashboard },
-        { name: 'Branches', path: '/super-admin/branches', icon: FolderOpen },
-        { name: 'Events', path: '/super-admin/events', icon: Calendar },
-        { name: 'Expenses', path: '/super-admin/expenses', icon: Banknote },
-        { name: 'Salaries', path: '/super-admin/salaries', icon: DollarSign },
-        { name: 'Reports', path: '/super-admin/reports', icon: BarChart3 },
       ],
     },
     {
-      category: 'Settings',
+      category: 'Branch Management',
       items: [
-        { name: 'Admin Users', path: '/super-admin/admins', icon: Briefcase },
-        { name: 'Subscriptions', path: '/super-admin/subscriptions', icon: FileText },
-        { name: 'Settings', path: '/super-admin/settings', icon: Settings },
+        { name: 'All Branches', path: '/super-admin/branch-management/branches', icon: FolderOpen },
+      ],
+    },
+    {
+      category: 'User Management',
+      items: [
+        { name: 'Administrators', path: '/super-admin/user-management/administrators', icon: UserCog },
+        { name: 'Role Management', path: '/super-admin/user-management/roles', icon: Shield },
+      ],
+    },
+    {
+      category: 'Academic',
+      items: [
+        { name: 'Departments', path: '/super-admin/academic/departments', icon: Briefcase },
+        { name: 'Classes', path: '/super-admin/academic/classes', icon: School },
+        { name: 'Subjects', path: '/super-admin/academic/subjects', icon: BookOpen },
+        { name: 'Syllabus', path: '/super-admin/academic/syllabus', icon: FileText },
+      ],
+    },
+    {
+      category: 'Student Management',
+      items: [
+        { name: 'All Students', path: '/super-admin/student-management/students', icon: Users },
+        { name: 'Admissions', path: '/super-admin/student-management/admissions', icon: UserPlus },
+      ],
+    },
+    {
+      category: 'Teacher Management',
+      items: [
+        { name: 'All Teachers', path: '/super-admin/teacher-management/teachers', icon: Users },
+      ],
+    },
+    {
+      category: 'Fee Management',
+      items: [
+        { name: 'Fee Templates', path: '/super-admin/fee-management/templates', icon: Receipt },
+        { name: 'Branch Fees', path: '/super-admin/fee-management/branch-fees', icon: Wallet },
+        { name: 'Fee Reports', path: '/super-admin/fee-management/reports', icon: FileText },
+      ],
+    },
+    {
+      category: 'Salary Management',
+      items: [
+        { name: 'Salary Templates', path: '/super-admin/salary-management/salary-templates', icon: DollarSign },
+        { name: 'Payroll Processing', path: '/super-admin/salary-management/payroll', icon: Banknote },
+        { name: 'Salary Reports', path: '/super-admin/salary-management/reports', icon: BarChart3 },
+      ],
+    },
+    {
+      category: 'Attendance Management',
+      items: [
+        { name: 'Student Attendance', path: '/super-admin/attendance-management/student', icon: GraduationCap },
+  { name: 'Teacher Attendance', path: '/super-admin/attendance-management/teacher', icon: LayoutDashboardIcon },
+        { name: 'Manual Entry', path: '/super-admin/attendance-management/manual-entry', icon: Keyboard },
+        { name: 'QR Code Scanner', path: '/super-admin/attendance-management/qr-scanner', icon: QrCode },
+        { name: 'Staff Attendance', path: '/super-admin/attendance-management/staff', icon: UserCheck },
+      ],
+    },
+    {
+      category: 'Event Management',
+      items: [
+        { name: 'Calendar View', path: '/super-admin/event-management/calendar', icon: Calendar },
+        { name: 'All Events', path: '/super-admin/event-management/events', icon: Calendar },
+      ],
+    },
+    {
+      category: 'System Analytics',
+      items: [
+        { name: 'Financial Reports', path: '/super-admin/analytics/financial', icon: TrendingUp },
+        { name: 'Academic Reports', path: '/super-admin/analytics/academic', icon: BookOpen },
+        { name: 'Operational Reports', path: '/super-admin/analytics/operational', icon: BarChart3 },
+      ],
+    },
+    {
+      category: 'Configuration',
+      items: [
+        { name: 'General Settings', path: '/super-admin/configuration/general', icon: Settings },
+        { name: 'Academic Settings', path: '/super-admin/configuration/academic-settings', icon: School },
+        { name: 'Security Settings', path: '/super-admin/configuration/security', icon: Shield },
+        { name: 'Notifications', path: '/super-admin/configuration/notifications', icon: Bell },
+      ],
+    },
+    {
+      category: 'Audit & Logs',
+      items: [
+        { name: 'Activity Logs', path: '/super-admin/audit-logs/activity', icon: Activity },
+        { name: 'System Logs', path: '/super-admin/audit-logs/system', icon: Cog },
+        { name: 'Login History', path: '/super-admin/audit-logs/login-history', icon: Users },
       ],
     },
   ],

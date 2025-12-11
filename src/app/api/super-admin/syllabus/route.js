@@ -1,0 +1,177 @@
+import { NextResponse } from 'next/server';
+import connectDB from '@/lib/database';
+import Syllabus from '@/backend/models/Syllabus';
+import { withAuth } from '@/backend/middleware/auth';
+
+// GET - List all syllabus with filters
+export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
+  try {
+    await connectDB();
+
+    const { searchParams } = new URL(request.url);
+    
+    const page = parseInt(searchParams.get('page')) || 1;
+    const limit = parseInt(searchParams.get('limit')) || 10;
+    const skip = (page - 1) * limit;
+    
+    const search = searchParams.get('search') || '';
+    const subjectId = searchParams.get('subjectId');
+    const classId = searchParams.get('classId');
+    const branchId = searchParams.get('branchId');
+    const academicYear = searchParams.get('academicYear');
+    const status = searchParams.get('status');
+    
+    const query = {};
+    
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { academicYear: { $regex: search, $options: 'i' } },
+      ];
+    }
+    
+    if (subjectId) query.subjectId = subjectId;
+    if (classId) query.classId = classId;
+    if (branchId) query.branchId = branchId;
+    if (academicYear) query.academicYear = academicYear;
+    if (status) query.status = status;
+    
+    const [syllabus, total] = await Promise.all([
+      Syllabus.find(query)
+        .populate('subjectId', 'name code grade')
+        .populate('classId', 'name code grade')
+        .populate('branchId', 'name code')
+        .populate('preparedBy', 'firstName lastName employeeId')
+        .populate('approvedBy', 'firstName lastName employeeId')
+        .sort({ academicYear: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Syllabus.countDocuments(query),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      data: syllabus,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching syllabus:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Failed to fetch syllabus',
+        error: error.message,
+      },
+      { status: 500 }
+    );
+  }
+});
+
+// POST - Create new syllabus
+export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
+  try {
+    await connectDB();
+
+    const body = await request.json();
+    
+    // Validate required fields
+    const requiredFields = ['title', 'subjectId', 'classId', 'branchId', 'academicYear'];
+    
+    const missingFields = requiredFields.filter(field => !body[field]);
+    
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Missing required fields: ${missingFields.join(', ')}`,
+        },
+        { status: 400 }
+      );
+    }
+    
+    // Verify subject exists
+    const Subject = (await import('@/backend/models/Subject')).default;
+    const subjectExists = await Subject.findById(body.subjectId);
+    
+    if (!subjectExists) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Subject not found',
+        },
+        { status: 404 }
+      );
+    }
+    
+    // Verify class exists
+    const Class = (await import('@/backend/models/Class')).default;
+    const classExists = await Class.findById(body.classId);
+    
+    if (!classExists) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Class not found',
+        },
+        { status: 404 }
+      );
+    }
+    
+    // Verify branch exists
+    const Branch = (await import('@/backend/models/Branch')).default;
+    const branchExists = await Branch.findById(body.branchId);
+    
+    if (!branchExists) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Branch not found',
+        },
+        { status: 404 }
+      );
+    }
+    
+    // Create syllabus
+    const newSyllabus = new Syllabus({
+      ...body,
+      createdBy: userDoc._id,
+      updatedBy: userDoc._id,
+    });
+    
+    await newSyllabus.save();
+    
+    // Populate and return
+    await newSyllabus.populate([
+      { path: 'subjectId', select: 'name code grade' },
+      { path: 'classId', select: 'name code grade' },
+      { path: 'branchId', select: 'name code' },
+      { path: 'preparedBy', select: 'firstName lastName employeeId' },
+      { path: 'createdBy', select: 'fullName email' },
+    ]);
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Syllabus created successfully',
+        data: newSyllabus,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error('Error creating syllabus:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Failed to create syllabus',
+        error: error.message,
+      },
+      { status: 500 }
+    );
+  }
+});

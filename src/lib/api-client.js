@@ -26,13 +26,13 @@ let accessToken = null;
 export const setAccessToken = (token) => {
   accessToken = token;
   if (typeof window !== 'undefined') {
-    localStorage.setItem('access_token', token);
+    localStorage.setItem('accessToken', token);
   }
 };
 
 export const getAccessToken = () => {
   if (!accessToken && typeof window !== 'undefined') {
-    accessToken = localStorage.getItem('access_token');
+    accessToken = localStorage.getItem('accessToken');
   }
   return accessToken;
 };
@@ -40,7 +40,7 @@ export const getAccessToken = () => {
 export const clearAccessToken = () => {
   accessToken = null;
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('access_token');
+    localStorage.removeItem('accessToken');
   }
 };
 

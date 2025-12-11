@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
+  BASE_URL: process.env.NEXT_PUBLIC_API_URL || '',
   TIMEOUT: 30000, // 30 seconds
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000, // 1 second
@@ -10,143 +10,144 @@ export const API_CONFIG = {
 export const API_ENDPOINTS = {
   // Authentication Endpoints
   AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    LOGOUT: '/auth/logout',
-    REFRESH: '/auth/refresh',
-    FORGOT_PASSWORD: '/auth/forgot-password',
-    RESET_PASSWORD: '/auth/reset-password',
-    VERIFY_EMAIL: '/auth/verify-email',
-    RESEND_VERIFICATION: '/auth/resend-verification',
-    CHANGE_PASSWORD: '/auth/change-password',
-    ME: '/auth/me',
+    LOGIN: '/api/auth/login',
+    REGISTER: '/api/auth/register',
+    LOGOUT: '/api/auth/logout',
+    REFRESH: '/api/auth/refresh',
+    FORGOT_PASSWORD: '/api/auth/forgot-password',
+    RESET_PASSWORD: '/api/auth/reset-password',
+    VERIFY_EMAIL: '/api/auth/verify-email',
+    RESEND_VERIFICATION: '/api/auth/resend-verification',
+    CHANGE_PASSWORD: '/api/auth/change-password',
+    ME: '/api/auth/me',
   },
 
   // Super Admin Endpoints
   SUPER_ADMIN: {
-    DASHBOARD: '/super-admin/dashboard',
+    DASHBOARD: '/api/super-admin/dashboard',
+    DASHBOARD_STATS: '/api/super-admin/dashboard/stats',
     
     // Branch Management
     BRANCHES: {
-      CREATE: '/super-admin/branches',
-      LIST: '/super-admin/branches',
-      GET: '/super-admin/branches/:id',
-      UPDATE: '/super-admin/branches/:id',
-      DELETE: '/super-admin/branches/:id',
-      STATS: '/super-admin/branches/stats',
-      ACTIVATE: '/super-admin/branches/:id/activate',
-      DEACTIVATE: '/super-admin/branches/:id/deactivate',
+      CREATE: '/api/super-admin/branches',
+      LIST: '/api/super-admin/branches',
+      GET: '/api/super-admin/branches/:id',
+      UPDATE: '/api/super-admin/branches/:id',
+      DELETE: '/api/super-admin/branches/:id',
+      STATS: '/api/super-admin/branches/stats',
+      ACTIVATE: '/api/super-admin/branches/:id/activate',
+      DEACTIVATE: '/api/super-admin/branches/:id/deactivate',
     },
     
     // Branch Admin Management
     BRANCH_ADMINS: {
-      CREATE: '/super-admin/branch-admins',
-      LIST: '/super-admin/branch-admins',
-      GET: '/super-admin/branch-admins/:id',
-      UPDATE: '/super-admin/branch-admins/:id',
-      DELETE: '/super-admin/branch-admins/:id',
-      ASSIGN_BRANCH: '/super-admin/branch-admins/:id/assign-branch',
+      CREATE: '/api/super-admin/branch-admins',
+      LIST: '/api/super-admin/branch-admins',
+      GET: '/api/super-admin/branch-admins/:id',
+      UPDATE: '/api/super-admin/branch-admins/:id',
+      DELETE: '/api/super-admin/branch-admins/:id',
+      ASSIGN_BRANCH: '/api/super-admin/branch-admins/:id/assign-branch',
     },
     
     // Global Settings
     SETTINGS: {
-      GET: '/super-admin/settings',
-      UPDATE: '/super-admin/settings',
-      RESET: '/super-admin/settings/reset',
+      GET: '/api/super-admin/settings',
+      UPDATE: '/api/super-admin/settings',
+      RESET: '/api/super-admin/settings/reset',
     },
 
     // Events Management
     EVENTS: {
-      CREATE: '/super-admin/events',
-      LIST: '/super-admin/events',
-      GET: '/super-admin/events/:id',
-      UPDATE: '/super-admin/events/:id',
-      DELETE: '/super-admin/events/:id',
+      CREATE: '/api/super-admin/events',
+      LIST: '/api/super-admin/events',
+      GET: '/api/super-admin/events/:id',
+      UPDATE: '/api/super-admin/events/:id',
+      DELETE: '/api/super-admin/events/:id',
     },
 
     // Expenses Management
     EXPENSES: {
-      CREATE: '/super-admin/expenses',
-      LIST: '/super-admin/expenses',
-      GET: '/super-admin/expenses/:id',
-      UPDATE: '/super-admin/expenses/:id',
-      DELETE: '/super-admin/expenses/:id',
+      CREATE: '/api/super-admin/expenses',
+      LIST: '/api/super-admin/expenses',
+      GET: '/api/super-admin/expenses/:id',
+      UPDATE: '/api/super-admin/expenses/:id',
+      DELETE: '/api/super-admin/expenses/:id',
     },
 
     // Subscriptions Management
     SUBSCRIPTIONS: {
-      CREATE: '/super-admin/subscriptions',
-      LIST: '/super-admin/subscriptions',
-      GET: '/super-admin/subscriptions/:id',
-      UPDATE: '/super-admin/subscriptions/:id',
-      DELETE: '/super-admin/subscriptions/:id',
+      CREATE: '/api/super-admin/subscriptions',
+      LIST: '/api/super-admin/subscriptions',
+      GET: '/api/super-admin/subscriptions/:id',
+      UPDATE: '/api/super-admin/subscriptions/:id',
+      DELETE: '/api/super-admin/subscriptions/:id',
     },
 
     // Salaries Management
     SALARIES: {
-      CREATE: '/super-admin/salaries',
-      LIST: '/super-admin/salaries',
-      GET: '/super-admin/salaries/:id',
-      UPDATE: '/super-admin/salaries/:id',
-      DELETE: '/super-admin/salaries/:id',
-      PROCESS: '/super-admin/salaries/:id/process',
+      CREATE: '/api/super-admin/salaries',
+      LIST: '/api/super-admin/salaries',
+      GET: '/api/super-admin/salaries/:id',
+      UPDATE: '/api/super-admin/salaries/:id',
+      DELETE: '/api/super-admin/salaries/:id',
+      PROCESS: '/api/super-admin/salaries/:id/process',
     },
     
     // Admins Management
     ADMINS: {
-      CREATE: '/super-admin/admins',
-      LIST: '/super-admin/admins',
-      GET: '/super-admin/admins/:id',
-      UPDATE: '/super-admin/admins/:id',
-      DELETE: '/super-admin/admins/:id',
-      ASSIGN_BRANCH: '/super-admin/admins/:id/assign-branch',
+      CREATE: '/api/super-admin/admins',
+      LIST: '/api/super-admin/admins',
+      GET: '/api/super-admin/admins/:id',
+      UPDATE: '/api/super-admin/admins/:id',
+      DELETE: '/api/super-admin/admins/:id',
+      ASSIGN_BRANCH: '/api/super-admin/admins/:id/assign-branch',
     },
     
     // Reports
     REPORTS: {
-      OVERALL: '/super-admin/reports/overall',
-      BRANCHES: '/super-admin/reports/branches',
-      FINANCIAL: '/super-admin/reports/financial',
-      ATTENDANCE: '/super-admin/reports/attendance',
-      PERFORMANCE: '/super-admin/reports/performance',
-      EXPORT: '/super-admin/reports/export',
+      OVERALL: '/api/super-admin/reports/overall',
+      BRANCHES: '/api/super-admin/reports/branches',
+      FINANCIAL: '/api/super-admin/reports/financial',
+      ATTENDANCE: '/api/super-admin/reports/attendance',
+      PERFORMANCE: '/api/super-admin/reports/performance',
+      EXPORT: '/api/super-admin/reports/export',
     },
     
     // Users Management
     USERS: {
-      LIST: '/super-admin/users',
-      GET: '/super-admin/users/:id',
-      CREATE: '/super-admin/users',
-      UPDATE: '/super-admin/users/:id',
-      DELETE: '/super-admin/users/:id',
-      BULK_CREATE: '/super-admin/users/bulk',
-      EXPORT: '/super-admin/users/export',
+      LIST: '/api/super-admin/users',
+      GET: '/api/super-admin/users/:id',
+      CREATE: '/api/super-admin/users',
+      UPDATE: '/api/super-admin/users/:id',
+      DELETE: '/api/super-admin/users/:id',
+      BULK_CREATE: '/api/super-admin/users/bulk',
+      EXPORT: '/api/super-admin/users/export',
     },
   },
 
   // Branch Admin Endpoints
   BRANCH_ADMIN: {
-    DASHBOARD: '/branch-admin/dashboard',
+    DASHBOARD: '/api/branch-admin/dashboard',
     
     // Teachers Management
     TEACHERS: {
-      CREATE: '/branch-admin/teachers',
-      LIST: '/branch-admin/teachers',
-      GET: '/branch-admin/teachers/:id',
-      UPDATE: '/branch-admin/teachers/:id',
-      DELETE: '/branch-admin/teachers/:id',
-      ASSIGN_SUBJECTS: '/branch-admin/teachers/:id/assign-subjects',
-      ASSIGN_CLASSES: '/branch-admin/teachers/:id/assign-classes',
-      SCHEDULE: '/branch-admin/teachers/:id/schedule',
+      CREATE: '/api/branch-admin/teachers',
+      LIST: '/api/branch-admin/teachers',
+      GET: '/api/branch-admin/teachers/:id',
+      UPDATE: '/api/branch-admin/teachers/:id',
+      DELETE: '/api/branch-admin/teachers/:id',
+      ASSIGN_SUBJECTS: '/api/branch-admin/teachers/:id/assign-subjects',
+      ASSIGN_CLASSES: '/api/branch-admin/teachers/:id/assign-classes',
+      SCHEDULE: '/api/branch-admin/teachers/:id/schedule',
     },
     
     // Students Management
     STUDENTS: {
-      CREATE: '/branch-admin/students',
-      LIST: '/branch-admin/students',
-      GET: '/branch-admin/students/:id',
-      UPDATE: '/branch-admin/students/:id',
-      DELETE: '/branch-admin/students/:id',
+      CREATE: '/api/branch-admin/students',
+      LIST: '/api/branch-admin/students',
+      GET: '/api/branch-admin/students/:id',
+      UPDATE: '/api/branch-admin/students/:id',
+      DELETE: '/api/branch-admin/students/:id',
       ENROLL: '/branch-admin/students/enroll',
       TRANSFER: '/branch-admin/students/:id/transfer',
       PROMOTE: '/branch-admin/students/:id/promote',
