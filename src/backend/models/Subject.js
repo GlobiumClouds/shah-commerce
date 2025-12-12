@@ -23,6 +23,14 @@ const subjectSchema = new mongoose.Schema(
       ref: 'Class',
       required: true,
     },
+    // Grade numeric (backwards compatible) and optional reference to Grade model
+    grade: {
+      type: Number,
+    },
+    gradeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Grade',
+    },
     subjectType: {
       type: String,
       enum: ['core', 'elective', 'co-curricular', 'skill-based'],
@@ -60,13 +68,6 @@ const subjectSchema = new mongoose.Schema(
         ref: 'Teacher',
       },
     ],
-    
-    // Branch Reference
-    branchId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Branch',
-      required: true,
-    },
     
     // Assessment Criteria
     assessmentPattern: {
@@ -127,21 +128,19 @@ const subjectSchema = new mongoose.Schema(
 subjectSchema.index({ code: 1 });
 subjectSchema.index({ classId: 1 });
 subjectSchema.index({ grade: 1 });
-subjectSchema.index({ branchId: 1 });
 subjectSchema.index({ status: 1 });
-subjectSchema.index({ classId: 1, branchId: 1 });
 
 // Pre-save middleware to generate code if not provided
 subjectSchema.pre('save', async function (next) {
   if (!this.code) {
-    // Generate code: GRADE-SUBJECT (e.g., G10-ENG, G09-MATH)
-    const gradePrefix = `G${this.grade}`;
-    const namePrefix = this.name.substring(0, 3).toUpperCase();
-    const count = await this.constructor.countDocuments({ grade: this.grade });
-    
+    // Prefer numeric grade if available, fall back to gradeId when possible
+    const gradeNumber = this.grade || undefined;
+    const gradePrefix = gradeNumber ? `G${gradeNumber}` : 'G0';
+    const namePrefix = (this.name || '').substring(0, 3).toUpperCase();
+    const count = gradeNumber ? await this.constructor.countDocuments({ grade: gradeNumber }) : await this.constructor.countDocuments();
     this.code = `${gradePrefix}-${namePrefix}-${String(count + 1).padStart(2, '0')}`;
   }
-  
+
   next();
 });
 

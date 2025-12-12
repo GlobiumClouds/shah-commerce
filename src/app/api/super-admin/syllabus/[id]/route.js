@@ -14,6 +14,9 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
       .populate('subjectId', 'name code grade')
       .populate('classId', 'name code grade')
       .populate('branchId', 'name code')
+      .populate('levelId', 'name code order')
+      .populate('gradeId', 'name gradeNumber code')
+      .populate('streamId', 'name code')
       .populate('preparedBy', 'firstName lastName employeeId email')
       .populate('approvedBy', 'firstName lastName employeeId email')
       .lean();
@@ -76,6 +79,9 @@ export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
       { path: 'subjectId', select: 'name code grade' },
       { path: 'classId', select: 'name code grade' },
       { path: 'branchId', select: 'name code' },
+      { path: 'levelId', select: 'name code order' },
+      { path: 'gradeId', select: 'name gradeNumber code' },
+      { path: 'streamId', select: 'name code' },
       { path: 'preparedBy', select: 'firstName lastName employeeId' },
       { path: 'approvedBy', select: 'firstName lastName employeeId' },
       { path: 'updatedBy', select: 'fullName email' },

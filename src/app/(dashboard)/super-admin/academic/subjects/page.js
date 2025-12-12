@@ -11,7 +11,6 @@ import {
   Edit,
   Trash2,
   X,
-  Building2,
   Users,
   Clock,
   Award,
@@ -27,16 +26,20 @@ export default function SubjectsPage() {
   const [subjects, setSubjects] = useState([]);
   const [classes, setClasses] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [branches, setBranches] = useState([]);
+  const [levels, setLevels] = useState([]);
+  const [grades, setGrades] = useState([]);
+  const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingSubject, setEditingSubject] = useState(null);
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState('');
+  const [selectedGrade, setSelectedGrade] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
-  const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedStream, setSelectedStream] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -45,11 +48,13 @@ export default function SubjectsPage() {
     description: '',
     classId: '',
     departmentId: '',
+    levelId: '',
+    gradeId: '',
+    streamId: '',
     subjectType: 'core',
     hoursPerWeek: 5,
     totalHoursPerYear: 150,
     creditHours: 3,
-    branchId: '',
     status: 'active',
   });
 
@@ -63,12 +68,27 @@ export default function SubjectsPage() {
 
   useEffect(() => {
     fetchSubjects();
-    // fetch classes for selectedBranch filter (if any)
-    fetchClasses(selectedBranch);
-    fetchBranches();
-    // also refresh departments for the selectedBranch
-    fetchDepartments(selectedBranch);
-  }, [searchTerm, selectedClass, selectedBranch, selectedDepartment]);
+    fetchClasses();
+    fetchDepartments();
+    fetchLevels();
+    fetchStreams();
+    if (selectedLevel) fetchGrades(selectedLevel);
+  }, [searchTerm, selectedClass, selectedDepartment, selectedLevel, selectedGrade, selectedStream]);
+
+  // Poll to keep subjects list updated every 10s when page is visible
+  useEffect(() => {
+    const iv = setInterval(() => {
+      try {
+        if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !loading) {
+          fetchSubjects();
+        }
+      } catch (err) {
+        console.error('Polling subjects failed', err);
+      }
+    }, 10000);
+
+    return () => clearInterval(iv);
+  }, [searchTerm, selectedClass, selectedDepartment, selectedLevel, selectedGrade, selectedStream, loading]);
 
   // per-subject section selection + counts
   const [selectedSection, setSelectedSection] = useState({});
@@ -101,8 +121,10 @@ export default function SubjectsPage() {
         limit: '100',
         ...(searchTerm && { search: searchTerm }),
         ...(selectedClass && { classId: selectedClass }),
-  ...(selectedBranch && { branchId: selectedBranch }),
-  ...(selectedDepartment && { departmentId: selectedDepartment }),
+        ...(selectedDepartment && { departmentId: selectedDepartment }),
+        ...(selectedLevel && { levelId: selectedLevel }),
+        ...(selectedGrade && { gradeId: selectedGrade }),
+        ...(selectedStream && { streamId: selectedStream }),
       });
 
       const response = await apiClient.get(`/api/super-admin/subjects?${params}`);
@@ -132,10 +154,10 @@ export default function SubjectsPage() {
     }
   };
 
-  // Fetch classes; accepts an optional branchId (used by the modal to load branch-specific classes)
-  const fetchClasses = async (branchId = selectedBranch) => {
+  // Fetch classes (no branch filtering - school-wide)
+  const fetchClasses = async () => {
     try {
-      const params = new URLSearchParams({ limit: '200', ...(branchId && { branchId }) });
+      const params = new URLSearchParams({ limit: '200' });
       const response = await apiClient.get(`/api/super-admin/classes?${params}`);
       if (response?.success) {
         const list = response.data || response.data?.classes || [];
@@ -146,9 +168,9 @@ export default function SubjectsPage() {
     }
   };
 
-  const fetchDepartments = async (branchId = selectedBranch) => {
+  const fetchDepartments = async () => {
     try {
-      const params = new URLSearchParams({ limit: '200', ...(branchId && { branchId }) });
+      const params = new URLSearchParams({ limit: '200' });
       const response = await apiClient.get(`/api/super-admin/departments?${params}`);
       if (response?.success) {
         const list = response.data || response.data?.departments || [];
@@ -159,15 +181,31 @@ export default function SubjectsPage() {
     }
   };
 
-  const fetchBranches = async () => {
+  const fetchLevels = async () => {
     try {
-      const response = await apiClient.get('/api/super-admin/branches?limit=200');
-      if (response?.success) {
-        const list = response.data?.branches || response.data || [];
-        setBranches(list);
-      }
-    } catch (error) {
-      console.error('Failed to fetch branches:', error);
+      const res = await apiClient.get('/api/school/levels');
+      if (res?.success) setLevels(res.data || res.data?.levels || []);
+    } catch (err) {
+      console.error('Failed to fetch levels', err);
+    }
+  };
+
+  const fetchGrades = async (levelId) => {
+    try {
+      const params = new URLSearchParams({ ...(levelId && { levelId }) });
+      const res = await apiClient.get(`/api/school/grades?${params}`);
+      if (res?.success) setGrades(res.data || res.data?.grades || []);
+    } catch (err) {
+      console.error('Failed to fetch grades', err);
+    }
+  };
+
+  const fetchStreams = async () => {
+    try {
+      const res = await apiClient.get('/api/school/streams');
+      if (res?.success) setStreams(res.data || res.data?.streams || []);
+    } catch (err) {
+      console.error('Failed to fetch streams', err);
     }
   };
 
@@ -176,8 +214,8 @@ export default function SubjectsPage() {
     
     try {
       // Basic validation
-      if (!formData.name || !formData.classId || !formData.branchId) {
-        toast.error('Please provide subject name, class and branch');
+      if (!formData.name || !formData.classId) {
+        toast.error('Please provide subject name and class');
         return;
       }
 
@@ -188,12 +226,12 @@ export default function SubjectsPage() {
         description: formData.description || '',
         classId: formData.classId,
         departmentId: formData.departmentId || undefined,
-        // grade is derived from the class; do not send grade explicitly
+        gradeId: formData.gradeId || undefined,
         subjectType: formData.subjectType || 'core',
         hoursPerWeek: Number(formData.hoursPerWeek) || 0,
         totalHoursPerYear: Number(formData.totalHoursPerYear) || 0,
         creditHours: Number(formData.creditHours) || 0,
-        branchId: formData.branchId,
+        streamId: formData.streamId || undefined,
         status: formData.status || 'active',
       };
 
@@ -224,21 +262,15 @@ export default function SubjectsPage() {
       code: subject.code || '',
       description: subject.description || '',
       classId: subject.classId?._id || '',
+      gradeId: subject.gradeId?._id || subject.gradeId || '',
       subjectType: subject.subjectType || 'core',
       hoursPerWeek: subject.hoursPerWeek || 5,
       totalHoursPerYear: subject.totalHoursPerYear || 150,
       creditHours: subject.creditHours || 3,
-      branchId: subject.branchId?._id || '',
+      streamId: subject.streamId || '',
       status: subject.status || 'active',
     });
-    // ensure the modal's branch state is in sync so fetchClasses/Departments load correctly
-    const branchId = subject.branchId?._id || '';
-    setSelectedBranch(branchId);
-    // fetch classes & departments for the subject's branch so class dropdown is populated
-    if (branchId) {
-      fetchClasses(branchId);
-      fetchDepartments(branchId);
-    }
+    setSelectedGrade(subject.gradeId?._id || subject.gradeId || '');
     setShowModal(true);
   };
 
@@ -266,11 +298,13 @@ export default function SubjectsPage() {
       code: '',
       description: '',
       classId: '',
+      levelId: '',
+      gradeId: '',
+      streamId: '',
       subjectType: 'core',
       hoursPerWeek: 5,
       totalHoursPerYear: 150,
       creditHours: 3,
-      branchId: '',
       status: 'active',
     });
   };
@@ -360,15 +394,39 @@ export default function SubjectsPage() {
             />
           </div>
 
-          {/* Branch Filter */}
+          {/* Level Filter */}
           <div className="w-56">
             <Dropdown
-              id="branch-filter"
-              name="branch"
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              options={[{ label: 'All Branches', value: '' }, ...branches.map(b => ({ label: b.name, value: b._id }))]}
-              placeholder="All Branches"
+              id="level-filter"
+              name="level"
+              value={selectedLevel}
+              onChange={(e) => { setSelectedLevel(e.target.value); setSelectedGrade(''); fetchGrades(e.target.value); }}
+              options={[{ label: 'All Levels', value: '' }, ...levels.map(l => ({ label: l.name, value: l._id }))]}
+              placeholder="All Levels"
+            />
+          </div>
+
+          {/* Grade Filter */}
+          <div className="w-56">
+            <Dropdown
+              id="grade-filter"
+              name="grade"
+              value={selectedGrade}
+              onChange={(e) => setSelectedGrade(e.target.value)}
+              options={[{ label: 'All Grades', value: '' }, ...grades.map(g => ({ label: g.name || `Grade ${g.gradeNumber}`, value: g._id }))]}
+              placeholder="All Grades"
+            />
+          </div>
+
+          {/* Stream Filter */}
+          <div className="w-56">
+            <Dropdown
+              id="stream-filter"
+              name="stream"
+              value={selectedStream}
+              onChange={(e) => setSelectedStream(e.target.value)}
+              options={[{ label: 'All Streams', value: '' }, ...streams.map(s => ({ label: s.name, value: s._id }))]}
+              placeholder="All Streams"
             />
           </div>
 
@@ -409,7 +467,6 @@ export default function SubjectsPage() {
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade/Class</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours/Week</TableHead>
-                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</TableHead>
@@ -446,13 +503,6 @@ export default function SubjectsPage() {
                     <div className="flex items-center gap-1 text-sm text-gray-900">
                       <Clock className="h-4 w-4 text-gray-400" />
                       {subject.hoursPerWeek}h/week
-                    </div>
-                  </TableCell>
-
-                  <TableCell className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-1 text-sm text-gray-900">
-                      <Building2 className="h-4 w-4 text-gray-400" />
-                      {subject.branchId?.name}
                     </div>
                   </TableCell>
 
@@ -527,8 +577,18 @@ export default function SubjectsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Branch *</label>
-              <Dropdown id="modal-branch" name="branchId" value={formData.branchId} onChange={(e) => { const branchId = e.target.value; setFormData({ ...formData, branchId, classId: '', departmentId: '' }); fetchClasses(branchId); fetchDepartments(branchId); }} options={[{ label: 'Select Branch', value: '' }, ...branches.map(b => ({ label: b.name, value: b._id }))]} placeholder="Select Branch" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Level (optional)</label>
+              <Dropdown id="modal-level" name="levelId" value={formData.levelId || ''} onChange={(e) => { const lv = e.target.value; setFormData({ ...formData, levelId: lv, gradeId: '' }); fetchGrades(lv); }} options={[{ label: 'Select Level', value: '' }, ...levels.map(l => ({ label: l.name, value: l._id }))]} placeholder="Select Level" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Grade (optional)</label>
+              <Dropdown id="modal-grade" name="gradeId" value={formData.gradeId || ''} onChange={(e) => setFormData({ ...formData, gradeId: e.target.value })} options={[{ label: 'Select Grade', value: '' }, ...grades.map(g => ({ label: g.name || `Grade ${g.gradeNumber}`, value: g._id }))]} placeholder="Select Grade" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Stream (optional)</label>
+              <Dropdown id="modal-stream" name="streamId" value={formData.streamId || ''} onChange={(e) => setFormData({ ...formData, streamId: e.target.value })} options={[{ label: 'Select Stream', value: '' }, ...streams.map(s => ({ label: s.name, value: s._id }))]} placeholder="Select Stream" />
             </div>
 
             <div>

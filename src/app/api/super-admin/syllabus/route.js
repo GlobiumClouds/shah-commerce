@@ -18,6 +18,9 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
     const subjectId = searchParams.get('subjectId');
     const classId = searchParams.get('classId');
     const branchId = searchParams.get('branchId');
+    const levelId = searchParams.get('levelId');
+    const gradeId = searchParams.get('gradeId');
+    const streamId = searchParams.get('streamId');
     const academicYear = searchParams.get('academicYear');
     const status = searchParams.get('status');
     
@@ -33,6 +36,9 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
     if (subjectId) query.subjectId = subjectId;
     if (classId) query.classId = classId;
     if (branchId) query.branchId = branchId;
+    if (levelId) query.levelId = levelId;
+    if (gradeId) query.gradeId = gradeId;
+    if (streamId) query.streamId = streamId;
     if (academicYear) query.academicYear = academicYear;
     if (status) query.status = status;
     
@@ -41,6 +47,9 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
         .populate('subjectId', 'name code grade')
         .populate('classId', 'name code grade')
         .populate('branchId', 'name code')
+        .populate('levelId', 'name code order')
+        .populate('gradeId', 'name gradeNumber code')
+        .populate('streamId', 'name code')
         .populate('preparedBy', 'firstName lastName employeeId')
         .populate('approvedBy', 'firstName lastName employeeId')
         .sort({ academicYear: -1, createdAt: -1 })
@@ -137,6 +146,40 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       );
     }
     
+    // Verify Level/Grade/Stream if provided
+    if (body.levelId) {
+      const Level = (await import('@/backend/models/Level')).default;
+      const levelExists = await Level.findById(body.levelId);
+      if (!levelExists) {
+        return NextResponse.json(
+          { success: false, message: 'Level not found' },
+          { status: 404 }
+        );
+      }
+    }
+    
+    if (body.gradeId) {
+      const Grade = (await import('@/backend/models/Grade')).default;
+      const gradeExists = await Grade.findById(body.gradeId);
+      if (!gradeExists) {
+        return NextResponse.json(
+          { success: false, message: 'Grade not found' },
+          { status: 404 }
+        );
+      }
+    }
+    
+    if (body.streamId) {
+      const Stream = (await import('@/backend/models/Stream')).default;
+      const streamExists = await Stream.findById(body.streamId);
+      if (!streamExists) {
+        return NextResponse.json(
+          { success: false, message: 'Stream not found' },
+          { status: 404 }
+        );
+      }
+    }
+    
     // Create syllabus
     const newSyllabus = new Syllabus({
       ...body,
@@ -151,6 +194,9 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       { path: 'subjectId', select: 'name code grade' },
       { path: 'classId', select: 'name code grade' },
       { path: 'branchId', select: 'name code' },
+      { path: 'levelId', select: 'name code order' },
+      { path: 'gradeId', select: 'name gradeNumber code' },
+      { path: 'streamId', select: 'name code' },
       { path: 'preparedBy', select: 'firstName lastName employeeId' },
       { path: 'createdBy', select: 'fullName email' },
     ]);

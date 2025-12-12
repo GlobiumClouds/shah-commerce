@@ -31,6 +31,20 @@ const syllabusSchema = new mongoose.Schema(
       required: true,
     },
     
+    // Academic Hierarchy (Level → Grade → Stream)
+    levelId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Level',
+    },
+    gradeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Grade',
+    },
+    streamId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Stream',
+    },
+    
     // Teacher
     preparedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -199,7 +213,11 @@ syllabusSchema.index({ classId: 1 });
 syllabusSchema.index({ branchId: 1 });
 syllabusSchema.index({ academicYear: 1 });
 syllabusSchema.index({ status: 1 });
+syllabusSchema.index({ levelId: 1 });
+syllabusSchema.index({ gradeId: 1 });
+syllabusSchema.index({ streamId: 1 });
 syllabusSchema.index({ subjectId: 1, classId: 1, academicYear: 1 });
+syllabusSchema.index({ gradeId: 1, streamId: 1, subjectId: 1 });
 
 // Ensure virtuals are included in JSON
 syllabusSchema.set('toJSON', { virtuals: true });

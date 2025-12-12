@@ -12,7 +12,6 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
     
     const subject = await Subject.findById(id)
       .populate('classId', 'name code grade')
-      .populate('branchId', 'name code')
       .populate('departmentId', 'name code')
       .populate('headTeacherId', 'firstName lastName employeeId email phone')
       .populate('teachers', 'firstName lastName employeeId email')
@@ -89,7 +88,6 @@ export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
     // Populate and return
     await subject.populate([
       { path: 'classId', select: 'name code grade' },
-      { path: 'branchId', select: 'name code' },
       { path: 'departmentId', select: 'name code' },
       { path: 'headTeacherId', select: 'firstName lastName employeeId' },
       { path: 'teachers', select: 'firstName lastName employeeId' },

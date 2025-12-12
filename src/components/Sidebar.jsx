@@ -58,6 +58,7 @@ const ROLE_MENUS = {
       items: [
         { name: 'Departments', path: '/super-admin/academic/departments', icon: Briefcase },
         { name: 'Classes', path: '/super-admin/academic/classes', icon: School },
+        { name: 'Levels', path: '/super-admin/academic/levels', icon: GraduationCap },
         { name: 'Subjects', path: '/super-admin/academic/subjects', icon: BookOpen },
         { name: 'Syllabus', path: '/super-admin/academic/syllabus', icon: FileText },
       ],
@@ -102,7 +103,7 @@ const ROLE_MENUS = {
       category: 'Attendance Management',
       items: [
         { name: 'Student Attendance', path: '/super-admin/attendance-management/student', icon: GraduationCap },
-  { name: 'Teacher Attendance', path: '/super-admin/attendance-management/teacher', icon: LayoutDashboardIcon },
+        { name: 'Teacher Attendance', path: '/super-admin/attendance-management/teacher', icon: LayoutDashboardIcon },
         { name: 'Manual Entry', path: '/super-admin/attendance-management/manual-entry', icon: Keyboard },
         { name: 'QR Code Scanner', path: '/super-admin/attendance-management/qr-scanner', icon: QrCode },
         { name: 'Staff Attendance', path: '/super-admin/attendance-management/staff', icon: UserCheck },

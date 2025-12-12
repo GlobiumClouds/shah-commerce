@@ -16,7 +16,6 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
     
     const search = searchParams.get('search') || '';
     const classId = searchParams.get('classId');
-    const branchId = searchParams.get('branchId');
     const grade = searchParams.get('grade');
     const status = searchParams.get('status');
     
@@ -31,14 +30,12 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
     }
     
     if (classId) query.classId = classId;
-    if (branchId) query.branchId = branchId;
     if (grade) query.grade = parseInt(grade);
     if (status) query.status = status;
     
     const [subjects, total] = await Promise.all([
       Subject.find(query)
         .populate('classId', 'name code grade')
-        .populate('branchId', 'name code')
         .populate('departmentId', 'name code')
         .populate('headTeacherId', 'firstName lastName employeeId')
         .populate('teachers', 'firstName lastName employeeId')
@@ -80,7 +77,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
     const body = await request.json();
     
     // Validate required fields
-    const requiredFields = ['name', 'classId', 'branchId'];
+    const requiredFields = ['name', 'classId'];
     
     const missingFields = requiredFields.filter(field => !body[field]);
     
@@ -122,20 +119,6 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       );
     }
     
-    // Verify branch exists
-    const Branch = (await import('@/backend/models/Branch')).default;
-    const branchExists = await Branch.findById(body.branchId);
-    
-    if (!branchExists) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Branch not found',
-        },
-        { status: 404 }
-      );
-    }
-    
     // Create subject
     const subject = new Subject({
       ...body,
@@ -148,7 +131,6 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
     // Populate and return
     await subject.populate([
       { path: 'classId', select: 'name code grade' },
-      { path: 'branchId', select: 'name code' },
       { path: 'departmentId', select: 'name code' },
       { path: 'headTeacherId', select: 'firstName lastName employeeId' },
       { path: 'createdBy', select: 'fullName email' },

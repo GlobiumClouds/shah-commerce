@@ -150,6 +150,21 @@ export default function StudentsPage() {
     loadStudents();
   }, [page, limit, branchFilter, classFilter, genderFilter, statusFilter, searchTerm]);
 
+  // Simple real-time polling: refresh students list every 10s when page is visible
+  useEffect(() => {
+    const interval = setInterval(() => {
+      try {
+        if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !loading) {
+          loadStudents();
+        }
+      } catch (err) {
+        console.error('Polling students failed', err);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [page, limit, branchFilter, classFilter, genderFilter, statusFilter, searchTerm, loading]);
+
   // Keep class options in sync with the selected branch filter
   useEffect(() => {
     // when branchFilter changes, reload classes for that branch
