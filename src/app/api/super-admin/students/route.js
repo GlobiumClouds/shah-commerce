@@ -16,6 +16,7 @@ async function getStudents(request, authenticatedUser) {
     const classId = searchParams.get('classId') || '';
     const status = searchParams.get('status') || '';
     const gender = searchParams.get('gender') || '';
+    const section = searchParams.get('section') || '';
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 10;
 
@@ -33,6 +34,7 @@ async function getStudents(request, authenticatedUser) {
     }
     if (branchId) query.branchId = branchId;
     if (classId) query.classId = classId;
+    if (section) query.section = section;
     if (status) query.status = status;
     if (gender) query.gender = gender;
 

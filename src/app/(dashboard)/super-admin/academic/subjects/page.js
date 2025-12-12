@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { toast } from 'sonner';
@@ -16,6 +16,11 @@ import {
   Clock,
   Award,
 } from 'lucide-react';
+import Input from '@/components/ui/input';
+import Dropdown from '@/components/ui/dropdown';
+import Modal from '@/components/ui/modal';
+import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function SubjectsPage() {
   const { user } = useAuth();
@@ -65,6 +70,30 @@ export default function SubjectsPage() {
     fetchDepartments(selectedBranch);
   }, [searchTerm, selectedClass, selectedBranch, selectedDepartment]);
 
+  // per-subject section selection + counts
+  const [selectedSection, setSelectedSection] = useState({});
+  const [sectionCount, setSectionCount] = useState({});
+  const formRef = useRef(null);
+
+  const fetchSectionStudents = async (classId, subjectId, section) => {
+    try {
+      const params = new URLSearchParams({ classId, limit: '1', page: '1' });
+      if (section) params.append('section', section);
+      const res = await apiClient.get(`/api/super-admin/students?${params}`);
+      if (res?.success) {
+        const total = res.pagination?.total ?? 0;
+        setSectionCount((s) => ({ ...s, [subjectId]: total }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch students for section', err);
+    }
+  };
+
+  const handleSectionSelect = (subjectId, classId, value) => {
+    setSelectedSection((s) => ({ ...s, [subjectId]: value }));
+    fetchSectionStudents(classId, subjectId, value);
+  };
+
   const fetchSubjects = async () => {
     try {
       setLoading(true);
@@ -81,6 +110,12 @@ export default function SubjectsPage() {
       if (response?.success) {
         const list = response.data || response.data?.subjects || [];
         setSubjects(list);
+
+        // fetch default section counts for each subject (class-level total)
+        list.forEach((sub) => {
+          const classId = sub.classId?._id || sub.classId;
+          if (classId) fetchSectionStudents(classId, sub._id, selectedSection[sub._id] || '');
+        });
 
         const total = list.length;
         const active = list.filter(s => s.status === 'active').length;
@@ -255,53 +290,61 @@ export default function SubjectsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Subjects</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+        <Card>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Subjects</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <BookOpen className="h-6 w-6 text-blue-600" />
+              </div>
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <BookOpen className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Active</p>
-              <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+        <Card>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Active</p>
+                <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+              </div>
+              <div className="p-3 bg-green-50 rounded-lg">
+                <BookOpen className="h-6 w-6 text-green-600" />
+              </div>
             </div>
-            <div className="p-3 bg-green-50 rounded-lg">
-              <BookOpen className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Core</p>
-              <p className="text-2xl font-bold text-purple-600">{stats.core}</p>
+        <Card>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Core</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.core}</p>
+              </div>
+              <div className="p-3 bg-purple-50 rounded-lg">
+                <Award className="h-6 w-6 text-purple-600" />
+              </div>
             </div>
-            <div className="p-3 bg-purple-50 rounded-lg">
-              <Award className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Elective</p>
-              <p className="text-2xl font-bold text-yellow-600">{stats.elective}</p>
+        <Card>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Elective</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.elective}</p>
+              </div>
+              <div className="p-3 bg-yellow-50 rounded-lg">
+                <BookOpen className="h-6 w-6 text-yellow-600" />
+              </div>
             </div>
-            <div className="p-3 bg-yellow-50 rounded-lg">
-              <BookOpen className="h-6 w-6 text-yellow-600" />
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters and Actions */}
@@ -309,47 +352,37 @@ export default function SubjectsPage() {
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search */}
           <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
-                type="text"
-                placeholder="Search subjects..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+            <Input
+              placeholder="Search subjects..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              icon={Search}
+            />
           </div>
 
           {/* Branch Filter */}
-          <select
-            value={selectedBranch}
-            onChange={(e) => setSelectedBranch(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Branches</option>
-            {branches.map((branch) => (
-              <option key={branch._id} value={branch._id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
+          <div className="w-56">
+            <Dropdown
+              id="branch-filter"
+              name="branch"
+              value={selectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
+              options={[{ label: 'All Branches', value: '' }, ...branches.map(b => ({ label: b.name, value: b._id }))]}
+              placeholder="All Branches"
+            />
+          </div>
 
           {/* Class Filter */}
-          <select
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Classes</option>
-            {classes.map((cls) => (
-              <option key={cls._id} value={cls._id}>
-                {cls.name} - Grade {cls.grade}
-              </option>
-            ))}
-          </select>
-
-          {/* Grade filter removed — classes carry grade information */}
+          <div className="w-56">
+            <Dropdown
+              id="class-filter"
+              name="class"
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              options={[{ label: 'All Classes', value: '' }, ...classes.map(c => ({ label: `${c.name} - Grade ${c.grade}`, value: c._id }))]}
+              placeholder="All Classes"
+            />
+          </div>
 
           {/* Add Button */}
           <button
@@ -369,314 +402,172 @@ export default function SubjectsPage() {
         ) : subjects.length === 0 ? (
           <div className="p-8 text-center text-gray-500">No subjects found</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Subject
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Grade/Class
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Hours/Week
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Branch
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {subjects.map((subject) => (
-                  <tr key={subject._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {subject.name}
-                        </div>
-                        <div className="text-sm text-gray-500">{subject.code}</div>
+          <Table className="w-full">
+            <TableHeader className="bg-gray-50 border-b border-gray-200">
+              <TableRow>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade/Class</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours/Week</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody className="bg-white divide-y divide-gray-200">
+              {subjects.map((subject) => (
+                <TableRow key={subject._id} className="hover:bg-gray-50">
+                  <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{subject.name}</div>
+                      <div className="text-sm text-gray-500">{subject.code}</div>
+                    </div>
+                  </TableCell>
+
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {subject.classId ? `Grade ${subject.classId.grade} - ${subject.classId.name}` : (subject.classId?.name || '—')}
+                  </TableCell>
+
+                  <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      subject.subjectType === 'core'
+                        ? 'bg-purple-100 text-purple-800'
+                        : subject.subjectType === 'elective'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {subject.subjectType.charAt(0).toUpperCase() + subject.subjectType.slice(1)}
+                    </span>
+                  </TableCell>
+
+                  <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-1 text-sm text-gray-900">
+                      <Clock className="h-4 w-4 text-gray-400" />
+                      {subject.hoursPerWeek}h/week
+                    </div>
+                  </TableCell>
+
+                  <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-1 text-sm text-gray-900">
+                      <Building2 className="h-4 w-4 text-gray-400" />
+                      {subject.branchId?.name}
+                    </div>
+                  </TableCell>
+
+                  <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <div className="w-44">
+                        <Dropdown
+                          id={`section-${subject._id}`}
+                          name={`section-${subject._id}`}
+                          value={selectedSection[subject._id] || ''}
+                          onChange={(e) => handleSectionSelect(subject._id, subject.classId?._id || subject.classId, e.target.value)}
+                          options={[{ label: 'All Sections', value: '' }, ...(subject.classId?.sections || []).map(s => ({ label: s.name || s, value: s }))]}
+                          placeholder="All Sections"
+                        />
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {subject.classId ? `Grade ${subject.classId.grade} - ${subject.classId.name}` : (subject.classId?.name || '—')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        subject.subjectType === 'core'
-                          ? 'bg-purple-100 text-purple-800'
-                          : subject.subjectType === 'elective'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {subject.subjectType.charAt(0).toUpperCase() + subject.subjectType.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1 text-sm text-gray-900">
-                        <Clock className="h-4 w-4 text-gray-400" />
-                        {subject.hoursPerWeek}h/week
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1 text-sm text-gray-900">
-                        <Building2 className="h-4 w-4 text-gray-400" />
-                        {subject.branchId?.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        subject.status === 'active'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {subject.status.charAt(0).toUpperCase() + subject.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEdit(subject)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(subject._id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <div className="text-sm text-gray-700">{sectionCount[subject._id] ?? 0} students</div>
+                    </div>
+                  </TableCell>
+
+                  <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      subject.status === 'active'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {subject.status.charAt(0).toUpperCase() + subject.status.slice(1)}
+                    </span>
+                  </TableCell>
+
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleEdit(subject)} className="text-blue-600 hover:text-blue-900"><Edit className="h-4 w-4" /></button>
+                      <button onClick={() => handleDelete(subject._id)} className="text-red-600 hover:text-red-900"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
-            {/* Modal Header */}
-            <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">
-                {editingSubject ? 'Edit Subject' : 'Add New Subject'}
-              </h2>
-              <button
-                onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
+      {/* Modal (global) */}
+      <Modal
+        open={showModal}
+        onClose={handleCloseModal}
+        title={editingSubject ? 'Edit Subject' : 'Add New Subject'}
+        size="md"
+        footerClassName="flex justify-end gap-3"
+        footer={(
+          <>
+            <button type="button" onClick={handleCloseModal} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button type="button" onClick={() => formRef.current && (formRef.current.requestSubmit ? formRef.current.requestSubmit() : formRef.current.submit())} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingSubject ? 'Update Subject' : 'Add Subject'}</button>
+          </>
+        )}
+      >
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Subject Name *</label>
+              <Input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Enter subject name" />
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Subject Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Subject Code (auto-generated)</label>
+              <Input value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} placeholder="Leave blank for auto-generate" />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Subject Code (auto-generated)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Leave blank for auto-generate"
-                  />
-                </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows="2" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows="2"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Branch *</label>
+              <Dropdown id="modal-branch" name="branchId" value={formData.branchId} onChange={(e) => { const branchId = e.target.value; setFormData({ ...formData, branchId, classId: '', departmentId: '' }); fetchClasses(branchId); fetchDepartments(branchId); }} options={[{ label: 'Select Branch', value: '' }, ...branches.map(b => ({ label: b.name, value: b._id }))]} placeholder="Select Branch" />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Branch *
-                  </label>
-                  <select
-                    required
-                    value={formData.branchId}
-                    onChange={(e) => {
-                      const branchId = e.target.value;
-                      setFormData({ ...formData, branchId, classId: '', departmentId: '' });
-                      // fetch classes & departments for this branch for the modal
-                      fetchClasses(branchId);
-                      fetchDepartments(branchId);
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select Branch</option>
-                    {branches.map((branch) => (
-                      <option key={branch._id} value={branch._id}>
-                        {branch.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Class *</label>
+              <Dropdown id="modal-class" name="classId" value={formData.classId} onChange={(e) => setFormData({ ...formData, classId: e.target.value })} options={[{ label: 'Select Class', value: '' }, ...classes.map(c => ({ label: `${c.name} - Grade ${c.grade}`, value: c._id }))]} placeholder="Select Class" />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Class *
-                  </label>
-                  <select
-                    required
-                    value={formData.classId}
-                    onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select Class</option>
-                    {classes.map((cls) => (
-                      <option key={cls._id} value={cls._id}>
-                        {cls.name} - Grade {cls.grade}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Department (optional)</label>
+              <Dropdown id="modal-dept" name="departmentId" value={formData.departmentId} onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })} options={[{ label: 'Select Department', value: '' }, ...departments.map(d => ({ label: d.name, value: d._id }))]} placeholder="Select Department" />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Department (optional)
-                  </label>
-                  <select
-                    value={formData.departmentId}
-                    onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select Department</option>
-                    {departments.map((dept) => (
-                      <option key={dept._id} value={dept._id}>
-                        {dept.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Subject Type *</label>
+              <Dropdown id="modal-subject-type" name="subjectType" value={formData.subjectType} onChange={(e) => setFormData({ ...formData, subjectType: e.target.value })} options={[{ label: 'Core', value: 'core' }, { label: 'Elective', value: 'elective' }, { label: 'Co-curricular', value: 'co-curricular' }, { label: 'Skill-based', value: 'skill-based' }]} placeholder="Select Type" />
+            </div>
 
-                {/* Grade removed — classes carry grade information */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Hours Per Week</label>
+              <Input type="number" value={formData.hoursPerWeek} onChange={(e) => setFormData({ ...formData, hoursPerWeek: parseInt(e.target.value) })} placeholder="Hours per week" />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Subject Type *
-                  </label>
-                  <select
-                    required
-                    value={formData.subjectType}
-                    onChange={(e) => setFormData({ ...formData, subjectType: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="core">Core</option>
-                    <option value="elective">Elective</option>
-                    <option value="co-curricular">Co-curricular</option>
-                    <option value="skill-based">Skill-based</option>
-                  </select>
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Total Hours Per Year</label>
+              <Input type="number" value={formData.totalHoursPerYear} onChange={(e) => setFormData({ ...formData, totalHoursPerYear: parseInt(e.target.value) })} placeholder="Total hours per year" />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Hours Per Week
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.hoursPerWeek}
-                    onChange={(e) => setFormData({ ...formData, hoursPerWeek: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Credit Hours</label>
+              <Input type="number" value={formData.creditHours} onChange={(e) => setFormData({ ...formData, creditHours: parseInt(e.target.value) })} placeholder="Credit hours" />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Total Hours Per Year
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.totalHoursPerYear}
-                    onChange={(e) => setFormData({ ...formData, totalHoursPerYear: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Credit Hours
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.creditHours}
-                    onChange={(e) => setFormData({ ...formData, creditHours: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Form Actions */}
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  {editingSubject ? 'Update Subject' : 'Add Subject'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <Dropdown id="modal-status" name="status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} options={[{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }, { label: 'Archived', value: 'archived' }]} placeholder="Select Status" />
+            </div>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </div>
   );
 }

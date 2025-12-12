@@ -5,6 +5,8 @@ import dbConnect from '@/lib/database';
 import QRCode from 'qrcode';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import Counter from '@/backend/models/Counter';
+import { sendEmail } from '@/backend/utils/emailService';
+import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
 
 // POST - Create a new student, generate roll number (if missing), create QR and upload to Cloudinary
 export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
@@ -72,7 +74,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
 
     await newUser.save();
 
-    // If roll number wasn't provided, generate one atomically using Counter per branch+class+year
+    // If roll number wasn't provided, generate one automically using Counter per branch+class+year
     try {
       if (!newUser.studentProfile?.rollNumber && newUser.studentProfile?.classId) {
         const yearKey = newUser.studentProfile.academicYear || new Date().getFullYear().toString();
@@ -86,7 +88,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
 
         const seq = counterDoc.seq || 1;
         // Assign roll as zero-padded sequence
-        newUser.studentProfile.rollNumber = String(seq).padStart(3, '0');
+        newUser.studentProfile.rollNumber = String(seq).padStart(6, '0');
         await newUser.save();
       }
     } catch (err) {
@@ -134,6 +136,17 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       { path: 'studentProfile.departmentId', select: 'name code' },
       { path: 'createdBy', select: 'fullName email' },
     ]);
+
+    // Send welcome email asynchronously (don't block response)
+    if (newUser.email) {
+      try {
+        const emailHtml = getStudentEmailTemplate('STUDENT_CREATED', newUser.toObject());
+        await sendEmail(newUser.email, '🎓 Welcome to Ease Academy - Enrollment Confirmation', emailHtml);
+      } catch (emailErr) {
+        console.error('Email sending failed (non-blocking):', emailErr);
+        // Don't fail the response if email fails
+      }
+    }
 
     return NextResponse.json({ success: true, message: 'Student created successfully', data: newUser }, { status: 201 });
   } catch (error) {

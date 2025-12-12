@@ -13,6 +13,10 @@ import {
   UserCheck,
   Building2,
 } from 'lucide-react';
+import Input from '@/components/ui/input';
+import Dropdown from '@/components/ui/dropdown';
+import Modal from '@/components/ui/modal';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import apiClient from '@/lib/api-client';
 
@@ -221,6 +225,29 @@ export default function ClassesPage() {
   const totalStudents = classes.reduce((sum, c) => sum + (c.studentCount || 0), 0);
   const totalSections = classes.reduce((sum, c) => sum + (c.sections?.length || 0), 0);
 
+  // UI state for per-class section selection and counts
+  const [selectedSections, setSelectedSections] = useState({});
+  const [sectionCounts, setSectionCounts] = useState({});
+
+  const fetchSectionCount = async (classId, section) => {
+    try {
+      const params = new URLSearchParams({ classId, limit: '1', page: '1' });
+      if (section) params.append('section', section);
+      const res = await apiClient.get(`/api/super-admin/students?${params}`);
+      if (res?.success) {
+        const total = res.pagination?.total ?? 0;
+        setSectionCounts((s) => ({ ...s, [classId]: total }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch section count', err);
+    }
+  };
+
+  const handleSectionChange = (classId, value) => {
+    setSelectedSections((s) => ({ ...s, [classId]: value }));
+    fetchSectionCount(classId, value);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -300,40 +327,17 @@ export default function ClassesPage() {
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg border border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search classes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          <div>
+            <Input placeholder="Search classes..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
 
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Branches</option>
-            {branches.map(branch => (
-              <option key={branch._id} value={branch._id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
+          <div>
+            <Dropdown name="branchFilter" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} options={[{ value: '', label: 'All Branches' }, ...branches.map(b => ({ value: b._id, label: b.name }))]} />
+          </div>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="archived">Archived</option>
-          </select>
+          <div>
+            <Dropdown name="statusFilter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} options={[{ value: '', label: 'All Status' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }, { value: 'archived', label: 'Archived' }]} />
+          </div>
         </div>
       </div>
 
@@ -346,8 +350,8 @@ export default function ClassesPage() {
           </div>
         ) : (
           classes.map((cls) => (
-            <div key={cls._id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
+            <Card key={cls._id} className="overflow-hidden hover:shadow-lg transition-shadow">
+              <div className="bg-linear-to-r from-blue-500 to-blue-600 p-4">
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-white">{cls.name}</h3>
@@ -367,7 +371,7 @@ export default function ClassesPage() {
                 </div>
               </div>
 
-              <div className="p-4 space-y-3">
+              <CardContent className="p-4 space-y-3">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Building2 className="w-4 h-4" />
                   <span>{cls.branchId?.name}</span>
@@ -383,22 +387,28 @@ export default function ClassesPage() {
                     <span className="text-sm font-medium text-gray-700">Sections</span>
                     <span className="text-sm text-gray-600">{cls.sections?.length || 0}</span>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {cls.sections?.map((section, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded"
-                      >
-                        {section.name}
-                      </span>
-                    ))}
+                  <div className="flex items-center gap-3">
+                    <div className="w-48">
+                      <Dropdown
+                        name={`section-${cls._id}`}
+                        value={selectedSections[cls._id] ?? ''}
+                        onChange={(e) => handleSectionChange(cls._id, e.target.value)}
+                        options={[{ value: '', label: 'All Sections' }, ...(cls.sections || []).map(s => ({ value: s.name, label: s.name }))]}
+                        placeholder="Select section"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {cls.sections?.map((section, idx) => (
+                        <span key={idx} className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">{section.name}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 <div className="pt-3 border-t border-gray-200">
                   <div className="flex items-center justify-between">
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-blue-600">{cls.studentCount || 0}</p>
+                      <p className="text-2xl font-bold text-blue-600">{selectedSections[cls._id] ? (sectionCounts[cls._id] ?? 0) : (cls.studentCount || 0)}</p>
                       <p className="text-xs text-gray-600">Students</p>
                     </div>
                     <div className="text-center">
@@ -406,9 +416,7 @@ export default function ClassesPage() {
                       <p className="text-xs text-gray-600">Subjects</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-purple-600">
-                        {cls.sections?.reduce((sum, s) => sum + (s.capacity || 0), 0) || 0}
-                      </p>
+                      <p className="text-2xl font-bold text-purple-600">{cls.sections?.reduce((sum, s) => sum + (s.capacity || 0), 0) || 0}</p>
                       <p className="text-xs text-gray-600">Capacity</p>
                     </div>
                   </div>
@@ -419,250 +427,100 @@ export default function ClassesPage() {
                 )}
 
                 <div className="pt-3 border-t border-gray-200 flex items-center gap-2">
-                  <button
-                    onClick={() => handleEdit(cls)}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-                  >
+                  <button onClick={() => handleEdit(cls)} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
                     <Edit className="w-4 h-4" />
                     Edit
                   </button>
-                  <button
-                    onClick={() => {
-                      setClassToDelete(cls);
-                      setShowDeleteModal(true);
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
-                  >
+                  <button onClick={() => { setClassToDelete(cls); setShowDeleteModal(true); }} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100">
                     <Trash2 className="w-4 h-4" />
                     Archive
                   </button>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))
         )}
       </div>
 
       {/* Create/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {editingClass ? 'Edit Class' : 'Add New Class'}
-                </h2>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={editingClass ? 'Edit Class' : 'Add New Class'} footer={(
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+          <button type="button" onClick={handleFormSubmit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingClass ? 'Update Class' : 'Create Class'}</button>
+        </div>
+      )} size="lg">
+        <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Input name="name" label="Class Name *" placeholder="Class 1" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
             </div>
 
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Class Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Class 1"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Class Code <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                    disabled={editingClass}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                    placeholder="C1"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Grade <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.grade}
-                    onChange={(e) => setFormData({ ...formData, grade: parseInt(e.target.value) })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
-                      <option key={g} value={g}>Grade {g}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Branch <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.branchId}
-                    onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select Branch</option>
-                    {branches.map(branch => (
-                      <option key={branch._id} value={branch._id}>
-                        {branch.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Academic Year
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.academicYear}
-                    onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="2024-2025"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows="2"
-                  placeholder="Class description..."
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Sections
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addSection}
-                    className="text-sm text-blue-600 hover:text-blue-700"
-                  >
-                    + Add Section
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {formData.sections.map((section, idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        value={section.name}
-                        onChange={(e) => updateSection(idx, 'name', e.target.value)}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Section name (A, B, C...)"
-                      />
-                      <input
-                        type="number"
-                        value={section.capacity}
-                        onChange={(e) => updateSection(idx, 'capacity', parseInt(e.target.value) || 0)}
-                        className="w-24 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Capacity"
-                        min="1"
-                      />
-                      <input
-                        type="text"
-                        value={section.roomNumber}
-                        onChange={(e) => updateSection(idx, 'roomNumber', e.target.value)}
-                        className="w-24 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Room"
-                      />
-                      {formData.sections.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeSection(idx)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  {editingClass ? 'Update Class' : 'Create Class'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <Input name="code" label="Class Code *" placeholder="C1" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })} disabled={editingClass} />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Dropdown name="grade" value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: parseInt(e.target.value) })} options={[...Array(12).keys()].map(i => ({ value: i+1, label: `Grade ${i+1}` }))} />
+            </div>
+
+            <div>
+              <Dropdown name="branchId" value={formData.branchId} onChange={(e) => setFormData({ ...formData, branchId: e.target.value })} options={[{ value: '', label: 'Select Branch' }, ...branches.map(b => ({ value: b._id, label: b.name }))]} />
+            </div>
+
+            <div>
+              <Input name="academicYear" label="Academic Year" placeholder="2024-2025" value={formData.academicYear} onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="2" placeholder="Class description..." />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">Sections</label>
+              <button type="button" onClick={addSection} className="text-sm text-blue-600 hover:text-blue-700">+ Add Section</button>
+            </div>
+            <div className="space-y-2">
+              {formData.sections.map((section, idx) => (
+                <div key={idx} className="flex gap-2 items-center">
+                  <Input placeholder="Section name (A, B, C...)" value={section.name} onChange={(e) => updateSection(idx, 'name', e.target.value)} />
+                  <Input type="number" placeholder="Capacity" value={section.capacity} onChange={(e) => updateSection(idx, 'capacity', parseInt(e.target.value) || 0)} className="w-24" />
+                  <Input placeholder="Room" value={section.roomNumber} onChange={(e) => updateSection(idx, 'roomNumber', e.target.value)} className="w-24" />
+                  {formData.sections.length > 1 && (
+                    <button type="button" onClick={() => removeSection(idx)} className="p-2 text-red-600 hover:bg-red-50 rounded"><X className="w-4 h-4" /></button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <Dropdown name="status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} />
+          </div>
+        </form>
+      </Modal>
 
       {/* Delete Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Archive Class</h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to archive "{classToDelete?.name}"? This action cannot be undone.
-            </p>
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                Archive
-              </button>
-            </div>
+      <Modal
+        open={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Archive Class"
+        footer={(
+          <div className="flex items-center justify-end gap-3">
+            <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+            <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Archive</button>
           </div>
+        )}
+        size="sm"
+      >
+        <div className="p-2">
+          <p className="text-gray-600">Are you sure you want to archive "{classToDelete?.name}"? This action cannot be undone.</p>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

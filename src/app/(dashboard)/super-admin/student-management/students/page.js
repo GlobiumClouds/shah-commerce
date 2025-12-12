@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Modal from '@/components/ui/modal';
+import Input from '@/components/ui/input';
+import Table from '@/components/ui/table';
+import Dropdown from '@/components/ui/dropdown';
 import {
   Users,
   Plus,
@@ -45,6 +48,8 @@ export default function StudentsPage() {
 
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [studentToActivate, setStudentToActivate] = useState(null);
+  const [showActivateModal, setShowActivateModal] = useState(false);
 
   const [branchFilter, setBranchFilter] = useState('');
   const [classFilter, setClassFilter] = useState('');
@@ -54,6 +59,12 @@ export default function StudentsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [total, setTotal] = useState(0);
+
+  const [loadingStates, setLoadingStates] = useState({});
+  const setButtonLoading = (key, value) => {
+    setLoadingStates(prev => ({ ...prev, [key]: value }));
+  };
+  const isButtonLoading = (key) => loadingStates[key] || false;
 
   const loadClasses = async (selectedBranchId = null) => {
     try {
@@ -137,6 +148,16 @@ export default function StudentsPage() {
   useEffect(() => {
     loadStudents();
   }, [page, limit, branchFilter, classFilter, genderFilter, statusFilter, searchTerm]);
+
+  // Keep class options in sync with the selected branch filter
+  useEffect(() => {
+    // when branchFilter changes, reload classes for that branch
+    try {
+      loadClasses(branchFilter || null);
+    } catch (err) {
+      console.error('Failed to load classes on branch change:', err);
+    }
+  }, [branchFilter]);
 
   const handleAddNew = () => {
     setEditingStudent(null);
@@ -315,6 +336,7 @@ export default function StudentsPage() {
       return;
     }
 
+    setButtonLoading('submitForm', true);
     try {
       // Restructure data for unified User schema
       const payload = {
@@ -413,12 +435,15 @@ export default function StudentsPage() {
     } catch (error) {
       console.error('Error saving student:', error);
       toast.error(error.message || 'Failed to save student');
+    } finally {
+      setButtonLoading('submitForm', false);
     }
   };
 
   const handleDelete = async () => {
     if (!studentToDelete) return;
 
+    setButtonLoading('deleteStudent', true);
     try {
       const data = await apiClient.delete(`/api/users/${studentToDelete._id}`);
 
@@ -433,6 +458,32 @@ export default function StudentsPage() {
     } catch (error) {
       console.error('Error deactivating student:', error);
       toast.error('Failed to deactivate student');
+    } finally {
+      setButtonLoading('deleteStudent', false);
+    }
+  };
+
+  const handleActivate = async () => {
+    if (!studentToActivate) return;
+
+    setButtonLoading('activateStudent', true);
+    try {
+      const payload = { status: 'active', isActive: true };
+      const data = await apiClient.put(`/api/users/${studentToActivate._id}`, payload);
+
+      if (data && data.success) {
+        toast.success('Student activated successfully');
+        setShowActivateModal(false);
+        setStudentToActivate(null);
+        loadStudents();
+      } else {
+        toast.error(data.message || 'Failed to activate student');
+      }
+    } catch (error) {
+      console.error('Error activating student:', error);
+      toast.error('Failed to activate student');
+    } finally {
+      setButtonLoading('activateStudent', false);
     }
   };
 
@@ -521,72 +572,56 @@ export default function StudentsPage() {
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg border border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search students..."
+          <div className="min-w-0">
+            <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Search students..."
             />
           </div>
 
-          <select
+          <Dropdown
             value={branchFilter}
             onChange={(e) => setBranchFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Branches</option>
-            {branches.map(branch => (
-              <option key={branch._id} value={branch._id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
+            options={branches.map(b => ({ value: b._id, label: `${b.name}` }))}
+            placeholder="All Branches"
+          />
 
-          <select
+          <Dropdown
             value={classFilter}
             onChange={(e) => setClassFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Classes</option>
-            {classes.map(cls => (
-              <option key={cls._id} value={cls._id}>
-                {cls.name} (Grade {cls.grade})
-              </option>
-            ))}
-          </select>
+            options={classes.map(c => ({ value: c._id, label: `${c.name} (Grade ${c.grade})` }))}
+            placeholder="All Classes"
+          />
 
-          <select
+          <Dropdown
             value={genderFilter}
             onChange={(e) => setGenderFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Genders</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-          </select>
+            options={[
+              { value: 'male', label: 'Male' },
+              { value: 'female', label: 'Female' },
+              { value: 'other', label: 'Other' },
+            ]}
+            placeholder="All Genders"
+          />
 
-          <select
+          <Dropdown
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="graduated">Graduated</option>
-            <option value="transferred">Transferred</option>
-          </select>
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+              { value: 'graduated', label: 'Graduated' },
+              { value: 'transferred', label: 'Transferred' },
+            ]}
+            placeholder="All Status"
+          />
         </div>
       </div>
 
       {/* Students Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      <Table>
+          <table className="w-full min-w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
@@ -679,16 +714,29 @@ export default function StudentsPage() {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => {
-                            setStudentToDelete(student);
-                            setShowDeleteModal(true);
-                          }}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {student.status === 'inactive' ? (
+                          <button
+                            onClick={() => {
+                              setStudentToActivate(student);
+                              setShowActivateModal(true);
+                            }}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded"
+                            title="Activate"
+                          >
+                            <UserPlus className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setStudentToDelete(student);
+                              setShowDeleteModal(true);
+                            }}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            title="Deactivate"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -696,8 +744,7 @@ export default function StudentsPage() {
               )}
             </tbody>
           </table>
-        </div>
-      </div>
+      </Table>
 
       {/* Create/Edit Modal */}
       {showModal && (
@@ -1356,24 +1403,72 @@ export default function StudentsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  disabled={isButtonLoading('submitForm')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {editingStudent ? 'Update Student' : 'Add Student'}
+                  {isButtonLoading('submitForm') ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    editingStudent ? 'Update Student' : 'Add Student'
+                  )}
                 </button>
               </div>
             </form>
           </div>
         </Modal>
       )}
-
-      {/* Delete Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Deactivate Student</h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to deactivate "{studentToDelete?.firstName} {studentToDelete?.lastName}"? The student will be marked as inactive.
+      {/* Activate Modal (uses shared Modal with sticky footer) */}
+      {showActivateModal && (
+        <Modal
+          open={showActivateModal}
+          onClose={() => setShowActivateModal(false)}
+          title="Activate Student"
+          size="sm"
+          footer={(
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowActivateModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleActivate}
+                disabled={isButtonLoading('activateStudent')}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isButtonLoading('activateStudent') ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Activating...
+                  </>
+                ) : (
+                  'Activate'
+                )}
+              </button>
+            </div>
+          )}
+        >
+          <div className="p-4">
+            <p className="text-gray-600">
+              Are you sure you want to activate "{studentToActivate?.firstName} {studentToActivate?.lastName}"? The student will be marked as active.
             </p>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete Modal (uses shared Modal component with sticky footer) */}
+      {showDeleteModal && (
+        <Modal
+          open={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          title="Deactivate Student"
+          size="sm"
+          footerClassName=""
+          footer={(
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
@@ -1383,13 +1478,27 @@ export default function StudentsPage() {
               </button>
               <button
                 onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                disabled={isButtonLoading('deleteStudent')}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Deactivate
+                {isButtonLoading('deleteStudent') ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Deactivating...
+                  </>
+                ) : (
+                  'Deactivate'
+                )}
               </button>
             </div>
+          )}
+        >
+          <div className="p-4">
+            <p className="text-gray-600">
+              Are you sure you want to deactivate "{studentToDelete?.firstName} {studentToDelete?.lastName}"? The student will be marked as inactive.
+            </p>
           </div>
-        </div>
+        </Modal>
       )}
       {/* QR Preview Modal */}
       {showQrPreview && (

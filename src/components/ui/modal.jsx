@@ -13,7 +13,7 @@ import React from 'react';
  *    className: extra classes for dialog
  *    size: 'sm' | 'md' | 'lg' | 'xl' (controls max width)
  */
-export default function Modal({ open, onClose, title, children, footerClassName = '', className = '', size = 'md' }) {
+export default function Modal({ open, onClose, title, children, footerClassName = '', className = '', size = 'md', footer = null }) {
   if (!open) return null;
 
   const sizeClass = {
@@ -49,7 +49,7 @@ export default function Modal({ open, onClose, title, children, footerClassName 
 
           {/* Footer (sticky) */}
           <div className={`px-6 py-3 border-t bg-gray-50 dark:bg-gray-900 ${footerClassName}`}>
-            {/* footer area: caller can pass buttons as children or customize */}
+            {footer}
           </div>
         </div>
       </div>
