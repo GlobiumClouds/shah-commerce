@@ -68,7 +68,7 @@ export default function Dropdown({ id, name, value, onChange, options = [], plac
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className={`w-full appearance-none px-4 py-3 pr-10 border rounded-lg text-left transition-all duration-200 shadow-sm
+        className={`w-full appearance-none px-4 py-2 pr-10 border rounded-lg text-left transition-all duration-200 shadow-sm
           ${disabled 
             ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-300 dark:bg-gray-900 dark:border-gray-700' 
             : 'bg-white text-gray-900 border-gray-300 hover:border-gray-400 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:border-gray-500'

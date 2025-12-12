@@ -1,9 +1,9 @@
  'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/ui/modal';
 import Input from '@/components/ui/input';
-import Table from '@/components/ui/table';
+import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import Dropdown from '@/components/ui/dropdown';
 import {
   Users,
@@ -41,6 +41,7 @@ export default function StudentsPage() {
   const [editingStudent, setEditingStudent] = useState(null);
   const [formData, setFormData] = useState({});
   const [activeTab, setActiveTab] = useState('basic');
+  const formRef = useRef(null);
 
   const [pendingProfileFile, setPendingProfileFile] = useState(null);
   const [pendingDocuments, setPendingDocuments] = useState([]);
@@ -619,136 +620,97 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      {/* Students Table */}
-      <Table>
-          <table className="w-full min-w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reg No.</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branch</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Father Info</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {students.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
-                    No students found. Add your first student to get started.
-                  </td>
-                </tr>
-              ) : (
-                students.map((student) => (
-                  <tr key={student._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {student.firstName} {student.lastName}
-                        </p>
-                        <div className="flex items-center gap-4 mt-1">
-                          {student.email && (
-                            <p className="text-xs text-gray-500 flex items-center gap-1">
-                              <Mail className="w-3 h-3" />
-                              {student.email}
-                            </p>
-                          )}
-                          {student.phone && (
-                            <p className="text-xs text-gray-500 flex items-center gap-1">
-                              <Phone className="w-3 h-3" />
-                              {student.phone}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm font-mono text-gray-900">{student.registrationNumber}</p>
-                      <p className="text-xs text-gray-500">
-                        {student.gender === 'male' ? '♂' : '♀'} {student.gender}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-gray-900">{student.classId?.name}</p>
-                      <p className="text-xs text-gray-500">Grade {student.classId?.grade}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-gray-900">{student.branchId?.name}</p>
-                      <p className="text-xs text-gray-500">{student.branchId?.city}</p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm text-gray-900">{student.father?.name}</p>
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        {student.father?.phone}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        student.status === 'active'
-                          ? 'bg-green-100 text-green-700'
-                          : student.status === 'graduated'
-                          ? 'bg-blue-100 text-blue-700'
-                          : student.status === 'transferred'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {student.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEdit(student)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                          title="Edit"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openView(student)}
-                          className="p-2 text-gray-700 hover:bg-gray-50 rounded"
-                          title="View"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        {student.status === 'inactive' ? (
-                          <button
-                            onClick={() => {
-                              setStudentToActivate(student);
-                              setShowActivateModal(true);
-                            }}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded"
-                            title="Activate"
-                          >
-                            <UserPlus className="w-4 h-4" />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setStudentToDelete(student);
-                              setShowDeleteModal(true);
-                            }}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded"
-                            title="Deactivate"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Students Table (using global Table components) */}
+      <Table className="w-full">
+        <TableHeader className="bg-gray-50 border-b border-gray-200">
+          <TableRow>
+            <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</TableHead>
+            <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reg No.</TableHead>
+            <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</TableHead>
+            <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branch</TableHead>
+            <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Father Info</TableHead>
+            <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</TableHead>
+            <TableHead className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+
+        <TableBody className="divide-y divide-gray-200">
+          {students.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} className="px-6 py-12 text-center text-gray-500">No students found. Add your first student to get started.</TableCell>
+            </TableRow>
+          ) : (
+            students.map((student) => (
+              <TableRow key={student._id} className="hover:bg-gray-50">
+                <TableCell className="px-6 py-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{student.firstName} {student.lastName}</p>
+                    <div className="flex items-center gap-4 mt-1">
+                      {student.email && <p className="text-xs text-gray-500 flex items-center gap-1"><Mail className="w-3 h-3" />{student.email}</p>}
+                      {student.phone && <p className="text-xs text-gray-500 flex items-center gap-1"><Phone className="w-3 h-3" />{student.phone}</p>}
+                    </div>
+                  </div>
+                </TableCell>
+
+                <TableCell className="px-6 py-4">
+                  <p className="text-sm font-mono text-gray-900">{student.registrationNumber}</p>
+                  <p className="text-xs text-gray-500">{student.gender === 'male' ? '♂' : '♀'} {student.gender}</p>
+                </TableCell>
+
+                <TableCell className="px-6 py-4">
+                  <p className="text-sm text-gray-900">{student.classId?.name}</p>
+                  <p className="text-xs text-gray-500">Grade {student.classId?.grade}</p>
+                </TableCell>
+
+                <TableCell className="px-6 py-4">
+                  <p className="text-sm text-gray-900">{student.branchId?.name}</p>
+                  <p className="text-xs text-gray-500">{student.branchId?.city}</p>
+                </TableCell>
+
+                <TableCell className="px-6 py-4">
+                  <p className="text-sm text-gray-900">{student.father?.name}</p>
+                  <p className="text-xs text-gray-500 flex items-center gap-1"><Phone className="w-3 h-3" />{student.father?.phone}</p>
+                </TableCell>
+
+                <TableCell className="px-6 py-4">
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                    student.status === 'active' ? 'bg-green-100 text-green-700' : student.status === 'graduated' ? 'bg-blue-100 text-blue-700' : student.status === 'transferred' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'
+                  }`}>{student.status}</span>
+                </TableCell>
+
+                <TableCell className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <button onClick={() => handleEdit(student)} className="p-2 text-blue-600 hover:bg-blue-50 rounded" title="Edit"><Edit className="w-4 h-4" /></button>
+                    <button onClick={() => openView(student)} className="p-2 text-gray-700 hover:bg-gray-50 rounded" title="View"><Eye className="w-4 h-4" /></button>
+                    {student.status === 'inactive' ? (
+                      <button onClick={() => { setStudentToActivate(student); setShowActivateModal(true); }} className="p-2 text-green-600 hover:bg-green-50 rounded" title="Activate"><UserPlus className="w-4 h-4" /></button>
+                    ) : (
+                      <button onClick={() => { setStudentToDelete(student); setShowDeleteModal(true); }} className="p-2 text-red-600 hover:bg-red-50 rounded" title="Deactivate"><Trash2 className="w-4 h-4" /></button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
       </Table>
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <Modal open={showModal} title={editingStudent ? 'Edit Student' : 'Add New Student'} onClose={() => setShowModal(false)}>
+        <Modal
+          open={showModal}
+          title={editingStudent ? 'Edit Student' : 'Add New Student'}
+          onClose={() => setShowModal(false)}
+          size="lg"
+          footer={(
+            <div className="flex items-center justify-end gap-3">
+              <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+              <button type="button" onClick={() => formRef.current && (formRef.current.requestSubmit ? formRef.current.requestSubmit() : formRef.current.submit())} disabled={isButtonLoading('submitForm')} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2">
+                {isButtonLoading('submitForm') ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Saving...</>) : (editingStudent ? 'Update Student' : 'Add Student')}
+              </button>
+            </div>
+          )}
+        >
           <div className="space-y-4">
             {/* Tabs */}
             <div className="flex gap-4">
@@ -787,7 +749,7 @@ export default function StudentsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="p-2">
+            <form ref={formRef} onSubmit={handleFormSubmit} className="p-2">
               {/* Basic Info Tab */}
               {activeTab === 'basic' && (
                 <>
@@ -796,11 +758,9 @@ export default function StudentsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         First Name <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
+                      <Input
                         value={formData.firstName}
                         onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="John"
                       />
                     </div>
@@ -809,11 +769,9 @@ export default function StudentsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Last Name <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
+                      <Input
                         value={formData.lastName}
                         onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Doe"
                       />
                     </div>
@@ -824,11 +782,10 @@ export default function StudentsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Date of Birth <span className="text-red-500">*</span>
                       </label>
-                      <input
+                      <Input
                         type="date"
                         value={formData.dateOfBirth}
                         onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
 
@@ -836,64 +793,40 @@ export default function StudentsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Gender <span className="text-red-500">*</span>
                       </label>
-                      <select
+                      <Dropdown
+                        id="gender"
+                        name="gender"
                         value={formData.gender}
                         onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                      </select>
+                        options={[{ label: 'Male', value: 'male' }, { label: 'Female', value: 'female' }, { label: 'Other', value: 'other' }]}
+                        placeholder="Select Gender"
+                      />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Blood Group
                       </label>
-                      <select
+                      <Dropdown
+                        id="bloodGroup"
+                        name="bloodGroup"
                         value={formData.bloodGroup}
                         onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Select</option>
-                        <option value="A+">A+</option>
-                        <option value="A-">A-</option>
-                        <option value="B+">B+</option>
-                        <option value="B-">B-</option>
-                        <option value="AB+">AB+</option>
-                        <option value="AB-">AB-</option>
-                        <option value="O+">O+</option>
-                        <option value="O-">O-</option>
-                      </select>
+                        options={[{ label: 'Select', value: '' }, { label: 'A+', value: 'A+' }, { label: 'A-', value: 'A-' }, { label: 'B+', value: 'B+' }, { label: 'B-', value: 'B-' }, { label: 'AB+', value: 'AB+' }, { label: 'AB-', value: 'AB-' }, { label: 'O+', value: 'O+' }, { label: 'O-', value: 'O-' }]}
+                        placeholder="Select Blood Group"
+                      />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="student@example.com"
-                      />
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="student@example.com" />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Phone
-                      </label>
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="+92-XXX-XXXXXXX"
-                      />
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                      <Input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+92-XXX-XXXXXXX" />
                     </div>
                   </div>
 
@@ -1026,49 +959,31 @@ export default function StudentsPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Branch <span className="text-red-500">*</span>
-                      </label>
-                      <select
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Branch <span className="text-red-500">*</span></label>
+                      <Dropdown
+                        id="form-branch"
+                        name="branchId"
                         value={formData.branchId}
                         onChange={async (e) => {
                           const b = e.target.value;
-                          // reset dependent selects
                           setFormData(prev => ({ ...prev, branchId: b, classId: '', section: '' }));
-                          // load classes for selected branch so class select updates immediately
-                          try {
-                            await loadClasses(b);
-                          } catch (err) {
-                            console.error('Failed to load classes for branch:', err);
-                          }
+                          try { await loadClasses(b); } catch (err) { console.error('Failed to load classes for branch:', err); }
                         }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Select Branch</option>
-                        {branches.map(branch => (
-                          <option key={branch._id} value={branch._id}>
-                            {branch.name} - {branch.city}
-                          </option>
-                        ))}
-                      </select>
+                        options={[{ label: 'Select Branch', value: '' }, ...branches.map(branch => ({ label: `${branch.name} - ${branch.address?.city}`, value: branch._id }))]}
+                        placeholder="Select Branch"
+                      />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Class <span className="text-red-500">*</span>
-                      </label>
-                      <select
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Class <span className="text-red-500">*</span></label>
+                      <Dropdown
+                        id="form-class"
+                        name="classId"
                         value={formData.classId}
                         onChange={(e) => setFormData(prev => ({ ...prev, classId: e.target.value, section: '' }))}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Select Class</option>
-                        {classes.map(cls => (
-                          <option key={cls._id} value={cls._id}>
-                            {cls.name} (Grade {cls.grade})
-                          </option>
-                        ))}
-                      </select>
+                        options={[{ label: 'Select Class', value: '' }, ...classes.map(cls => ({ label: `${cls.name} (Grade ${cls.grade})`, value: cls._id }))]}
+                        placeholder="Select Class"
+                      />
                     </div>
                   </div>
 
@@ -1077,16 +992,14 @@ export default function StudentsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Section
                       </label>
-                      <select
+                      <Dropdown
+                        id="form-section"
+                        name="section"
                         value={formData.section}
                         onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Select Section</option>
-                        {(classes.find(c => c._id === formData.classId)?.sections || []).map((s, idx) => (
-                          <option key={s._id || s.name || idx} value={s.name || s._id}>{s.name}</option>
-                        ))}
-                      </select>
+                        options={[{ label: 'Select Section', value: '' }, ...((classes.find(c => c._id === formData.classId)?.sections || []).map((s, idx) => ({ label: s.name || s, value: s.name || s._id })))]}
+                        placeholder="Select Section"
+                      />
                     </div>
 
                     <div>
@@ -1392,30 +1305,7 @@ export default function StudentsPage() {
                 </>
               )}
 
-              {/* Footer */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isButtonLoading('submitForm')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isButtonLoading('submitForm') ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    editingStudent ? 'Update Student' : 'Add Student'
-                  )}
-                </button>
-              </div>
+              {/* Footer handled by Modal footer prop */}
             </form>
           </div>
         </Modal>
