@@ -92,6 +92,51 @@ export const API_ENDPOINTS = {
       DELETE: '/api/super-admin/salaries/:id',
       PROCESS: '/api/super-admin/salaries/:id/process',
     },
+
+    // Teachers Management
+    TEACHERS: {
+      CREATE: '/api/super-admin/teachers',
+      LIST: '/api/super-admin/teachers',
+      GET: '/api/super-admin/teachers/:id',
+      UPDATE: '/api/super-admin/teachers/:id',
+      DELETE: '/api/super-admin/teachers/:id',
+    },
+
+    // Students Management
+    STUDENTS: {
+      CREATE: '/api/super-admin/students',
+      LIST: '/api/super-admin/students',
+      GET: '/api/super-admin/students/:id',
+      UPDATE: '/api/super-admin/students/:id',
+      DELETE: '/api/super-admin/students/:id',
+    },
+
+    // Classes Management
+    CLASSES: {
+      CREATE: '/api/super-admin/classes',
+      LIST: '/api/super-admin/classes',
+      GET: '/api/super-admin/classes/:id',
+      UPDATE: '/api/super-admin/classes/:id',
+      DELETE: '/api/super-admin/classes/:id',
+    },
+
+    // Subjects Management
+    SUBJECTS: {
+      CREATE: '/api/super-admin/subjects',
+      LIST: '/api/super-admin/subjects',
+      GET: '/api/super-admin/subjects/:id',
+      UPDATE: '/api/super-admin/subjects/:id',
+      DELETE: '/api/super-admin/subjects/:id',
+    },
+
+    // Departments Management
+    DEPARTMENTS: {
+      CREATE: '/api/super-admin/departments',
+      LIST: '/api/super-admin/departments',
+      GET: '/api/super-admin/departments/:id',
+      UPDATE: '/api/super-admin/departments/:id',
+      DELETE: '/api/super-admin/departments/:id',
+    },
     
     // Admins Management
     ADMINS: {
@@ -378,11 +423,7 @@ export const API_ENDPOINTS = {
   // Common/Shared Endpoints
   COMMON: {
     // File Upload
-    UPLOAD: {
-      IMAGE: '/common/upload/image',
-      DOCUMENT: '/common/upload/document',
-      BULK: '/common/upload/bulk',
-    },
+    UPLOAD: '/api/upload',
     
     // Notifications
     NOTIFICATIONS: {

@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
-import Teacher from '@/backend/models/Teacher';
+import User from '@/backend/models/User';
 import { withAuth } from '@/backend/middleware/auth';
+import { generateTeacherQR } from '@/lib/qr-generator';
+import { uploadToCloudinary } from '@/lib/cloudinary';
+import { sendEmail } from '@/backend/utils/emailService';
+import { getTeacherEmailTemplate } from '@/backend/templates/teacherEmail';
 
 // GET - List all teachers with filters
 export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
@@ -20,17 +24,18 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
     const branchId = searchParams.get('branchId');
     const status = searchParams.get('status');
     const designation = searchParams.get('designation');
-    const department = searchParams.get('department');
+    const departmentId = searchParams.get('departmentId');
     
-    // Build query
-    const query = {};
+    // Build query for teachers
+    const query = { role: 'teacher' };
     
     // Search across multiple fields
     if (search) {
       query.$or = [
         { firstName: { $regex: search, $options: 'i' } },
         { lastName: { $regex: search, $options: 'i' } },
-        { employeeId: { $regex: search, $options: 'i' } },
+        { fullName: { $regex: search, $options: 'i' } },
+        { 'teacherProfile.employeeId': { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
         { phone: { $regex: search, $options: 'i' } },
         { cnic: { $regex: search, $options: 'i' } },
@@ -39,23 +44,24 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
     
     if (branchId) query.branchId = branchId;
     if (status) query.status = status;
-    if (designation) query.designation = designation;
-    if (department) query.department = department;
+    if (designation) query['teacherProfile.designation'] = designation;
+    if (departmentId) query['teacherProfile.departmentId'] = departmentId;
     
     // Execute query
     const [teachers, total] = await Promise.all([
-      Teacher.find(query)
+      User.find(query)
         .populate('branchId', 'name code city')
-        .populate('subjects', 'name code')
-        .populate('classes.classId', 'name code grade')
-        .populate('classes.subjectId', 'name code')
+        .populate('teacherProfile.departmentId', 'name code')
+        .populate('teacherProfile.subjects', 'name code')
+        .populate('teacherProfile.classes.classId', 'name code grade')
+        .populate('teacherProfile.classes.subjectId', 'name code')
         .populate('createdBy', 'fullName email')
         .populate('updatedBy', 'fullName email')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
-      Teacher.countDocuments(query),
+      User.countDocuments(query),
     ]);
 
     return NextResponse.json({
@@ -81,7 +87,7 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
   }
 });
 
-// POST - Create new teacher
+// POST - Create new teacher with QR generation
 export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
   try {
     await connectDB();
@@ -96,18 +102,10 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       'phone',
       'dateOfBirth',
       'gender',
-      'cnic',
       'branchId',
-      'designation',
-      'salaryDetails',
     ];
     
-    const missingFields = requiredFields.filter(field => {
-      if (field === 'salaryDetails') {
-        return !body[field] || !body[field].basicSalary;
-      }
-      return !body[field];
-    });
+    const missingFields = requiredFields.filter(field => !body[field]);
     
     if (missingFields.length > 0) {
       return NextResponse.json(
@@ -120,18 +118,18 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
     }
     
     // Check if email already exists
-    const existingTeacher = await Teacher.findOne({
+    const existingUser = await User.findOne({
       $or: [
         { email: body.email },
-        { cnic: body.cnic },
+        ...(body.cnic ? [{ cnic: body.cnic }] : []),
       ],
     });
     
-    if (existingTeacher) {
+    if (existingUser) {
       return NextResponse.json(
         {
           success: false,
-          message: existingTeacher.email === body.email
+          message: existingUser.email === body.email
             ? 'Email already exists'
             : 'CNIC already exists',
         },
@@ -152,22 +150,134 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
         { status: 404 }
       );
     }
+
+    // Verify classes exist if provided
+    if (body.teacherProfile?.classes && body.teacherProfile.classes.length > 0) {
+      const Class = (await import('@/backend/models/Class')).default;
+      const classIds = body.teacherProfile.classes.map(c => c.classId);
+      const classes = await Class.find({ _id: { $in: classIds } });
+      
+      if (classes.length !== classIds.length) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'One or more classes not found',
+          },
+          { status: 404 }
+        );
+      }
+    }
+
+    // Verify subjects exist if provided
+    if (body.teacherProfile?.subjects && body.teacherProfile.subjects.length > 0) {
+      const Subject = (await import('@/backend/models/Subject')).default;
+      const subjects = await Subject.find({ _id: { $in: body.teacherProfile.subjects } });
+      
+      if (subjects.length !== body.teacherProfile.subjects.length) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'One or more subjects not found',
+          },
+          { status: 404 }
+        );
+      }
+    }
+
+    // Prepare teacher profile
+    const teacherProfile = {
+      joiningDate: body.teacherProfile?.joiningDate || new Date(),
+      designation: body.teacherProfile?.designation || 'Teacher',
+      departmentId: body.teacherProfile?.departmentId || null,
+      department: body.teacherProfile?.department || null,
+      qualifications: body.teacherProfile?.qualifications || [],
+      experience: body.teacherProfile?.experience || { totalYears: 0, previousInstitutions: [] },
+      subjects: body.teacherProfile?.subjects || [],
+      classes: body.teacherProfile?.classes || [],
+      salaryDetails: body.teacherProfile?.salaryDetails || {
+        basicSalary: 0,
+        allowances: { houseRent: 0, medical: 0, transport: 0, other: 0 },
+        deductions: { tax: 0, providentFund: 0, insurance: 0, other: 0 },
+      },
+      leaveBalance: body.teacherProfile?.leaveBalance || { casual: 15, sick: 10, annual: 20 },
+      emergencyContact: body.teacherProfile?.emergencyContact || {},
+      documents: body.teacherProfile?.documents || [],
+    };
     
-    // Create teacher
-    const teacher = new Teacher({
-      ...body,
+    // Create teacher user
+    const teacher = new User({
+      role: 'teacher',
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: body.email.toLowerCase(),
+      phone: body.phone,
+      alternatePhone: body.alternatePhone || '',
+      dateOfBirth: body.dateOfBirth,
+      gender: body.gender,
+      bloodGroup: body.bloodGroup || '',
+      nationality: body.nationality || 'Pakistani',
+      cnic: body.cnic || '',
+      religion: body.religion || '',
+      address: body.address || {},
+      branchId: body.branchId,
+      profilePhoto: body.profilePhoto || {},
+      teacherProfile,
+      status: body.status || 'active',
+      remarks: body.remarks || '',
+      passwordHash: body.password || 'Teacher@123', // Will be hashed by pre-save middleware
+      emailVerified: true,
       createdBy: userDoc._id,
       updatedBy: userDoc._id,
     });
     
+    // Save teacher to get ID and generate employeeId
     await teacher.save();
+
+    // Generate QR code
+    try {
+      const qrDataURL = await generateTeacherQR(teacher);
+      
+      // Upload QR to Cloudinary
+      const qrUpload = await uploadToCloudinary(qrDataURL, {
+        folder: `ease-academy/teachers/${teacher._id}/qr`,
+        resourceType: 'image',
+      });
+
+      // Update teacher with QR details
+      teacher.teacherProfile.qr = {
+        url: qrUpload.url,
+        publicId: qrUpload.publicId,
+        uploadedAt: new Date(),
+      };
+
+      await teacher.save();
+    } catch (qrError) {
+      console.error('QR generation failed:', qrError);
+      // Continue without QR - can be generated later
+    }
     
     // Populate fields before returning
     await teacher.populate([
       { path: 'branchId', select: 'name code city' },
-      { path: 'subjects', select: 'name code' },
+      { path: 'teacherProfile.departmentId', select: 'name code' },
+      { path: 'teacherProfile.subjects', select: 'name code' },
+      { path: 'teacherProfile.classes.classId', select: 'name code grade' },
+      { path: 'teacherProfile.classes.subjectId', select: 'name code' },
       { path: 'createdBy', select: 'fullName email' },
     ]);
+
+    // Send welcome email to teacher
+    try {
+      const emailHtml = getTeacherEmailTemplate('TEACHER_CREATED', teacher);
+      await sendEmail(
+        teacher.email,
+        `Welcome to ${process.env.SCHOOL_NAME || 'Ease Academy'} - Account Created`,
+        emailHtml
+      );
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Continue - email is not critical
+    }
 
     return NextResponse.json(
       {

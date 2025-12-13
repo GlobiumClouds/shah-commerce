@@ -3,6 +3,8 @@ import { withAuth } from '@/backend/middleware/auth';
 import User from '@/backend/models/User';
 import dbConnect from '@/lib/database';
 import bcrypt from 'bcryptjs';
+import { sendEmail } from '@/backend/utils/emailService';
+import { getAdminEmailTemplate } from '@/backend/templates/adminEmail';
 
 /**
  * GET - List all users with role-based filtering
@@ -184,6 +186,20 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       { path: 'staffProfile.departmentId', select: 'name code' },
       { path: 'createdBy', select: 'fullName email' },
     ]);
+
+    // Send welcome email for admin roles (non-blocking for the API response)
+    try {
+      const schoolName = process.env.SCHOOL_NAME || 'Ease Academy';
+      const adminRoles = ['branch_admin', 'super_admin', 'admin'];
+      if (adminRoles.includes(role)) {
+        const adminForEmail = newUser.toObject ? newUser.toObject() : newUser;
+        adminForEmail.tempPassword = defaultPassword;
+        const html = getAdminEmailTemplate('ADMIN_CREATED', adminForEmail, schoolName);
+        await sendEmail(newUser.email, `${schoolName} - Administrator Account Created`, html);
+      }
+    } catch (emailErr) {
+      console.error('Failed to send admin welcome email:', emailErr);
+    }
 
     return NextResponse.json(
       {

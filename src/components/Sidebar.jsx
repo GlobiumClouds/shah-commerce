@@ -67,7 +67,6 @@ const ROLE_MENUS = {
       category: 'User Management',
       items: [
         { name: 'Administrators', path: '/super-admin/user-management/administrators', icon: UserCog },
-        { name: 'Role Management', path: '/super-admin/user-management/roles', icon: Shield },
       ],
     },
     {
