@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Input from '@/components/ui/input';
 import Modal from '@/components/ui/modal';
-import Dropdown from '@/components/ui/dropdown';
+import BranchSelect from '@/components/ui/branch-select';
+import GenderSelect from '@/components/ui/gender-select';
+import DocumentTypeSelect from '@/components/ui/document-type-select';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -21,6 +23,8 @@ export default function AdministratorsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [viewingAdmin, setViewingAdmin] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -37,25 +41,17 @@ export default function AdministratorsPage() {
     religion: '',
     bloodGroup: '',
     address: { street: '', city: '', state: '', postalCode: '' },
-    permissions: [],
   });
 
   const [activeTab, setActiveTab] = useState(1);
   const TOTAL_TABS = 3;
+  const [profileFile, setProfileFile] = useState(null);
+  const [profileUploading, setProfileUploading] = useState(false);
+  const [docFile, setDocFile] = useState(null);
+  const [docUploading, setDocUploading] = useState(false);
+  const [uploadedAdminDocTypes, setUploadedAdminDocTypes] = useState([]);
 
-  const PERMISSIONS = [
-    'manage_users',
-    'manage_branches',
-    'manage_students',
-    'manage_teachers',
-    'manage_staff',
-    'manage_fees',
-    'manage_salaries',
-    'manage_attendance',
-    'manage_exams',
-    'view_reports',
-    'manage_settings',
-  ];
+  const ADMIN_DOC_TYPES = ['cnic', 'id_card', 'cv', 'certificate', 'photo', 'other'];
 
   useEffect(() => {
     loadAdmins();
@@ -135,6 +131,9 @@ export default function AdministratorsPage() {
       permissions: [],
     });
     updateAvailableBranches();
+    setUploadedAdminDocTypes([]);
+    setProfileFile(null);
+    setDocFile(null);
     setShowModal(true);
   };
 
@@ -162,9 +161,12 @@ export default function AdministratorsPage() {
         state: admin.address?.state || '',
         postalCode: admin.address?.postalCode || '',
       },
-      permissions: admin.adminProfile?.permissions || admin.permissions || [],
+      
     });
     updateAvailableBranches(currentBranchId);
+    // Populate uploaded admin document types (if any)
+    const existingAdminDocs = admin.adminProfile?.documents || admin.documents || [];
+    setUploadedAdminDocTypes(existingAdminDocs.map(d => d.type));
     setShowModal(true);
   };
 
@@ -262,7 +264,7 @@ export default function AdministratorsPage() {
         branchId: formData.role === 'branch_admin' ? formData.branchId : undefined,
         isActive: formData.isActive,
         status: formData.isActive ? 'active' : 'inactive',
-        adminProfile: { permissions: formData.permissions || [] },
+        // adminProfile intentionally omitted (permissions removed)
       };
 
       // Only include password if it's provided
@@ -277,6 +279,33 @@ export default function AdministratorsPage() {
 
       if (response?.success) {
         toast.success(editingAdmin ? 'Administrator updated successfully' : 'Administrator created successfully');
+
+        // If created and files are waiting to be uploaded, upload them now using returned user id
+        const createdUser = response.data;
+        if (!editingAdmin && createdUser) {
+          try {
+            if (profileFile) {
+              const fd = new FormData();
+              fd.append('file', profileFile);
+              fd.append('fileType', 'profile');
+              fd.append('userId', createdUser._id);
+              await apiClient.post('/api/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            }
+
+            if (docFile && formData && formData.selectedDocumentType) {
+              const fd2 = new FormData();
+              fd2.append('file', docFile);
+              fd2.append('fileType', 'admin_document');
+              fd2.append('documentType', formData.selectedDocumentType);
+              fd2.append('userId', createdUser._id);
+              await apiClient.post('/api/upload', fd2, { headers: { 'Content-Type': 'multipart/form-data' } });
+            }
+          } catch (uploadErr) {
+            console.error('Post-create upload failed:', uploadErr);
+            toast.error('Profile/document upload failed. You can upload from edit later.');
+          }
+        }
+
         setShowModal(false);
         loadAdmins();
         loadBranches(); // Reload to update available branches
@@ -518,6 +547,9 @@ export default function AdministratorsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end space-x-2">
+                        <Button size="icon-sm" variant="ghost" onClick={() => { setViewingAdmin(admin); setShowViewModal(true); }}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
                         <Button
                           size="icon-sm"
                           variant="ghost"
@@ -558,10 +590,10 @@ export default function AdministratorsPage() {
           <div className="space-y-5">
             <Tabs
               tabs={[
-                { id: 1, label: 'Personal' },
-                { id: 2, label: 'Account' },
-                { id: 3, label: 'Permissions' },
-              ]}
+                  { id: 1, label: 'Personal' },
+                  { id: 2, label: 'Account' },
+                  { id: 3, label: 'Profile' },
+                ]}
               activeTab={activeTab}
               onChange={(id) => setActiveTab(id)}
               className="mb-4"
@@ -647,17 +679,14 @@ export default function AdministratorsPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Gender <span className="text-red-500">*</span>
                 </label>
-                <select
+                <GenderSelect
+                  id="gender"
+                  name="gender"
                   value={formData.gender}
-                  onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                >
-                  <option value="">Select gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
+                  onChange={(e) => setFormData({ ...formData, gender: e.target?.value ?? e })}
+                  placeholder="Select gender"
+                  className="w-full"
+                />
               </div>
             </div>
 
@@ -713,13 +742,12 @@ export default function AdministratorsPage() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Branch Assignment <span className="text-red-500">*</span>
               </label>
-              <Dropdown
+              <BranchSelect
+                id="branchId"
+                name="branchId"
                 value={formData.branchId}
                 onChange={(e) => setFormData({ ...formData, branchId: e.target?.value ?? e })}
-                options={availableBranches.map(branch => ({
-                  value: branch._id,
-                  label: `${branch.name} - ${branch.city || branch.address?.city || 'N/A'}`
-                }))}
+                branches={availableBranches}
                 placeholder="Select Branch"
                 className="w-full"
               />
@@ -746,6 +774,107 @@ export default function AdministratorsPage() {
         <TabPanel value={3} activeTab={activeTab}>
           {/* Account Status & Permissions Section */}
           <div className="space-y-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            {/* Profile Photo Upload */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Profile Photo</h4>
+              {editingAdmin && editingAdmin.profilePhoto?.url ? (
+                <div className="flex items-center gap-3">
+                  <img src={editingAdmin.profilePhoto.url} alt="profile" className="w-20 h-20 rounded-full object-cover" />
+                  <div>
+                    <p className="text-sm">Current photo</p>
+                    <Button size="sm" variant="ghost" onClick={() => window.open(editingAdmin.profilePhoto.url, '_blank')}>View</Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">No profile photo uploaded</p>
+              )}
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const f = e.target.files[0];
+                    if (!f) return;
+                    if (!editingAdmin) {
+                      setProfileFile(f);
+                      toast.success('Profile photo queued - will upload after creating admin');
+                      return;
+                    }
+                    try {
+                      setProfileUploading(true);
+                      const fd = new FormData();
+                      fd.append('file', f);
+                      fd.append('fileType', 'profile');
+                      fd.append('userId', editingAdmin._id);
+                      await apiClient.post('/api/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                      toast.success('Profile photo uploaded');
+                      loadAdmins();
+                    } catch (err) {
+                      console.error('Profile upload failed:', err);
+                      toast.error('Profile upload failed');
+                    } finally {
+                      setProfileUploading(false);
+                    }
+                  }}
+                />
+                {profileUploading && <span className="text-sm">Uploading...</span>}
+              </div>
+            </div>
+
+            {/* Admin Documents Upload */}
+            <div className="pt-3">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Documents</h4>
+              <p className="text-xs text-gray-500 mb-2">Upload admin documents (CNIC, CV, ID card). Already uploaded types are hidden.</p>
+              <div className="flex items-center gap-2">
+                <DocumentTypeSelect
+                  id="adminDocumentType"
+                  name="adminDocumentType"
+                  value={formData.selectedDocumentType || ''}
+                  onChange={(e) => setFormData({ ...formData, selectedDocumentType: e.target?.value ?? e })}
+                  options={ADMIN_DOC_TYPES.filter(t => !uploadedAdminDocTypes.includes(t)).map(t => ({ label: t.replace(/_/g, ' '), value: t }))}
+                  placeholder="Select document type"
+                  className="w-56"
+                />
+
+                <input type="file" onChange={(e) => setDocFile(e.target.files[0] || null)} />
+                <Button
+                  onClick={async () => {
+                    if (!formData.selectedDocumentType) { toast.error('Select document type'); return; }
+                    if (!docFile) { toast.error('Select a file'); return; }
+                    if (!editingAdmin) {
+                      toast.error('Upload documents after creating the admin (they will be queued)');
+                      return;
+                    }
+                    try {
+                      setDocUploading(true);
+                      const fd = new FormData();
+                      fd.append('file', docFile);
+                      fd.append('fileType', 'admin_document');
+                      fd.append('documentType', formData.selectedDocumentType);
+                      fd.append('userId', editingAdmin._id);
+                      await apiClient.post('/api/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                      toast.success('Document uploaded');
+                      // mark as uploaded so dropdown hides it
+                      setUploadedAdminDocTypes((s) => [...s, formData.selectedDocumentType]);
+                      setDocFile(null);
+                      setFormData({ ...formData, selectedDocumentType: '' });
+                      loadAdmins();
+                    } catch (err) {
+                      console.error('Document upload failed:', err);
+                      toast.error('Document upload failed');
+                    } finally {
+                      setDocUploading(false);
+                    }
+                  }}
+                >Upload</Button>
+              </div>
+
+              {uploadedAdminDocTypes.length > 0 && (
+                <div className="mt-3 text-xs text-gray-600">
+                  <strong>Uploaded:</strong> {uploadedAdminDocTypes.join(', ')}
+                </div>
+              )}
+            </div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide">
               Account Status
             </h3>
@@ -764,31 +893,96 @@ export default function AdministratorsPage() {
               </label>
             </div>
 
-            <div className="pt-4">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Permissions</h4>
-              <div className="grid grid-cols-2 gap-2">
-                {PERMISSIONS.map((perm) => (
-                  <label key={perm} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.permissions?.includes(perm)}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setFormData((prev) => ({
-                          ...prev,
-                          permissions: checked ? [...(prev.permissions || []), perm] : (prev.permissions || []).filter(p => p !== perm)
-                        }));
-                      }}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded"
-                    />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">{perm.replace(/_/g, ' ')}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+            {/* Permissions removed as per request - no permissions UI */}
           </div>
         </TabPanel>
       </div>
+      </Modal>
+
+      {/* View Modal - Readonly full administrator details */}
+      <Modal
+        open={showViewModal}
+        onClose={() => { setShowViewModal(false); setViewingAdmin(null); }}
+        title="Administrator Details"
+        size="lg"
+        footer={(
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => { setShowViewModal(false); setViewingAdmin(null); }}>Close</Button>
+          </div>
+        )}
+      >
+        {viewingAdmin ? (
+          <div className="space-y-4">
+            <div className="flex items-start gap-4">
+              <div>
+                {viewingAdmin.profilePhoto?.url ? (
+                  <img src={viewingAdmin.profilePhoto.url} alt="profile" className="w-28 h-28 rounded-md object-cover" />
+                ) : (
+                  <div className="w-28 h-28 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">No Photo</div>
+                )}
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-semibold">{viewingAdmin.fullName || `${viewingAdmin.firstName || ''} ${viewingAdmin.lastName || ''}`}</h2>
+                <p className="text-sm text-gray-600">{viewingAdmin.role}</p>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div><strong>Email:</strong> <div className="text-gray-700">{viewingAdmin.email}</div></div>
+                  <div><strong>Phone:</strong> <div className="text-gray-700">{viewingAdmin.phone || '—'}</div></div>
+                  <div><strong>Branch:</strong> <div className="text-gray-700">{viewingAdmin.branchId?.name || 'Not Assigned'}</div></div>
+                  <div><strong>Status:</strong> <div className="text-gray-700">{viewingAdmin.isActive ? 'Active' : 'Inactive'}</div></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-sm font-medium mb-2">Personal</h4>
+                <div className="text-sm text-gray-700 space-y-1">
+                  <div><strong>Date of Birth:</strong> {viewingAdmin.dateOfBirth ? new Date(viewingAdmin.dateOfBirth).toLocaleDateString() : '—'}</div>
+                  <div><strong>Gender:</strong> {viewingAdmin.gender || '—'}</div>
+                  <div><strong>Nationality:</strong> {viewingAdmin.nationality || '—'}</div>
+                  <div><strong>CNIC:</strong> {viewingAdmin.cnic || '—'}</div>
+                  <div><strong>Religion:</strong> {viewingAdmin.religion || '—'}</div>
+                  <div><strong>Blood Group:</strong> {viewingAdmin.bloodGroup || '—'}</div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-medium mb-2">Address</h4>
+                <div className="text-sm text-gray-700 space-y-1">
+                  <div>{viewingAdmin.address?.street || '—'}</div>
+                  <div>{viewingAdmin.address?.city ? `${viewingAdmin.address.city}, ${viewingAdmin.address.state || ''}` : '—'}</div>
+                  <div>{viewingAdmin.address?.postalCode || ''}</div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium mb-2">Documents</h4>
+              {((viewingAdmin.adminProfile && viewingAdmin.adminProfile.documents) || viewingAdmin.documents || []).length === 0 ? (
+                <p className="text-sm text-gray-500">No documents uploaded</p>
+              ) : (
+                <div className="space-y-2">
+                  {((viewingAdmin.adminProfile && viewingAdmin.adminProfile.documents) || viewingAdmin.documents || []).map((doc, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded">
+                      <div className="text-sm">
+                        <div className="font-medium">{doc.name || doc.type}</div>
+                        <div className="text-xs text-gray-500">Type: {doc.type}</div>
+                        <div className="text-xs text-gray-400">Uploaded: {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString() : '—'}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {doc.url ? (
+                          <a href={doc.url} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline">View</a>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center text-gray-500">No administrator selected</div>
+        )}
       </Modal>
     </div>
   );

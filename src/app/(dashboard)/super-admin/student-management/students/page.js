@@ -1,10 +1,16 @@
- 'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/ui/modal';
 import Input from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import Tabs from '@/components/ui/tabs';
 import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import Dropdown from '@/components/ui/dropdown';
+import BloodGroupSelect from '@/components/ui/blood-group';
+import GenderSelect from '@/components/ui/gender-select';
+import BranchSelect from '@/components/ui/branch-select';
+import ClassSelect from '@/components/ui/class-select';
 import {
   Users,
   Plus,
@@ -24,6 +30,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import apiClient from '@/lib/api-client';
+import API_ENDPOINTS from '../../../../../constants/api-endpoints';
 
 export default function StudentsPage() {
   const [students, setStudents] = useState([]);
@@ -31,6 +38,7 @@ export default function StudentsPage() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -40,7 +48,7 @@ export default function StudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [editingStudent, setEditingStudent] = useState(null);
   const [formData, setFormData] = useState({});
-  const [activeTab, setActiveTab] = useState('basic');
+  const [activeTab, setActiveTab] = useState('parent');
   const formRef = useRef(null);
 
   const [pendingProfileFile, setPendingProfileFile] = useState(null);
@@ -74,7 +82,7 @@ export default function StudentsPage() {
       if (branchToUse) params.append('branchId', branchToUse);
       params.append('limit', '100');
 
-      const data = await apiClient.get(`/api/super-admin/classes?${params}`);
+      const data = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST}?${params}`);
       if (data && data.success) {
         const payload = data.data;
         // classes route returns data as an array (data.data) or wrapped in { classes }
@@ -98,7 +106,7 @@ export default function StudentsPage() {
 
   const loadBranches = async () => {
     try {
-      const res = await apiClient.get('/api/super-admin/branches?limit=200');
+      const res = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST}?limit=200`);
       if (res && res.success) {
         const payload = res.data;
         setBranches(Array.isArray(payload) ? payload : payload?.branches || []);
@@ -111,8 +119,11 @@ export default function StudentsPage() {
     }
   };
 
+  const requestCounter = useRef(0);
+
   const loadStudents = async () => {
     setLoading(true);
+    const myRequestId = ++requestCounter.current;
     try {
       const params = new URLSearchParams();
       params.append('page', String(page || 1));
@@ -121,9 +132,12 @@ export default function StudentsPage() {
       if (classFilter) params.append('classId', classFilter);
       if (genderFilter) params.append('gender', genderFilter);
       if (statusFilter) params.append('status', statusFilter);
-      if (searchTerm) params.append('search', searchTerm);
+      if (debouncedSearch) params.append('search', debouncedSearch);
 
-      const res = await apiClient.get(`/api/super-admin/users/students?${params.toString()}`);
+      const res = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.STUDENTS.LIST}?${params.toString()}`);
+      // If another request started after this one, ignore this response
+      if (myRequestId !== requestCounter.current) return;
+
       if (res && res.success) {
         const studentsData = Array.isArray(res.data) ? res.data : res.data?.students || [];
         setStudents(studentsData);
@@ -133,11 +147,13 @@ export default function StudentsPage() {
         setTotal(0);
       }
     } catch (err) {
+      // ignore stale errors if a newer request exists
+      if (myRequestId !== requestCounter.current) return;
       console.error('Error loading students:', err);
       setStudents([]);
       setTotal(0);
     } finally {
-      setLoading(false);
+      if (myRequestId === requestCounter.current) setLoading(false);
     }
   };
 
@@ -148,22 +164,13 @@ export default function StudentsPage() {
 
   useEffect(() => {
     loadStudents();
-  }, [page, limit, branchFilter, classFilter, genderFilter, statusFilter, searchTerm]);
+  }, [page, limit, branchFilter, classFilter, genderFilter, statusFilter, debouncedSearch]);
 
-  // Simple real-time polling: refresh students list every 10s when page is visible
+  // Debounce search input to avoid repeated loads while typing
   useEffect(() => {
-    const interval = setInterval(() => {
-      try {
-        if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !loading) {
-          loadStudents();
-        }
-      } catch (err) {
-        console.error('Polling students failed', err);
-      }
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [page, limit, branchFilter, classFilter, genderFilter, statusFilter, searchTerm, loading]);
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 500);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
   // Keep class options in sync with the selected branch filter
   useEffect(() => {
@@ -215,10 +222,11 @@ export default function StudentsPage() {
         email: '',
         cnic: '',
       },
+      guardianType: 'parent',
       status: 'active',
       remarks: '',
     });
-    setActiveTab('basic');
+    setActiveTab('parent');
     setShowModal(true);
   };
 
@@ -243,8 +251,8 @@ export default function StudentsPage() {
         postalCode: '',
         country: 'Pakistan',
       },
-  branchId: student.branchId?._id || student.branchId || '',
-  classId: student.studentProfile?.classId?._id || student.studentProfile?.classId || '',
+      branchId: student.branchId?._id || student.branchId || '',
+      classId: student.studentProfile?.classId?._id || student.studentProfile?.classId || '',
       departmentId: student.studentProfile?.departmentId?._id || '',
       section: student.studentProfile?.section || '',
       rollNumber: student.studentProfile?.rollNumber || '',
@@ -266,14 +274,14 @@ export default function StudentsPage() {
       // ignore - classes will be empty
     }
 
-    setActiveTab('basic');
+    setActiveTab('parent');
     setShowModal(true);
   };
 
   const openView = async (student) => {
     setSelectedStudent(student);
     // ensure classes loaded for the branch to display class name/sections properly
-    try { await loadClasses(student.branchId?._id || student.branchId || ''); } catch (e) {}
+    try { await loadClasses(student.branchId?._id || student.branchId || ''); } catch (e) { }
     setShowViewModal(true);
   };
 
@@ -291,7 +299,7 @@ export default function StudentsPage() {
       form.append('fileType', 'profile');
       form.append('userId', selectedStudent._id);
 
-      const res = await apiClient.post('/api/upload', form, {
+      const res = await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
@@ -321,7 +329,7 @@ export default function StudentsPage() {
       form.append('documentType', documentType);
       form.append('userId', selectedStudent._id);
 
-      const res = await apiClient.post('/api/upload', form, {
+      const res = await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
@@ -330,7 +338,7 @@ export default function StudentsPage() {
         // merge new document into selectedStudent if returned
         const newDoc = res.data?.document;
         if (newDoc) {
-          setSelectedStudent(prev => ({ ...prev, studentProfile: { ...prev.studentProfile, documents: [...(prev.studentProfile?.documents||[]), newDoc] } }));
+          setSelectedStudent(prev => ({ ...prev, studentProfile: { ...prev.studentProfile, documents: [...(prev.studentProfile?.documents || []), newDoc] } }));
         }
         loadStudents();
       } else {
@@ -381,6 +389,7 @@ export default function StudentsPage() {
           father: formData.father,
           mother: formData.mother,
           guardian: formData.guardian,
+          guardianType: formData.guardianType || 'parent',
           feeDiscount: formData.feeDiscount,
           transportFee: formData.transportFee,
         }
@@ -388,9 +397,11 @@ export default function StudentsPage() {
 
       let data;
       if (editingStudent) {
-        data = await apiClient.put(`/api/users/${editingStudent._id}`, payload);
+        const url = API_ENDPOINTS.SUPER_ADMIN.USERS.UPDATE.replace(':id', editingStudent._id);
+        data = await apiClient.put(url, payload);
       } else {
-        data = await apiClient.post('/api/users/students', payload);
+        const url = API_ENDPOINTS.SUPER_ADMIN.STUDENTS.CREATE;
+        data = await apiClient.post(url, payload);
       }
 
       if (data.success) {
@@ -404,7 +415,7 @@ export default function StudentsPage() {
             form.append('file', pendingProfileFile);
             form.append('fileType', 'profile');
             form.append('userId', userId);
-            const upRes = await apiClient.post('/api/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+            const upRes = await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, form, { headers: { 'Content-Type': 'multipart/form-data' } });
             if (upRes && upRes.success) {
               toast.success('Profile photo uploaded');
             }
@@ -418,7 +429,7 @@ export default function StudentsPage() {
               form.append('documentType', d.type || 'other');
               form.append('userId', userId);
               try {
-                const docRes = await apiClient.post('/api/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+                const docRes = await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, form, { headers: { 'Content-Type': 'multipart/form-data' } });
                 if (docRes && docRes.success) {
                   toast.success(`${d.file.name} uploaded`);
                 }
@@ -461,7 +472,8 @@ export default function StudentsPage() {
 
     setButtonLoading('deleteStudent', true);
     try {
-      const data = await apiClient.delete(`/api/users/${studentToDelete._id}`);
+      const delUrl = API_ENDPOINTS.SUPER_ADMIN.USERS.DELETE.replace(':id', studentToDelete._id);
+      const data = await apiClient.delete(delUrl);
 
       if (data.success) {
         toast.success('Student deactivated successfully');
@@ -485,7 +497,8 @@ export default function StudentsPage() {
     setButtonLoading('activateStudent', true);
     try {
       const payload = { status: 'active', isActive: true };
-      const data = await apiClient.put(`/api/users/${studentToActivate._id}`, payload);
+      const updateUrl = API_ENDPOINTS.SUPER_ADMIN.USERS.UPDATE.replace(':id', studentToActivate._id);
+      const data = await apiClient.put(updateUrl, payload);
 
       if (data && data.success) {
         toast.success('Student activated successfully');
@@ -525,13 +538,10 @@ export default function StudentsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Student Management</h1>
           <p className="text-sm text-gray-600 mt-1">Manage student admissions and records</p>
         </div>
-        <button
-          onClick={handleAddNew}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
+        <Button onClick={handleAddNew} className="flex items-center gap-2">
           <UserPlus className="w-4 h-4" />
           Add Student
-        </button>
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -596,28 +606,23 @@ export default function StudentsPage() {
             />
           </div>
 
-          <Dropdown
+          <BranchSelect
             value={branchFilter}
             onChange={(e) => setBranchFilter(e.target.value)}
-            options={branches.map(b => ({ value: b._id, label: `${b.name}` }))}
+            branches={branches}
             placeholder="All Branches"
           />
 
-          <Dropdown
+          <ClassSelect
             value={classFilter}
             onChange={(e) => setClassFilter(e.target.value)}
-            options={classes.map(c => ({ value: c._id, label: `${c.name} (Grade ${c.grade})` }))}
+            classes={classes}
             placeholder="All Classes"
           />
 
-          <Dropdown
+          <GenderSelect
             value={genderFilter}
             onChange={(e) => setGenderFilter(e.target.value)}
-            options={[
-              { value: 'male', label: 'Male' },
-              { value: 'female', label: 'Female' },
-              { value: 'other', label: 'Other' },
-            ]}
             placeholder="All Genders"
           />
 
@@ -688,19 +693,18 @@ export default function StudentsPage() {
                 </TableCell>
 
                 <TableCell className="px-6 py-4">
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                    student.status === 'active' ? 'bg-green-100 text-green-700' : student.status === 'graduated' ? 'bg-blue-100 text-blue-700' : student.status === 'transferred' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'
-                  }`}>{student.status}</span>
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${student.status === 'active' ? 'bg-green-100 text-green-700' : student.status === 'graduated' ? 'bg-blue-100 text-blue-700' : student.status === 'transferred' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'
+                    }`}>{student.status}</span>
                 </TableCell>
 
                 <TableCell className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <button onClick={() => handleEdit(student)} className="p-2 text-blue-600 hover:bg-blue-50 rounded" title="Edit"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => openView(student)} className="p-2 text-gray-700 hover:bg-gray-50 rounded" title="View"><Eye className="w-4 h-4" /></button>
+                    <Button size="icon-sm" variant="ghost" onClick={() => handleEdit(student)} title="Edit"><Edit className="w-4 h-4" /></Button>
+                    <Button size="icon-sm" variant="ghost" onClick={() => openView(student)} title="View"><Eye className="w-4 h-4" /></Button>
                     {student.status === 'inactive' ? (
-                      <button onClick={() => { setStudentToActivate(student); setShowActivateModal(true); }} className="p-2 text-green-600 hover:bg-green-50 rounded" title="Activate"><UserPlus className="w-4 h-4" /></button>
+                      <Button size="icon-sm" variant="ghost" onClick={() => { setStudentToActivate(student); setShowActivateModal(true); }} title="Activate"><UserPlus className="w-4 h-4" /></Button>
                     ) : (
-                      <button onClick={() => { setStudentToDelete(student); setShowDeleteModal(true); }} className="p-2 text-red-600 hover:bg-red-50 rounded" title="Deactivate"><Trash2 className="w-4 h-4" /></button>
+                      <Button size="icon-sm" variant="ghost" onClick={() => { setStudentToDelete(student); setShowDeleteModal(true); }} title="Deactivate"><Trash2 className="w-4 h-4" /></Button>
                     )}
                   </div>
                 </TableCell>
@@ -718,51 +722,47 @@ export default function StudentsPage() {
           onClose={() => setShowModal(false)}
           size="lg"
           footer={(
-            <div className="flex items-center justify-end gap-3">
-              <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
-              <button type="button" onClick={() => formRef.current && (formRef.current.requestSubmit ? formRef.current.requestSubmit() : formRef.current.submit())} disabled={isButtonLoading('submitForm')} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2">
-                {isButtonLoading('submitForm') ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Saving...</>) : (editingStudent ? 'Update Student' : 'Add Student')}
-              </button>
+            <div className="flex items-center justify-between w-full">
+              <div>
+                <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+              </div>
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const TAB_ORDER = ['parent', 'basic', 'academic'];
+                  const idx = TAB_ORDER.indexOf(activeTab);
+                  return (
+                    <>
+                      {idx > 0 && (
+                        <Button variant="ghost" onClick={() => setActiveTab(TAB_ORDER[idx - 1])}>Previous</Button>
+                      )}
+
+                      {idx < TAB_ORDER.length - 1 && (
+                        <Button onClick={() => setActiveTab(TAB_ORDER[idx + 1])}>Next</Button>
+                      )}
+
+                      {idx === TAB_ORDER.length - 1 && (
+                        <Button onClick={() => formRef.current && (formRef.current.requestSubmit ? formRef.current.requestSubmit() : formRef.current.submit())} disabled={isButtonLoading('submitForm')}>
+                          {isButtonLoading('submitForm') ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Saving...</>) : (editingStudent ? 'Update Student' : 'Add Student')}
+                        </Button>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
             </div>
           )}
         >
           <div className="space-y-4">
             {/* Tabs */}
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => setActiveTab('basic')}
-                className={`px-4 py-2 rounded-lg font-medium ${
-                  activeTab === 'basic'
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Basic Info
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('academic')}
-                className={`px-4 py-2 rounded-lg font-medium ${
-                  activeTab === 'academic'
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Academic Info
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('parent')}
-                className={`px-4 py-2 rounded-lg font-medium ${
-                  activeTab === 'parent'
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Parent Info
-              </button>
-            </div>
+            <Tabs
+              tabs={[
+                { id: 'parent', label: 'Parent Info' },
+                { id: 'basic', label: 'Basic Info' },
+                { id: 'academic', label: 'Academic Info' },
+              ]}
+              activeTab={activeTab}
+              onChange={(id) => setActiveTab(id)}
+            />
 
             <form ref={formRef} onSubmit={handleFormSubmit} className="p-2">
               {/* Basic Info Tab */}
@@ -808,12 +808,11 @@ export default function StudentsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Gender <span className="text-red-500">*</span>
                       </label>
-                      <Dropdown
+                      <GenderSelect
                         id="gender"
                         name="gender"
                         value={formData.gender}
                         onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                        options={[{ label: 'Male', value: 'male' }, { label: 'Female', value: 'female' }, { label: 'Other', value: 'other' }]}
                         placeholder="Select Gender"
                       />
                     </div>
@@ -822,12 +821,11 @@ export default function StudentsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Blood Group
                       </label>
-                      <Dropdown
+                      <BloodGroupSelect
                         id="bloodGroup"
                         name="bloodGroup"
                         value={formData.bloodGroup}
                         onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                        options={[{ label: 'Select', value: '' }, { label: 'A+', value: 'A+' }, { label: 'A-', value: 'A-' }, { label: 'B+', value: 'B+' }, { label: 'B-', value: 'B-' }, { label: 'AB+', value: 'AB+' }, { label: 'AB-', value: 'AB-' }, { label: 'O+', value: 'O+' }, { label: 'O-', value: 'O-' }]}
                         placeholder="Select Blood Group"
                       />
                     </div>
@@ -836,106 +834,108 @@ export default function StudentsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                      <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="student@example.com" />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                      <Input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+92-XXX-XXXXXXX" />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Religion
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.religion}
-                        onChange={(e) => setFormData({ ...formData, religion: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Islam"
+                      <Dropdown
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target?.value ?? e })}
+                        options={[
+                          { value: 'active', label: 'Active' },
+                          { value: 'inactive', label: 'Inactive' },
+                          { value: 'graduated', label: 'Graduated' },
+                          { value: 'transferred', label: 'Transferred' },
+                        ]}
+                        placeholder="Select Status"
                       />
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Religion
+                        </label>
+                        <Input
+                          type="text"
+                          value={formData.religion}
+                          onChange={(e) => setFormData({ ...formData, religion: e.target.value })}
+                          // className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Islam"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Nationality
+                        </label>
+                        <Input
+                          type="text"
+                          value={formData.nationality}
+                          onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Pakistani"
+                        />
+                      </div>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nationality
+                        Address
                       </label>
-                      <input
-                        type="text"
-                        value={formData.nationality}
-                        onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Pakistani"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Address
-                    </label>
-                    <textarea
-                      value={formData.address.street}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        address: { ...formData.address, street: e.target.value }
-                      })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      rows="2"
-                      placeholder="Street address"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        City
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.address.city}
+                      <textarea
+                        value={formData.address.street}
                         onChange={(e) => setFormData({
                           ...formData,
-                          address: { ...formData.address, city: e.target.value }
+                          address: { ...formData.address, street: e.target.value }
                         })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Lahore"
+                        rows="2"
+                        placeholder="Street address"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        State
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.address.state}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          address: { ...formData.address, state: e.target.value }
-                        })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Punjab"
-                      />
-                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          City
+                        </label>
+                        <Input
+                          type="text"
+                          value={formData.address.city}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            address: { ...formData.address, city: e.target.value }
+                          })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Lahore"
+                        />
+                      </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Postal Code
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.address.postalCode}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          address: { ...formData.address, postalCode: e.target.value }
-                        })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="54000"
-                      />
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          State
+                        </label>
+                        <Input
+                          type="text"
+                          value={formData.address.state}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            address: { ...formData.address, state: e.target.value }
+                          })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Punjab"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Postal Code
+                        </label>
+                        <Input
+                          type="text"
+                          value={formData.address.postalCode}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            address: { ...formData.address, postalCode: e.target.value }
+                          })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="54000"
+                        />
+                      </div>
                     </div>
                   </div>
                 </>
@@ -949,7 +949,7 @@ export default function StudentsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Registration Number
                       </label>
-                      <input
+                      <Input
                         type="text"
                         value={formData.registrationNumber}
                         onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
@@ -1019,19 +1019,6 @@ export default function StudentsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Roll Number
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.rollNumber}
-                        onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="001"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         Academic Year <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -1063,80 +1050,86 @@ export default function StudentsPage() {
                   </div>
 
                   <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Remarks
-                        </label>
-                        <textarea
-                          value={formData.remarks}
-                          onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          rows="3"
-                          placeholder="Any additional notes..."
-                        />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Remarks
+                    </label>
+                    <textarea
+                      value={formData.remarks}
+                      onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows="3"
+                      placeholder="Any additional notes..."
+                    />
 
-                        {/* Uploads in Add/Edit form */}
-                        <div className="mt-4 border-t pt-4">
-                          <p className="text-sm font-medium text-gray-700 mb-2">Profile Photo (optional)</p>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => setPendingProfileFile(e.target.files?.[0] || null)}
-                          />
-                          {pendingProfileFile && (
-                            <div className="mt-2 flex items-center justify-between bg-gray-50 p-2 rounded">
-                              <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-white overflow-hidden rounded">
-                                  <img src={URL.createObjectURL(pendingProfileFile)} alt="preview" className="w-full h-full object-cover" />
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium">{pendingProfileFile.name}</p>
-                                  <p className="text-xs text-gray-500">{Math.round(pendingProfileFile.size/1024)} KB</p>
-                                </div>
-                              </div>
-                              <button type="button" className="text-sm text-red-600" onClick={() => setPendingProfileFile(null)}>Remove</button>
+                    {/* Uploads in Add/Edit form */}
+                    <div className="mt-4 border-t pt-4">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Profile Photo (optional)</p>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setPendingProfileFile(e.target.files?.[0] || null)}
+                      />
+                      {pendingProfileFile && (
+                        <div className="mt-2 flex items-center justify-between bg-gray-50 p-2 rounded">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-white overflow-hidden rounded">
+                              <img src={URL.createObjectURL(pendingProfileFile)} alt="preview" className="w-full h-full object-cover" />
                             </div>
-                          )}
-
-                          <div className="mt-4">
-                            <p className="text-sm font-medium text-gray-700 mb-2">Attach Documents (optional)</p>
-                            <div className="flex items-center gap-2">
-                              <select id="addDocType" className="px-3 py-2 border rounded">
-                                <option value="b_form">B-Form</option>
-                                <option value="birth_certificate">Birth Certificate</option>
-                                <option value="previous_result">Previous Result</option>
-                                <option value="other">Other</option>
-                              </select>
-                              <input type="file" id="addDocFile" />
-                              <button type="button" className="px-3 py-2 bg-blue-600 text-white rounded" onClick={() => {
-                                const fileInput = document.getElementById('addDocFile');
-                                const typeSelect = document.getElementById('addDocType');
-                                const file = fileInput?.files?.[0];
-                                const type = typeSelect?.value || 'other';
-                                if (file) {
-                                  setPendingDocuments(prev => [...prev, { file, type }]);
-                                  // clear inputs
-                                  fileInput.value = '';
-                                }
-                              }}>Add</button>
+                            <div>
+                              <p className="text-sm font-medium">{pendingProfileFile.name}</p>
+                              <p className="text-xs text-gray-500">{Math.round(pendingProfileFile.size / 1024)} KB</p>
                             </div>
-
-                            {pendingDocuments.length > 0 && (
-                              <div className="mt-3 space-y-2">
-                                {pendingDocuments.map((d, idx) => (
-                                  <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                                    <div>
-                                      <p className="text-sm font-medium">{d.file.name}</p>
-                                      <p className="text-xs text-gray-500">Type: {d.type}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <button type="button" className="text-sm text-red-600" onClick={() => setPendingDocuments(prev => prev.filter((_, i) => i !== idx))}>Remove</button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                           </div>
+                          <button type="button" className="text-sm text-red-600" onClick={() => setPendingProfileFile(null)}>Remove</button>
                         </div>
+                      )}
+
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Attach Documents (optional)</p>
+                        <div className="flex items-center gap-2">
+                          <Dropdown
+                            id="addDocType"
+                            name="addDocType"
+                            value={undefined}
+                            onChange={() => { }}
+                            options={[
+                              { value: 'b_form', label: 'B-Form' },
+                              { value: 'birth_certificate', label: 'Birth Certificate' },
+                              { value: 'previous_result', label: 'Previous Result' },
+                              { value: 'other', label: 'Other' },
+                            ]}
+                            placeholder="Select"
+                          />
+                          <input type="file" id="addDocFile" />
+                          <Button onClick={() => {
+                            const fileInput = document.getElementById('addDocFile');
+                            const typeSelect = document.getElementById('addDocType');
+                            const file = fileInput?.files?.[0];
+                            const type = typeSelect?.value || 'other';
+                            if (file) {
+                              setPendingDocuments(prev => [...prev, { file, type }]);
+                              fileInput.value = '';
+                            }
+                          }}>Add</Button>
+                        </div>
+
+                        {pendingDocuments.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {pendingDocuments.map((d, idx) => (
+                              <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                <div>
+                                  <p className="text-sm font-medium">{d.file.name}</p>
+                                  <p className="text-xs text-gray-500">Type: {d.type}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button type="button" className="text-sm text-red-600" onClick={() => setPendingDocuments(prev => prev.filter((_, i) => i !== idx))}>Remove</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </>
               )}
@@ -1144,185 +1137,127 @@ export default function StudentsPage() {
               {/* Parent Info Tab */}
               {activeTab === 'parent' && (
                 <>
-                  <div className="border border-gray-200 rounded-lg p-4 mb-4">
-                    <h3 className="font-medium text-gray-900 mb-4">Father Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Father Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.father.name}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            father: { ...formData.father, name: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="John Doe Sr."
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Occupation
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.father.occupation}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            father: { ...formData.father, occupation: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Business"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Phone <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="tel"
-                          value={formData.father.phone}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            father: { ...formData.father, phone: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="+92-XXX-XXXXXXX"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Email
-                        </label>
-                        <input
-                          type="email"
-                          value={formData.father.email}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            father: { ...formData.father, email: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="father@example.com"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        CNIC
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.father.cnic}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          father: { ...formData.father, cnic: e.target.value }
-                        })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="XXXXX-XXXXXXX-X"
-                      />
-                    </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Contact Type</label>
+                    <Dropdown
+                      id="guardianType"
+                      name="guardianType"
+                      value={formData.guardianType}
+                      onChange={(e) => setFormData({ ...formData, guardianType: e.target?.value ?? e })}
+                      options={[
+                        { value: 'parent', label: 'Parent (Father/Mother)' },
+                        { value: 'guardian', label: 'Guardian (Other)' },
+                      ]}
+                      placeholder="Select contact type"
+                    />
                   </div>
 
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <h3 className="font-medium text-gray-900 mb-4">Mother Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Mother Name
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.mother.name}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            mother: { ...formData.mother, name: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Jane Doe"
-                        />
+                  {formData.guardianType === 'guardian' ? (
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <h3 className="font-medium text-gray-900 mb-4">Guardian Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Guardian Name <span className="text-red-500">*</span></label>
+                          <Input value={formData.guardian?.name} onChange={(e) => setFormData({ ...formData, guardian: { ...formData.guardian, name: e.target.value } })} placeholder="Guardian Name" />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Relationship</label>
+                          <Input value={formData.guardian?.relationship} onChange={(e) => setFormData({ ...formData, guardian: { ...formData.guardian, relationship: e.target.value } })} placeholder="e.g., Uncle/Aunt" />
+                        </div>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Occupation
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.mother.occupation}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            mother: { ...formData.mother, occupation: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Teacher"
-                        />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Phone <span className="text-red-500">*</span></label>
+                          <Input type="tel" value={formData.guardian?.phone} onChange={(e) => setFormData({ ...formData, guardian: { ...formData.guardian, phone: e.target.value } })} placeholder="+92-XXX-XXXXXXX" />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                          <Input type="email" value={formData.guardian?.email} onChange={(e) => setFormData({ ...formData, guardian: { ...formData.guardian, email: e.target.value } })} placeholder="guardian@example.com" />
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">CNIC</label>
+                        <Input value={formData.guardian?.cnic} onChange={(e) => setFormData({ ...formData, guardian: { ...formData.guardian, cnic: e.target.value } })} placeholder="XXXXX-XXXXXXX-X" />
                       </div>
                     </div>
+                  ) : (
+                    <>
+                      <div className="border border-gray-200 rounded-lg p-4 mb-4">
+                        <h3 className="font-medium text-gray-900 mb-4">Father Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Father Name <span className="text-red-500">*</span></label>
+                            <Input value={formData.father.name} onChange={(e) => setFormData({ ...formData, father: { ...formData.father, name: e.target.value } })} placeholder="John Doe Sr." />
+                          </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Phone
-                        </label>
-                        <input
-                          type="tel"
-                          value={formData.mother.phone}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            mother: { ...formData.mother, phone: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="+92-XXX-XXXXXXX"
-                        />
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Occupation</label>
+                            <Input value={formData.father.occupation} onChange={(e) => setFormData({ ...formData, father: { ...formData.father, occupation: e.target.value } })} placeholder="Business" />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Phone <span className="text-red-500">*</span></label>
+                            <Input type="tel" value={formData.father.phone} onChange={(e) => setFormData({ ...formData, father: { ...formData.father, phone: e.target.value } })} placeholder="+92-XXX-XXXXXXX" />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                            <Input type="email" value={formData.father.email} onChange={(e) => setFormData({ ...formData, father: { ...formData.father, email: e.target.value } })} placeholder="father@example.com" />
+                          </div>
+                        </div>
+
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">CNIC</label>
+                          <Input value={formData.father.cnic} onChange={(e) => setFormData({ ...formData, father: { ...formData.father, cnic: e.target.value } })} placeholder="XXXXX-XXXXXXX-X" />
+                        </div>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Email
-                        </label>
-                        <input
-                          type="email"
-                          value={formData.mother.email}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            mother: { ...formData.mother, email: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="mother@example.com"
-                        />
-                      </div>
-                    </div>
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <h3 className="font-medium text-gray-900 mb-4">Mother Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Mother Name</label>
+                            <Input value={formData.mother.name} onChange={(e) => setFormData({ ...formData, mother: { ...formData.mother, name: e.target.value } })} placeholder="Jane Doe" />
+                          </div>
 
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        CNIC
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.mother.cnic}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          mother: { ...formData.mother, cnic: e.target.value }
-                        })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="XXXXX-XXXXXXX-X"
-                      />
-                    </div>
-                  </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Occupation</label>
+                            <Input value={formData.mother.occupation} onChange={(e) => setFormData({ ...formData, mother: { ...formData.mother, occupation: e.target.value } })} placeholder="Teacher" />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                            <Input type="tel" value={formData.mother.phone} onChange={(e) => setFormData({ ...formData, mother: { ...formData.mother, phone: e.target.value } })} placeholder="+92-XXX-XXXXXXX" />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                            <Input type="email" value={formData.mother.email} onChange={(e) => setFormData({ ...formData, mother: { ...formData.mother, email: e.target.value } })} placeholder="mother@example.com" />
+                          </div>
+                        </div>
+
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">CNIC</label>
+                          <Input value={formData.mother.cnic} onChange={(e) => setFormData({ ...formData, mother: { ...formData.mother, cnic: e.target.value } })} placeholder="XXXXX-XXXXXXX-X" />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
               {/* Footer handled by Modal footer prop */}
             </form>
           </div>
+
         </Modal>
       )}
       {/* Activate Modal (uses shared Modal with sticky footer) */}
@@ -1489,19 +1424,26 @@ export default function StudentsPage() {
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold text-gray-700">Documents</h4>
                     <div className="flex items-center gap-2">
-                      <select id="viewDocType" className="px-2 py-1 border rounded text-sm">
-                        <option value="b_form">B-Form</option>
-                        <option value="birth_certificate">Birth Certificate</option>
-                        <option value="previous_result">Previous Result</option>
-                        <option value="other">Other</option>
-                      </select>
+                      <Dropdown
+                        id="viewDocType"
+                        name="viewDocType"
+                        value={undefined}
+                        onChange={() => { }}
+                        options={[
+                          { value: 'b_form', label: 'B-Form' },
+                          { value: 'birth_certificate', label: 'Birth Certificate' },
+                          { value: 'previous_result', label: 'Previous Result' },
+                          { value: 'other', label: 'Other' },
+                        ]}
+                        placeholder="Select"
+                      />
                       <input type="file" id="viewDocFile" className="text-sm" />
-                      <button type="button" className="px-3 py-1 bg-blue-600 text-white rounded text-sm" onClick={() => {
+                      <Button onClick={() => {
                         const fileInput = document.getElementById('viewDocFile');
                         const type = document.getElementById('viewDocType')?.value || 'other';
                         const file = fileInput?.files?.[0];
                         if (file) handleDocumentUpload(file, type);
-                      }}>Upload</button>
+                      }}>Upload</Button>
                     </div>
                   </div>
 
@@ -1526,7 +1468,8 @@ export default function StudentsPage() {
                           <button type="button" className="text-sm text-red-600" onClick={async () => {
                             if (!d.publicId) return;
                             try {
-                              const del = await apiClient.delete(`/api/upload?publicId=${encodeURIComponent(d.publicId)}&fileType=student_document&documentId=${d._id}`);
+                              const delUrl = `${API_ENDPOINTS.COMMON.UPLOAD}?publicId=${encodeURIComponent(d.publicId)}&fileType=student_document&documentId=${d._id}`;
+                              const del = await apiClient.delete(delUrl);
                               if (del && del.success) {
                                 toast.success('Document deleted');
                                 setSelectedStudent(prev => ({ ...prev, studentProfile: { ...prev.studentProfile, documents: prev.studentProfile.documents.filter(doc => doc.publicId !== d.publicId) } }));

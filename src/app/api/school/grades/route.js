@@ -1,7 +1,11 @@
+// ease-academy/src/app/api/school/grades/[id]/route.js
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import Grade from '@/backend/models/Grade';
 import { withAuth } from '@/backend/middleware/auth';
+import Branch from '@/backend/models/Branch';
+import Stream from '@/backend/models/Stream';
+import Subjects from '@/backend/models/Subject';
 
 export const GET = withAuth(async (request) => {
   try {

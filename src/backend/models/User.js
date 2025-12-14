@@ -183,6 +183,11 @@ const userSchema = new mongoose.Schema(
         email: { type: String, trim: true, lowercase: true },
         cnic: { type: String, trim: true },
       },
+      guardianType: {
+        type: String,
+        enum: ['parent', 'guardian'],
+        default: 'parent',
+      },
       
       // Fee Information
       feeDiscount: {
@@ -439,6 +444,13 @@ const userSchema = new mongoose.Schema(
           'view_reports',
           'manage_settings',
         ],
+      }],
+      documents: [{
+        type: { type: String, enum: ['cnic', 'id_card', 'cv', 'certificate', 'photo', 'other'] },
+        name: { type: String, trim: true },
+        url: { type: String },
+        publicId: { type: String },
+        uploadedAt: { type: Date, default: Date.now },
       }],
     },
     

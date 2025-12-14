@@ -133,6 +133,42 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
           data: uploadResult,
         });
 
+      case 'admin_document':
+        if (!documentType) {
+          return NextResp.json(
+            { success: false, message: 'Document type is required for admin documents' },
+            { status: 400 }
+          );
+        }
+        uploadResult = await uploadTeacherDocument(base64File, userId, documentType); // reuse teacher upload path
+
+        // Add to adminProfile.documents array
+        const adminUser = await User.findById(userId);
+        if (!adminUser || !['branch_admin', 'super_admin', 'admin'].includes(adminUser.role)) {
+          return NextResp.json(
+            { success: false, message: 'User is not an admin' },
+            { status: 400 }
+          );
+        }
+
+        adminUser.adminProfile = adminUser.adminProfile || {};
+        adminUser.adminProfile.documents = adminUser.adminProfile.documents || [];
+        adminUser.adminProfile.documents.push({
+          type: documentType,
+          name: file.name,
+          url: uploadResult.url,
+          publicId: uploadResult.publicId,
+          uploadedAt: new Date(),
+        });
+
+        await adminUser.save();
+
+        return NextResp.json({
+          success: true,
+          message: 'Admin document uploaded successfully',
+          data: uploadResult,
+        });
+
       case 'staff_document':
         if (!documentType) {
           return NextResp.json(

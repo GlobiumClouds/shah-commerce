@@ -9,6 +9,7 @@ import Input from '@/components/ui/input';
 import Dropdown from '@/components/ui/dropdown';
 import Modal from '@/components/ui/modal';
 import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import API_ENDPOINTS from '@/constants/api-endpoints';
 
 export default function DepartmentsPage() {
   const { user } = useAuth();
@@ -53,7 +54,8 @@ export default function DepartmentsPage() {
         ...(selectedBranch && { branchId: selectedBranch }),
       });
 
-      const response = await apiClient.get(`/api/super-admin/departments?${params}`);
+      // const response = await apiClient.get(`/api/super-admin/departments?${params}`);
+      const response = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.DEPARTMENTS.LIST}?${params}`);
 
       if (response?.success) {
         const depts = response.data || response.data?.departments || [];
@@ -73,7 +75,8 @@ export default function DepartmentsPage() {
 
   const fetchBranches = async () => {
     try {
-      const response = await apiClient.get('/api/super-admin/branches?limit=100');
+      // const response = await apiClient.get('/api/super-admin/branches?limit=100');
+      const response = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST}?limit=100`);
       if (response?.success) {
         const branchesData = response.data?.branches || response.data || [];
         setBranches(branchesData);
@@ -94,7 +97,8 @@ export default function DepartmentsPage() {
       const payload = { ...formData, code: formData.code.toUpperCase() };
 
       if (editingDept) {
-        const response = await apiClient.put(`/api/super-admin/departments/${editingDept._id}`, payload);
+        // const response = await apiClient.put(`/api/super-admin/departments/${editingDept._id}`, payload);
+        const response = await apiClient.put(`${API_ENDPOINTS.SUPER_ADMIN.DEPARTMENTS.DETAIL.replace('{id}', editingDept._id)}`, payload);
         if (response?.success) {
           toast.success('Department updated successfully');
           fetchDepartments();
@@ -103,7 +107,8 @@ export default function DepartmentsPage() {
           toast.error(response?.message || 'Failed to update department');
         }
       } else {
-        const response = await apiClient.post('/api/super-admin/departments', payload);
+        // const response = await apiClient.post('/api/super-admin/departments', payload);
+        const response = await apiClient.post(`${API_ENDPOINTS.SUPER_ADMIN.DEPARTMENTS.LIST}`, payload);
         if (response?.success) {
           toast.success('Department created successfully');
           fetchDepartments();
@@ -134,7 +139,8 @@ export default function DepartmentsPage() {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure?')) return;
     try {
-      const response = await apiClient.delete(`/api/super-admin/departments/${id}`);
+      // const response = await apiClient.delete(`/api/super-admin/departments/${id}`);
+      const response = await apiClient.delete(`${API_ENDPOINTS.SUPER_ADMIN.DEPARTMENTS.DETAIL.replace('{id}', id)}`);
       if (response.success) {
         toast.success('Department archived successfully');
         fetchDepartments();

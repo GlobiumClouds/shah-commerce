@@ -23,12 +23,12 @@ const syllabusSchema = new mongoose.Schema(
     classId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Class',
-      required: true,
+      required: false, // Optional - syllabus is grade-based, not class-specific
     },
     branchId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Branch',
-      required: true,
+      required: false, // Optional - syllabus is school-wide
     },
     
     // Academic Hierarchy (Level → Grade → Stream)

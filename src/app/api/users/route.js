@@ -5,7 +5,9 @@ import dbConnect from '@/lib/database';
 import bcrypt from 'bcryptjs';
 import { sendEmail } from '@/backend/utils/emailService';
 import { getAdminEmailTemplate } from '@/backend/templates/adminEmail';
-
+import Branch from '@/backend/models/Branch';
+import Department from '@/backend/models/Department';
+import Class from '@/backend/models/Class';
 /**
  * GET - List all users with role-based filtering
  * Query params: role, branchId, departmentId, classId, status, search, page, limit
@@ -109,6 +111,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
     const body = await request.json();
     const { role, password, ...userData } = body;
 
+
     // Validation
     if (!role) {
       return NextResponse.json(
@@ -163,7 +166,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
     }
 
     // Create user with hashed password
-    const defaultPassword = password || 'Password@123';
+    const defaultPassword = password;
     
     const newUser = new User({
       role,
@@ -174,6 +177,8 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       updatedBy: userDoc._id,
     });
 
+    console.log('New User', newUser);
+    
     await newUser.save();
 
     // Populate fields before returning
@@ -186,6 +191,9 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       { path: 'staffProfile.departmentId', select: 'name code' },
       { path: 'createdBy', select: 'fullName email' },
     ]);
+
+    console.log('Created User', newUser);
+    
 
     // Send welcome email for admin roles (non-blocking for the API response)
     try {

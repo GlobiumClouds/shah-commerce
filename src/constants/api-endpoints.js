@@ -104,8 +104,8 @@ export const API_ENDPOINTS = {
 
     // Students Management
     STUDENTS: {
-      CREATE: '/api/super-admin/students',
-      LIST: '/api/super-admin/students',
+      CREATE: '/api/super-admin/users/students',
+      LIST: '/api/super-admin/users/students',
       GET: '/api/super-admin/students/:id',
       UPDATE: '/api/super-admin/students/:id',
       DELETE: '/api/super-admin/students/:id',
@@ -127,6 +127,15 @@ export const API_ENDPOINTS = {
       GET: '/api/super-admin/subjects/:id',
       UPDATE: '/api/super-admin/subjects/:id',
       DELETE: '/api/super-admin/subjects/:id',
+    },
+
+    // Grades (alias to school endpoints)
+    GRADES: {
+      LIST: '/api/school/grades',
+      CREATE: '/api/school/grades',
+      GET: '/api/school/grades/:id',
+      UPDATE: '/api/school/grades/:id',
+      DELETE: '/api/school/grades/:id',
     },
 
     // Departments Management
@@ -193,50 +202,59 @@ export const API_ENDPOINTS = {
       GET: '/api/branch-admin/students/:id',
       UPDATE: '/api/branch-admin/students/:id',
       DELETE: '/api/branch-admin/students/:id',
-      ENROLL: '/branch-admin/students/enroll',
-      TRANSFER: '/branch-admin/students/:id/transfer',
-      PROMOTE: '/branch-admin/students/:id/promote',
-      BULK_UPLOAD: '/branch-admin/students/bulk-upload',
-      EXPORT: '/branch-admin/students/export',
+      ENROLL: '/api/branch-admin/students/enroll',
+      TRANSFER: '/api/branch-admin/students/:id/transfer',
+      PROMOTE: '/api/branch-admin/students/:id/promote',
+      BULK_UPLOAD: '/api/branch-admin/students/bulk-upload',
+      EXPORT: '/api/branch-admin/students/export',
     },
     
     // Classes Management
     CLASSES: {
-      CREATE: '/branch-admin/classes',
-      LIST: '/branch-admin/classes',
-      GET: '/branch-admin/classes/:id',
-      UPDATE: '/branch-admin/classes/:id',
-      DELETE: '/branch-admin/classes/:id',
-      ASSIGN_TEACHER: '/branch-admin/classes/:id/assign-teacher',
-      STUDENTS: '/branch-admin/classes/:id/students',
-      TIMETABLE: '/branch-admin/classes/:id/timetable',
+      CREATE: '/api/branch-admin/classes',
+      LIST: '/api/branch-admin/classes',
+      GET: '/api/branch-admin/classes/:id',
+      UPDATE: '/api/branch-admin/classes/:id',
+      DELETE: '/api/branch-admin/classes/:id',
+      ASSIGN_TEACHER: '/api/branch-admin/classes/:id/assign-teacher',
+      STUDENTS: '/api/branch-admin/classes/:id/students',
+      TIMETABLE: '/api/branch-admin/classes/:id/timetable',
+    },
+    
+    // Grades (alias to school endpoints)
+    GRADES: {
+      LIST: '/api/school/grades',
+      CREATE: '/api/school/grades',
+      GET: '/api/school/grades/:id',
+      UPDATE: '/api/school/grades/:id',
+      DELETE: '/api/school/grades/:id',
     },
     
     // Subjects Management
     SUBJECTS: {
-      CREATE: '/branch-admin/subjects',
-      LIST: '/branch-admin/subjects',
-      GET: '/branch-admin/subjects/:id',
-      UPDATE: '/branch-admin/subjects/:id',
-      DELETE: '/branch-admin/subjects/:id',
+      CREATE: '/api/branch-admin/subjects',
+      LIST: '/api/branch-admin/subjects',
+      GET: '/api/branch-admin/subjects/:id',
+      UPDATE: '/api/branch-admin/subjects/:id',
+      DELETE: '/api/branch-admin/subjects/:id',
     },
     
     // Reports
     REPORTS: {
-      ATTENDANCE: '/branch-admin/reports/attendance',
-      PERFORMANCE: '/branch-admin/reports/performance',
-      FINANCIAL: '/branch-admin/reports/financial',
-      TEACHER_PERFORMANCE: '/branch-admin/reports/teacher-performance',
-      EXPORT: '/branch-admin/reports/export',
+      ATTENDANCE: '/api/branch-admin/reports/attendance',
+      PERFORMANCE: '/api/branch-admin/reports/performance',
+      FINANCIAL: '/api/branch-admin/reports/financial',
+      TEACHER_PERFORMANCE: '/api/branch-admin/reports/teacher-performance',
+      EXPORT: '/api/branch-admin/reports/export',
     },
     
     // Finance
     FINANCE: {
-      FEES: '/branch-admin/finance/fees',
-      PAYMENTS: '/branch-admin/finance/payments',
-      INVOICES: '/branch-admin/finance/invoices',
-      EXPENSES: '/branch-admin/finance/expenses',
-      SUMMARY: '/branch-admin/finance/summary',
+      FEES: '/api/branch-admin/finance/fees',
+      PAYMENTS: '/api/branch-admin/finance/payments',
+      INVOICES: '/api/branch-admin/finance/invoices',
+      EXPENSES: '/api/branch-admin/finance/expenses',
+      SUMMARY: '/api/branch-admin/finance/summary',
     },
   },
 
@@ -440,6 +458,38 @@ export const API_ENDPOINTS = {
       STUDENTS: '/common/search/students',
       TEACHERS: '/common/search/teachers',
       CLASSES: '/common/search/classes',
+    },
+  },
+
+  // School endpoints (grades/levels/streams/grade-stream-subjects)
+  SCHOOL: {
+    GRADES: {
+      LIST: '/api/school/grades',
+      CREATE: '/api/school/grades',
+      GET: '/api/school/grades/:id',
+      UPDATE: '/api/school/grades/:id',
+      DELETE: '/api/school/grades/:id',
+    },
+    LEVELS: {
+      LIST: '/api/school/levels',
+      CREATE: '/api/school/levels',
+      GET: '/api/school/levels/:id',
+      UPDATE: '/api/school/levels/:id',
+      DELETE: '/api/school/levels/:id',
+    },
+    STREAMS: {
+      LIST: '/api/school/streams',
+      CREATE: '/api/school/streams',
+      GET: '/api/school/streams/:id',
+      UPDATE: '/api/school/streams/:id',
+      DELETE: '/api/school/streams/:id',
+    },
+    GRADE_STREAM_SUBJECTS: {
+      LIST: '/api/school/grade-stream-subjects',
+      CREATE: '/api/school/grade-stream-subjects',
+      GET: '/api/school/grade-stream-subjects/:id',
+      UPDATE: '/api/school/grade-stream-subjects/:id',
+      DELETE: '/api/school/grade-stream-subjects/:id',
     },
   },
 };

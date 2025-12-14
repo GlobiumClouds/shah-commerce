@@ -4,6 +4,11 @@ import User from '@/backend/models/User';
 import dbConnect from '@/lib/database';
 import { sendEmail } from '@/backend/utils/emailService';
 import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
+import bcrypt from 'bcryptjs';
+import { getAdminEmailTemplate } from '@/backend/templates/adminEmail';
+import Branch from '@/backend/models/Branch';
+import Department from '@/backend/models/Department';
+import Class from '@/backend/models/Class';
 
 /**
  * GET - Get single user by ID
@@ -107,6 +112,13 @@ export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
       );
     }
 
+    // Snapshot previous state for change detection
+    const prev = user.toObject ? user.toObject() : { isActive: user.isActive };
+
+    // Capture password from body (if provided) and remove from body to avoid merging raw password
+    const incomingPassword = body.password;
+    if (incomingPassword !== undefined) delete body.password;
+
     // Deep-merge incoming body into the existing user document so
     // partial/patch-style updates work correctly for nested objects.
     function deepMerge(target, source) {
@@ -128,6 +140,11 @@ export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
     }
 
     deepMerge(user, body);
+    // If a new password was provided, hash it and set passwordHash
+    if (incomingPassword) {
+      const salt = await bcrypt.genSalt(10);
+      user.passwordHash = await bcrypt.hash(incomingPassword, salt);
+    }
     user.updatedBy = userDoc._id;
     await user.save();
 
@@ -142,14 +159,55 @@ export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
       { path: 'updatedBy', select: 'fullName email' },
     ]);
 
-    // Send update email for students (non-blocking)
-    if (user.role === 'student' && user.email) {
-      try {
-        const emailHtml = getStudentEmailTemplate('STUDENT_UPDATED', user.toObject());
-        await sendEmail(user.email, '🔔 Your Student Profile Has Been Updated', emailHtml);
-      } catch (emailErr) {
-        console.error('Student update email failed (non-blocking):', emailErr);
+    // Send update emails (non-blocking)
+    try {
+      // Student update
+      if (user.role === 'student' && user.email) {
+        try {
+          const emailHtml = getStudentEmailTemplate('STUDENT_UPDATED', user.toObject());
+          await sendEmail(user.email, '🔔 Your Student Profile Has Been Updated', emailHtml);
+        } catch (emailErr) {
+          console.error('Student update email failed (non-blocking):', emailErr);
+        }
       }
+
+      // Admin: send update/status/password emails
+      const adminRoles = ['branch_admin', 'super_admin', 'admin'];
+      if (adminRoles.includes(user.role) && user.email) {
+        const schoolName = process.env.SCHOOL_NAME || 'Ease Academy';
+        const adminForEmail = user.toObject ? user.toObject() : user;
+        if (incomingPassword) adminForEmail.tempPassword = incomingPassword;
+
+        // ADMIN_UPDATED
+        try {
+          const htmlUpdate = getAdminEmailTemplate('ADMIN_UPDATED', adminForEmail, schoolName);
+          await sendEmail(user.email, `${schoolName} - Administrator Profile Updated`, htmlUpdate);
+        } catch (err) {
+          console.error('Failed to send admin updated email:', err);
+        }
+
+        // ADMIN_STATUS_CHANGED
+        if (prev.isActive !== undefined && prev.isActive !== user.isActive) {
+          try {
+            const htmlStatus = getAdminEmailTemplate('ADMIN_STATUS_CHANGED', adminForEmail, schoolName);
+            await sendEmail(user.email, `${schoolName} - Account Status Changed`, htmlStatus);
+          } catch (err) {
+            console.error('Failed to send admin status email:', err);
+          }
+        }
+
+        // ADMIN_PASSWORD_RESET
+        if (incomingPassword) {
+          try {
+            const htmlPw = getAdminEmailTemplate('ADMIN_PASSWORD_RESET', adminForEmail, schoolName);
+            await sendEmail(user.email, `${schoolName} - Password Reset`, htmlPw);
+          } catch (err) {
+            console.error('Failed to send admin password reset email:', err);
+          }
+        }
+      }
+    } catch (errAll) {
+      console.error('Email notifications failed (non-blocking):', errAll);
     }
 
     return NextResponse.json({

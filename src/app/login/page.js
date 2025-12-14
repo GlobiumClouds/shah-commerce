@@ -32,6 +32,9 @@ export default function LoginPage() {
         return;
       }
 
+      console.log('sending Response', email, 'password', password);
+      
+
       const result = await login(email, password);
 
       if (!result.success) {
@@ -49,7 +52,7 @@ export default function LoginPage() {
   // Test credentials
   const testAccounts = [
     { email: 'superadmin@easeacademy.com', password: 'SuperAdmin@123', role: 'Super Admin' },
-    { email: 'sajoodali486@gmail.com', password: '123456', role: 'Branch Admin' },
+    { email: 'hafizshoaib@gmail.com', password: '123456', role: 'Branch Admin' },
     { email: 'teacher@easeacademy.com', password: 'teacher123', role: 'Teacher' },
     { email: 'student@easeacademy.com', password: 'student123', role: 'Student' },
   ];

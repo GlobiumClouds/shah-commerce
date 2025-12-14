@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import Syllabus from '@/backend/models/Syllabus';
 import { withAuth } from '@/backend/middleware/auth';
+import Subject from '@/backend/models/Subject';
+import Class from '@/backend/models/Class';
+import Branch from '@/backend/models/Branch';
+import Level from '@/backend/models/Level';
+import Grade from '@/backend/models/Grade';
+import Stream from '@/backend/models/Stream';
 
 // GET - Get single syllabus
 export const GET = withAuth(async (request, authenticatedUser, userDoc) => {

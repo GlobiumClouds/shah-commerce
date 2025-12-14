@@ -1,7 +1,13 @@
+// ease-academy/src/app/api/super-admin/subjects/[id]/route.js
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import Subject from '@/backend/models/Subject';
 import { withAuth } from '@/backend/middleware/auth';
+import Subjects from '@/backend/models/Subject';
+import Class from '@/backend/models/Class';
+import Department from '@/backend/models/Department';
+import Grade from '@/backend/models/Grade';
+import Branch from '@/backend/models/Branch';
 
 // GET - Get single subject
 export const GET = withAuth(async (request, authenticatedUser, userDoc) => {

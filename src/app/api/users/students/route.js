@@ -7,6 +7,10 @@ import { uploadToCloudinary } from '@/lib/cloudinary';
 import Counter from '@/backend/models/Counter';
 import { sendEmail } from '@/backend/utils/emailService';
 import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
+import Branch from '@/backend/models/Branch';
+import Department from '@/backend/models/Department';
+import Class from '@/backend/models/Class';
+import bcrypt from 'bcryptjs';
 
 // POST - Create a new student, generate roll number (if missing), create QR and upload to Cloudinary
 export const POST = withAuth(async (request, authenticatedUser, userDoc) => {

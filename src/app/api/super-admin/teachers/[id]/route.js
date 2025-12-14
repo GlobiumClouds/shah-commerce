@@ -6,6 +6,9 @@ import { generateTeacherQR } from '@/lib/qr-generator';
 import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 import { sendEmail } from '@/backend/utils/emailService';
 import { getTeacherEmailTemplate } from '@/backend/templates/teacherEmail';
+import Branch from '@/backend/models/Branch';
+import Department from '@/backend/models/Department';
+import Class from '@/backend/models/Class';
 
 // GET - Get single teacher
 export const GET = withAuth(async (request, authenticatedUser, userDoc) => {

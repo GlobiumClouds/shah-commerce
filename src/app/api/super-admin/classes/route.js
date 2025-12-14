@@ -1,9 +1,12 @@
+// ease-academy/src/app/api/super-admin/classes/route.js
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/database';
 import Class from '@/backend/models/Class';
 import Student from '@/backend/models/Student';
 import Subject from '@/backend/models/Subject';
 import { withAuth } from '@/backend/middleware/auth';
+import Branch from '@/backend/models/Branch';
+import Grade from '@/backend/models/Grade';
 
 // GET - List all classes
 async function getClasses(request, authenticatedUser) {
@@ -34,13 +37,14 @@ async function getClasses(request, authenticatedUser) {
     const total = await Class.countDocuments(query);
 
     // Get classes with pagination
-    const classes = await Class.find(query)
-      .populate('branchId', 'name code city')
-      .populate('subjects', 'name code')
-      .populate('sections.classTeacherId', 'name email')
-      .sort({ grade: 1, name: 1 })
-      .limit(limit)
-      .skip((page - 1) * limit);
+      const classes = await Class.find(query)
+        .populate('branchId', 'name code city')
+        .populate('grade', 'name gradeNumber')
+        .populate('subjects', 'name code')
+        .populate('sections.classTeacherId', 'name email')
+        .sort({ grade: 1, name: 1 })
+        .limit(limit)
+        .skip((page - 1) * limit);
 
     // Get student count for each class
     const classesWithStats = await Promise.all(
@@ -116,6 +120,7 @@ async function createClass(request, authenticatedUser, userDoc) {
 
     const populatedClass = await Class.findById(classDoc._id)
       .populate('branchId', 'name code city')
+      .populate('grade', 'name gradeNumber')
       .populate('sections.classTeacherId', 'name email');
 
     return NextResponse.json({

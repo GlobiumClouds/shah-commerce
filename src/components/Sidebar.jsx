@@ -54,19 +54,19 @@ const ROLE_MENUS = {
       ],
     },
     {
-      category: 'Academic',
-      items: [
-        { name: 'Departments', path: '/super-admin/academic/departments', icon: Briefcase },
-        { name: 'Classes', path: '/super-admin/academic/classes', icon: School },
-        { name: 'Levels', path: '/super-admin/academic/levels', icon: GraduationCap },
-        { name: 'Subjects', path: '/super-admin/academic/subjects', icon: BookOpen },
-        { name: 'Syllabus', path: '/super-admin/academic/syllabus', icon: FileText },
-      ],
-    },
-    {
       category: 'User Management',
       items: [
         { name: 'Administrators', path: '/super-admin/user-management/administrators', icon: UserCog },
+      ],
+    },
+    {
+      category: 'Academic',
+      items: [
+        { name: 'Departments', path: '/super-admin/academic/departments', icon: Briefcase },
+        { name: 'Levels', path: '/super-admin/academic/levels', icon: GraduationCap },
+        { name: 'Classes', path: '/super-admin/academic/classes', icon: School },
+        { name: 'Subjects', path: '/super-admin/academic/subjects', icon: BookOpen },
+        { name: 'Syllabus', path: '/super-admin/academic/syllabus', icon: FileText },
       ],
     },
     {

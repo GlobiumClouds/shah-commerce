@@ -58,7 +58,7 @@ export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
     const userId = pathSegments[pathSegments.length - 1];
     
     const body = await request.json();
-    const { fullName, email, phone, password, role, branchId, permissions, isActive } = body;
+    const { fullName, firstName, lastName, email, phone, password, role, branchId, permissions, isActive, dateOfBirth, gender, nationality, cnic, religion, bloodGroup, address } = body;
 
     const user = await User.findById(userId);
     if (!user) {
@@ -75,9 +75,18 @@ export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
     const prev = user.toObject ? user.toObject() : { isActive: user.isActive };
 
     // Update fields
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
     if (fullName) user.fullName = fullName;
     if (email) user.email = email.toLowerCase();
     if (phone !== undefined) user.phone = phone;
+    if (dateOfBirth !== undefined) user.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : undefined;
+    if (gender !== undefined) user.gender = gender;
+    if (nationality !== undefined) user.nationality = nationality;
+    if (cnic !== undefined) user.cnic = cnic;
+    if (religion !== undefined) user.religion = religion;
+    if (bloodGroup !== undefined) user.bloodGroup = bloodGroup;
+    if (address !== undefined) user.address = address;
     if (role) user.role = role;
     if (branchId !== undefined) user.branchId = role === 'super_admin' ? null : branchId;
     if (permissions !== undefined) user.permissions = permissions;

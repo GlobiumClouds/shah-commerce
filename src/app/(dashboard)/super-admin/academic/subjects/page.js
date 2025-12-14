@@ -20,6 +20,7 @@ import Dropdown from '@/components/ui/dropdown';
 import Modal from '@/components/ui/modal';
 import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+import API_ENDPOINTS from '@/constants/api-endpoints';
 
 export default function SubjectsPage() {
   const { user } = useAuth();
@@ -32,7 +33,7 @@ export default function SubjectsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingSubject, setEditingSubject] = useState(null);
-  
+
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
@@ -127,7 +128,8 @@ export default function SubjectsPage() {
         ...(selectedStream && { streamId: selectedStream }),
       });
 
-      const response = await apiClient.get(`/api/super-admin/subjects?${params}`);
+      // const response = await apiClient.get(`/api/super-admin/subjects?${params}`);
+      const response = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.SUBJECTS.LIST}?limit=200`);
       // Normalize response (backend may return { success, data } or { success, data: [...] })
       if (response?.success) {
         const list = response.data || response.data?.subjects || [];
@@ -158,7 +160,8 @@ export default function SubjectsPage() {
   const fetchClasses = async () => {
     try {
       const params = new URLSearchParams({ limit: '200' });
-      const response = await apiClient.get(`/api/super-admin/classes?${params}`);
+      // const response = await apiClient.get(`/api/super-admin/classes?${params}`);
+      const response = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST}?${params}`);
       if (response?.success) {
         const list = response.data || response.data?.classes || [];
         setClasses(list);
@@ -171,7 +174,9 @@ export default function SubjectsPage() {
   const fetchDepartments = async () => {
     try {
       const params = new URLSearchParams({ limit: '200' });
-      const response = await apiClient.get(`/api/super-admin/departments?${params}`);
+      // const response = await apiClient.get(`/api/super-admin/departments?${params}`);
+      const response = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.DEPARTMENTS.LIST}?${params}`);
+
       if (response?.success) {
         const list = response.data || response.data?.departments || [];
         setDepartments(list);
@@ -183,7 +188,8 @@ export default function SubjectsPage() {
 
   const fetchLevels = async () => {
     try {
-      const res = await apiClient.get('/api/school/levels');
+      // const res = await apiClient.get('/api/school/levels');
+      const res = await apiClient.get(`${API_ENDPOINTS.SCHOOL.LEVELS.LIST}?limit=200`);
       if (res?.success) setLevels(res.data || res.data?.levels || []);
     } catch (err) {
       console.error('Failed to fetch levels', err);
@@ -193,7 +199,8 @@ export default function SubjectsPage() {
   const fetchGrades = async (levelId) => {
     try {
       const params = new URLSearchParams({ ...(levelId && { levelId }) });
-      const res = await apiClient.get(`/api/school/grades?${params}`);
+      // const res = await apiClient.get(`/api/school/grades?${params}`);
+      const res = await apiClient.get(`${API_ENDPOINTS.SCHOOL.GRADES.LIST}?${params}`);
       if (res?.success) setGrades(res.data || res.data?.grades || []);
     } catch (err) {
       console.error('Failed to fetch grades', err);
@@ -202,7 +209,8 @@ export default function SubjectsPage() {
 
   const fetchStreams = async () => {
     try {
-      const res = await apiClient.get('/api/school/streams');
+      // const res = await apiClient.get('/api/school/streams');
+      const res = await apiClient.get(`${API_ENDPOINTS.SCHOOL.STREAMS.LIST}?limit=200`);
       if (res?.success) setStreams(res.data || res.data?.streams || []);
     } catch (err) {
       console.error('Failed to fetch streams', err);
@@ -211,7 +219,7 @@ export default function SubjectsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
       // Basic validation
       if (!formData.name || !formData.classId) {
@@ -237,9 +245,11 @@ export default function SubjectsPage() {
 
       let response;
       if (editingSubject) {
-        response = await apiClient.put(`/api/super-admin/subjects/${editingSubject._id}`, payload);
+        // response = await apiClient.put(`/api/super-admin/subjects/${editingSubject._id}`, payload);
+        response = await apiClient.put(`${API_ENDPOINTS.SUPER_ADMIN.SUBJECTS.UPDATE.replace(':id', editingSubject._id)}`, payload);
       } else {
-        response = await apiClient.post('/api/super-admin/subjects', payload);
+        // response = await apiClient.post('/api/super-admin/subjects', payload);
+        response = await apiClient.post(API_ENDPOINTS.SUPER_ADMIN.SUBJECTS.CREATE, payload);
       }
 
       if (response?.success) {
@@ -276,10 +286,10 @@ export default function SubjectsPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to archive this subject?')) return;
-    
+
     try {
-      const response = await apiClient.delete(`/api/super-admin/subjects/${id}`);
-      
+      const response = await apiClient.delete(`${API_ENDPOINTS.SUPER_ADMIN.SUBJECTS.DELETE.replace(':id', id)}`);
+
       if (response.success) {
         toast.success('Subject archived successfully');
         fetchSubjects();
@@ -437,7 +447,7 @@ export default function SubjectsPage() {
               name="class"
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              options={[{ label: 'All Classes', value: '' }, ...classes.map(c => ({ label: `${c.name} - Grade ${c.grade}`, value: c._id }))]}
+              options={[{ label: 'All Classes', value: '' }, ...classes.map(c => ({ label: `${c.name} - Grade ${c.grade?.name}`, value: c._id }))]}
               placeholder="All Classes"
             />
           </div>
@@ -467,7 +477,7 @@ export default function SubjectsPage() {
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade/Class</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours/Week</TableHead>
-                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</TableHead>
+                {/* <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</TableHead> */}
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</TableHead>
               </TableRow>
@@ -488,13 +498,12 @@ export default function SubjectsPage() {
                   </TableCell>
 
                   <TableCell className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      subject.subjectType === 'core'
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${subject.subjectType === 'core'
                         ? 'bg-purple-100 text-purple-800'
                         : subject.subjectType === 'elective'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
                       {subject.subjectType.charAt(0).toUpperCase() + subject.subjectType.slice(1)}
                     </span>
                   </TableCell>
@@ -506,7 +515,7 @@ export default function SubjectsPage() {
                     </div>
                   </TableCell>
 
-                  <TableCell className="px-6 py-4 whitespace-nowrap">
+                  {/* <TableCell className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <div className="w-44">
                         <Dropdown
@@ -520,14 +529,13 @@ export default function SubjectsPage() {
                       </div>
                       <div className="text-sm text-gray-700">{sectionCount[subject._id] ?? 0} students</div>
                     </div>
-                  </TableCell>
+                  </TableCell> */}
 
                   <TableCell className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      subject.status === 'active'
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${subject.status === 'active'
                         ? 'bg-green-100 text-green-800'
                         : 'bg-gray-100 text-gray-800'
-                    }`}>
+                      }`}>
                       {subject.status.charAt(0).toUpperCase() + subject.status.slice(1)}
                     </span>
                   </TableCell>

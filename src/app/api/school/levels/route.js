@@ -1,7 +1,14 @@
+// ease-academy/src/app/api/school/levels/[id]/route.js
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import Level from '@/backend/models/Level';
 import { withAuth } from '@/backend/middleware/auth';
+import Branch from '@/backend/models/Branch';
+
+function extractIdFromUrl(url) {
+  const parts = url.split('/');
+  return parts[parts.length - 1].split('?')[0];
+}
 
 export const GET = withAuth(async (request) => {
   try {

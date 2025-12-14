@@ -31,6 +31,16 @@ import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Button } from '@/components/ui/button';
 import Input from '@/components/ui/input';
 import Dropdown from '@/components/ui/dropdown';
+import BranchSelect from '@/components/ui/branch-select';
+import ClassSelect from '@/components/ui/class-select';
+import GenderSelect from '@/components/ui/gender-select';
+import BloodGroupSelect from '@/components/ui/blood-group';
+import SubjectSelect from '@/components/ui/subject-select';
+import DesignationSelect from '@/components/ui/designation-select';
+import DepartmentSelect from '@/components/ui/department-select';
+import DocumentTypeSelect from '@/components/ui/document-type-select';
+import FullPageLoader from '@/components/ui/full-page-loader';
+import ButtonLoader from '@/components/ui/button-loader';
 import { Card, CardContent } from '@/components/ui/card';
 
 export default function TeachersPage() {
@@ -52,6 +62,11 @@ export default function TeachersPage() {
   const [selectedDocType, setSelectedDocType] = useState('');
   const [filteredSubjects, setFilteredSubjects] = useState([]);
   const formRef = useRef(null);
+  const [buttonLoading, setButtonLoading] = useState({});
+  const [fullPageLoading, setFullPageLoading] = useState(false);
+
+  const setButtonLoadingState = (key, val) => setButtonLoading(prev => ({ ...prev, [key]: val }));
+  const isButtonLoading = (key) => !!buttonLoading[key];
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -242,7 +257,9 @@ export default function TeachersPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setButtonLoadingState('submitTeacher', true);
+    setFullPageLoading(true);
+
     try {
       if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.dateOfBirth || !formData.branchId) {
         toast.error('Please fill all required fields');
@@ -274,6 +291,9 @@ export default function TeachersPage() {
     } catch (error) {
       toast.error(error.message || 'Failed to save teacher');
       console.error(error);
+    } finally {
+      setButtonLoadingState('submitTeacher', false);
+      setFullPageLoading(false);
     }
   };
 
@@ -325,10 +345,12 @@ export default function TeachersPage() {
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to deactivate this teacher?')) return;
-    
+    setButtonLoadingState('deleteTeacher', true);
+    setFullPageLoading(true);
+
     try {
       const response = await apiClient.delete(API_ENDPOINTS.SUPER_ADMIN.TEACHERS.DELETE.replace(':id', id));
-      
+
       if (response.success) {
         toast.success('Teacher deactivated successfully');
         fetchTeachers();
@@ -336,6 +358,9 @@ export default function TeachersPage() {
     } catch (error) {
       toast.error(error.message || 'Failed to delete teacher');
       console.error(error);
+    } finally {
+      setButtonLoadingState('deleteTeacher', false);
+      setFullPageLoading(false);
     }
   };
 
@@ -634,6 +659,7 @@ export default function TeachersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+    {fullPageLoading && <FullPageLoader message={editingTeacher ? 'Saving changes...' : 'Processing...'} />}
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
@@ -715,24 +741,24 @@ export default function TeachersPage() {
           </div>
 
           <div className="w-full lg:w-48">
-            <Dropdown
+            <BranchSelect
               id="branch-filter"
               name="branch"
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
-              options={[{ label: 'All Branches', value: '' }, ...branches.map(b => ({ label: b.name, value: b._id }))]}
+              branches={branches}
               placeholder="All Branches"
             />
           </div>
 
           <div className="w-full lg:w-48">
-            <Dropdown
+            <DesignationSelect
               id="designation-filter"
               name="designation"
               value={selectedDesignation}
               onChange={(e) => setSelectedDesignation(e.target.value)}
               options={[
-                { label: 'All Designations', value: '' },
+                // { label: 'All Designations', value: '' },
                 { label: 'Principal', value: 'Principal' },
                 { label: 'Vice Principal', value: 'Vice Principal' },
                 { label: 'Head Teacher', value: 'Head Teacher' },
@@ -764,6 +790,7 @@ export default function TeachersPage() {
             Add Teacher
           </Button>
         </div>
+        
       </div>
 
       {/* Teachers Table */}
@@ -785,7 +812,7 @@ export default function TeachersPage() {
                   <TableHead className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Branch</TableHead>
                   <TableHead className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Designation</TableHead>
                   <TableHead className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Classes</TableHead>
-                  <TableHead className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">QR Code</TableHead>
+                  {/* <TableHead className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">QR Code</TableHead> */}
                   <TableHead className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Status</TableHead>
                   <TableHead className="px-6 py-3 text-xs font-medium text-gray-500 uppercase">Actions</TableHead>
                 </TableRow>
@@ -837,7 +864,7 @@ export default function TeachersPage() {
                       </div>
                     </TableCell>
 
-                    <TableCell className="px-6 py-4">
+                    {/* <TableCell className="px-6 py-4">
                       {teacher.teacherProfile?.qr?.url ? (
                         <Button
                           variant="ghost"
@@ -851,7 +878,7 @@ export default function TeachersPage() {
                       ) : (
                         <span className="text-xs text-gray-400">No QR</span>
                       )}
-                    </TableCell>
+                    </TableCell> */}
 
                     <TableCell className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -897,15 +924,16 @@ export default function TeachersPage() {
         size="xl"
         footer={(
           <div className="flex justify-end gap-3">
-            <Button type="button" onClick={handleCloseModal} variant="outline">
+            <Button type="button" onClick={handleCloseModal} variant="outline" disabled={isButtonLoading('submitTeacher') || fullPageLoading}>
               Cancel
             </Button>
             <Button
               type="button"
               onClick={() => formRef.current && (formRef.current.requestSubmit ? formRef.current.requestSubmit() : formRef.current.submit())}
               variant="default"
+              disabled={isButtonLoading('submitTeacher')}
             >
-              {editingTeacher ? 'Update Teacher' : 'Add Teacher'}
+              {isButtonLoading('submitTeacher') ? <ButtonLoader size={4} /> : (editingTeacher ? 'Update Teacher' : 'Add Teacher')}
             </Button>
           </div>
         )}
@@ -1006,37 +1034,23 @@ export default function TeachersPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
-                  <Dropdown
+                  <GenderSelect
                     id="gender"
                     name="gender"
                     value={formData.gender}
                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    options={[
-                      { label: 'Male', value: 'male' },
-                      { label: 'Female', value: 'female' },
-                      { label: 'Other', value: 'other' },
-                    ]}
+                    placeholder="Select Gender"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
-                  <Dropdown
+                  <BloodGroupSelect
                     id="bloodGroup"
                     name="bloodGroup"
                     value={formData.bloodGroup}
                     onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                    options={[
-                      { label: 'Select Blood Group', value: '' },
-                      { label: 'A+', value: 'A+' },
-                      { label: 'A-', value: 'A-' },
-                      { label: 'B+', value: 'B+' },
-                      { label: 'B-', value: 'B-' },
-                      { label: 'AB+', value: 'AB+' },
-                      { label: 'AB-', value: 'AB-' },
-                      { label: 'O+', value: 'O+' },
-                      { label: 'O-', value: 'O-' },
-                    ]}
+                    placeholder="Select Blood Group"
                   />
                 </div>
 
@@ -1073,15 +1087,13 @@ export default function TeachersPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Branch *</label>
-                  <Dropdown
+                  <BranchSelect
                     id="branchId"
                     name="branchId"
                     value={formData.branchId}
                     onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
-                    options={[
-                      { label: 'Select Branch', value: '' },
-                      ...branches.map(b => ({ label: b.name, value: b._id }))
-                    ]}
+                    branches={branches}
+                    placeholder="Select Branch"
                   />
                 </div>
 
@@ -1205,7 +1217,7 @@ export default function TeachersPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-                  <Dropdown
+                  <DesignationSelect
                     id="designation"
                     name="designation"
                     value={formData.teacherProfile.designation}
@@ -1227,7 +1239,7 @@ export default function TeachersPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Department (Optional)</label>
-                  <Dropdown
+                  <DepartmentSelect
                     id="departmentId"
                     name="departmentId"
                     value={formData.teacherProfile.departmentId}
@@ -1235,10 +1247,8 @@ export default function TeachersPage() {
                       ...formData,
                       teacherProfile: { ...formData.teacherProfile, departmentId: e.target.value }
                     })}
-                    options={[
-                      { label: 'No Department', value: '' },
-                      ...departments.map(d => ({ label: d.name, value: d._id }))
-                    ]}
+                    departments={departments}
+                    placeholder="No Department"
                   />
                 </div>
               </div>
@@ -1285,29 +1295,23 @@ export default function TeachersPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Class Assignments</label>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <Dropdown
+                    <ClassSelect
                       id="newClassId"
                       name="newClassId"
                       value={newClassAssignment.classId}
                       onChange={(e) => handleClassSelection(e.target.value)}
-                      options={[
-                        { label: 'Select Class', value: '' },
-                        ...classes.map(c => ({ label: `${c.name} - Grade ${c.grade}`, value: c._id }))
-                      ]}
+                      classes={classes}
+                      placeholder="Select Class"
                     />
 
-                    <Dropdown
+                    <SubjectSelect
                       id="newSubjectId"
                       name="newSubjectId"
                       value={newClassAssignment.subjectId}
                       onChange={(e) => setNewClassAssignment({ ...newClassAssignment, subjectId: e.target.value })}
-                      options={[
-                        { label: 'Select Subject', value: '' },
-                        ...(filteredSubjects.length > 0
-                          ? filteredSubjects.map(s => ({ label: s.name, value: s._id }))
-                          : subjects.filter(s => formData.teacherProfile.subjects.includes(s._id))
-                              .map(s => ({ label: s.name, value: s._id })))
-                      ]}
+                      subjects={(filteredSubjects.length > 0
+                        ? filteredSubjects
+                        : subjects.filter(s => formData.teacherProfile.subjects.includes(s._id)))}
                       disabled={!newClassAssignment.classId}
                     />
 
@@ -1592,7 +1596,7 @@ export default function TeachersPage() {
                     {/* Document Type Dropdown */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Document Type</label>
-                      <Dropdown
+                      <DocumentTypeSelect
                         id="documentType"
                         name="documentType"
                         value={selectedDocType}

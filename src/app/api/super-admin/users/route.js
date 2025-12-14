@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import User from '@/backend/models/User';
 import dbConnect from '@/lib/database';
-import bcrypt from 'bcryptjs';
 
 // GET - List users with filters
 export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
@@ -85,9 +84,9 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
   try {
     await dbConnect();
     const body = await request.json();
-    const { fullName, email, phone, password, role, branchId, permissions, isActive } = body;
+    const { fullName, firstName, lastName, email, phone, password, role, branchId, permissions, isActive, dateOfBirth, gender, nationality, cnic, religion, bloodGroup, address } = body;
 
-    console.log('Creating user with data:', { fullName, email, role, branchId, isActive });
+    console.log('Creating user with data:', { fullName, email, role, branchId, isActive , password});
 
     // Validation
     if (!fullName || !email || !password || !role) {
@@ -112,16 +111,22 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       );
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
-
-    // Create user
+    // Create user - password will be hashed by pre-save hook
+    const computedFullName = fullName || `${firstName || ''} ${lastName || ''}`.trim();
     const user = await User.create({
-      fullName,
+      fullName: computedFullName,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
       email: email.toLowerCase(),
       phone,
-      passwordHash,
+      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      gender: gender || undefined,
+      nationality: nationality || undefined,
+      cnic: cnic || undefined,
+      religion: religion || undefined,
+      bloodGroup: bloodGroup || undefined,
+      address: address || undefined,
+      passwordHash: password, // Will be hashed by pre-save hook
       role,
       branchId: role === 'super_admin' ? null : branchId,
       permissions: permissions || [],

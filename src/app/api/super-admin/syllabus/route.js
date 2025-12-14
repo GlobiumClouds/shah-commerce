@@ -1,7 +1,14 @@
+// ease-academy/src/app/api/super-admin/syllabus/route.js
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import Syllabus from '@/backend/models/Syllabus';
 import { withAuth } from '@/backend/middleware/auth';
+import Subject from '@/backend/models/Subject';
+import Class from '@/backend/models/Class';
+import Branch from '@/backend/models/Branch';
+import Level from '@/backend/models/Level';
+import Grade from '@/backend/models/Grade';
+import Stream from '@/backend/models/Stream';
 
 // GET - List all syllabus with filters
 export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
@@ -90,7 +97,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
     const body = await request.json();
     
     // Validate required fields
-    const requiredFields = ['title', 'subjectId', 'classId', 'branchId', 'academicYear'];
+    const requiredFields = ['title', 'subjectId', 'academicYear', 'gradeId'];
     
     const missingFields = requiredFields.filter(field => !body[field]);
     
@@ -118,32 +125,36 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       );
     }
     
-    // Verify class exists
-    const Class = (await import('@/backend/models/Class')).default;
-    const classExists = await Class.findById(body.classId);
-    
-    if (!classExists) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Class not found',
-        },
-        { status: 404 }
-      );
+    // Verify class exists (if provided)
+    if (body.classId) {
+      const Class = (await import('@/backend/models/Class')).default;
+      const classExists = await Class.findById(body.classId);
+      
+      if (!classExists) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Class not found',
+          },
+          { status: 404 }
+        );
+      }
     }
     
-    // Verify branch exists
-    const Branch = (await import('@/backend/models/Branch')).default;
-    const branchExists = await Branch.findById(body.branchId);
-    
-    if (!branchExists) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Branch not found',
-        },
-        { status: 404 }
-      );
+    // Verify branch exists (if provided)
+    if (body.branchId) {
+      const Branch = (await import('@/backend/models/Branch')).default;
+      const branchExists = await Branch.findById(body.branchId);
+      
+      if (!branchExists) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'Branch not found',
+          },
+          { status: 404 }
+        );
+      }
     }
     
     // Verify Level/Grade/Stream if provided

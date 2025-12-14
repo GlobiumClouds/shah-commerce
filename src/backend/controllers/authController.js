@@ -3,7 +3,7 @@ import User from '@/backend/models/User';
 import connectDB from '@/lib/database';
 import { generateAccessToken, generateRefreshToken, verifyToken } from '@/backend/middleware/auth';
 import { setCache, getCache, deleteCache } from '@/lib/redis';
-
+import Branch from '@/backend/models/Branch';
 /**
  * Register new user
  */
@@ -53,8 +53,10 @@ export async function loginUser(email, password) {
   try {
     await connectDB();
     
-    // Find user with password field
-    const user = await User.findOne({ email }).select('+passwordHash');
+    // Find user with password field and populate branch
+    const user = await User.findOne({ email })
+      .select('+passwordHash')
+      .populate('branchId', 'name code address contact');
     
     if (!user) {
       throw new Error('Invalid email or password');
@@ -88,13 +90,20 @@ export async function loginUser(email, password) {
     user.lastLogin = new Date();
     await user.save();
     
+    // Prepare user data with branch info
+    const userData = user.toJSON();
+    if (user.branchId) {
+      userData.branchName = user.branchId.name;
+      userData.branchCode = user.branchId.code;
+    }
+    
     // Cache user data
-    await setCache(`user:${user._id}`, user.toJSON(), 3600);
+    await setCache(`user:${user._id}`, userData, 3600);
     
     return {
       success: true,
       data: {
-        user: user.toJSON(),
+        user: userData,
         accessToken,
         refreshToken,
       },

@@ -1,7 +1,12 @@
+// ease-academy/src/app/api/super-admin/subjects/route.js
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import Subject from '@/backend/models/Subject';
 import { withAuth } from '@/backend/middleware/auth';
+import Class from '@/backend/models/Class';
+import Department from '@/backend/models/Department';
+import Grade from '@/backend/models/Grade';
+import Branch from '@/backend/models/Branch';
 
 // GET - List all subjects with filters
 export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
@@ -37,8 +42,8 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
       Subject.find(query)
         .populate('classId', 'name code grade')
         .populate('departmentId', 'name code')
-        .populate('headTeacherId', 'firstName lastName employeeId')
-        .populate('teachers', 'firstName lastName employeeId')
+        // .populate('headTeacherId', 'firstName lastName employeeId')
+        // .populate('teachers', 'firstName lastName employeeId')
         .sort({ grade: 1, name: 1 })
         .skip(skip)
         .limit(limit)
@@ -132,7 +137,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
     await subject.populate([
       { path: 'classId', select: 'name code grade' },
       { path: 'departmentId', select: 'name code' },
-      { path: 'headTeacherId', select: 'firstName lastName employeeId' },
+      // { path: 'headTeacherId', select: 'firstName lastName employeeId' },
       { path: 'createdBy', select: 'fullName email' },
     ]);
 

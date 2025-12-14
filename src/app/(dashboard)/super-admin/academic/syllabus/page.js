@@ -4,12 +4,19 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { toast } from 'sonner';
-import { FileText, Plus, Search, Edit, Trash2, X } from 'lucide-react';
+import { FileText, Plus, Search, Edit, Trash2, X, Eye, BookOpen, Calendar, User, CheckCircle } from 'lucide-react';
 import Input from '@/components/ui/input';
 import Dropdown from '@/components/ui/dropdown';
 import Modal from '@/components/ui/modal';
 import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
+import BranchSelect from '@/components/ui/branch-select';
+import ClassSelect from '@/components/ui/class-select';
+import LevelSelect from '@/components/ui/level-select';
+import GradeSelect from '@/components/ui/grade-select';
+import StreamSelect from '@/components/ui/stream-select';
+import GradeStreamSubjectSelect from '@/components/ui/grade-stream-subject-select';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
 
 export default function SyllabusPage() {
   const { user } = useAuth();
@@ -22,15 +29,19 @@ export default function SyllabusPage() {
   const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingSyllabus, setViewingSyllabus] = useState(null);
   const [editingSyllabus, setEditingSyllabus] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState('');
+  const [filteredSubjects, setFilteredSubjects] = useState([]);
 
+  const currentYear = new Date().getFullYear();
   const [formData, setFormData] = useState({
     title: '',
-    academicYear: new Date().getFullYear().toString(),
+    academicYear: `${currentYear}-${currentYear + 1}`,
     subjectId: '',
     classId: '',
     branchId: '',
@@ -61,14 +72,37 @@ export default function SyllabusPage() {
 
   useEffect(() => {
     fetchSyllabus();
-    // top-level lists
     fetchSubjects();
     fetchClasses();
     fetchBranches();
     fetchLevels();
-    fetchGrades();
     fetchStreams();
   }, [searchTerm, selectedSubject, selectedBranch, selectedClassFilter]);
+
+  // Load filtered subjects when grade/stream changes in form
+  useEffect(() => {
+    if (formData.gradeId) {
+      loadFilteredSubjects(formData.gradeId, formData.streamId);
+    } else {
+      setFilteredSubjects([]);
+    }
+  }, [formData.gradeId, formData.streamId]);
+
+  const loadFilteredSubjects = async (gradeId, streamId) => {
+    try {
+      const params = new URLSearchParams();
+      if (gradeId) params.append('gradeId', gradeId);
+      if (streamId) params.append('streamId', streamId);
+      
+      const res = await apiClient.get(`${API_ENDPOINTS.SCHOOL.GRADE_STREAM_SUBJECTS.LIST}?${params}`);
+      if (res?.success) {
+        const subjects = (res.data || []).map(item => item.subjectId).filter(Boolean);
+        setFilteredSubjects(subjects);
+      }
+    } catch (err) {
+      console.error('Failed to load filtered subjects:', err);
+    }
+  };
 
   const fetchSyllabus = async () => {
     try {
@@ -243,12 +277,18 @@ export default function SyllabusPage() {
     }
   };
 
+  const handleView = (syl) => {
+    setViewingSyllabus(syl);
+    setShowViewModal(true);
+  };
+
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingSyllabus(null);
+    const currentYear = new Date().getFullYear();
     setFormData({
       title: '',
-      academicYear: new Date().getFullYear().toString(),
+      academicYear: `${currentYear}-${currentYear + 1}`,
       subjectId: '',
       classId: '',
       branchId: '',
@@ -269,6 +309,7 @@ export default function SyllabusPage() {
         practical: 0,
       },
     });
+    setFilteredSubjects([]);
     setNewObjective('');
     setNewOutcome('');
     setNewMethod('');
@@ -329,7 +370,8 @@ export default function SyllabusPage() {
               <TableRow>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</TableHead>
-                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stream</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</TableHead>
@@ -340,8 +382,9 @@ export default function SyllabusPage() {
               {syllabus.map((syl) => (
                 <TableRow key={syl._id} className="hover:bg-gray-50">
                   <TableCell className="px-6 py-4 text-sm font-medium text-gray-900">{syl.title}</TableCell>
-                  <TableCell className="px-6 py-4 text-sm text-gray-900">{syl.subjectId?.name}</TableCell>
-                  <TableCell className="px-6 py-4 text-sm text-gray-900">{syl.classId?.name}</TableCell>
+                  <TableCell className="px-6 py-4 text-sm text-gray-900">{syl.subjectId?.name || '-'}</TableCell>
+                  <TableCell className="px-6 py-4 text-sm text-gray-900">{syl.gradeId?.name || '-'}</TableCell>
+                  <TableCell className="px-6 py-4 text-sm text-gray-900">{syl.streamId?.name || <span className="italic text-gray-400">All</span>}</TableCell>
                   <TableCell className="px-6 py-4 text-sm text-gray-900">{syl.academicYear}</TableCell>
                   <TableCell className="px-6 py-4">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -356,8 +399,9 @@ export default function SyllabusPage() {
                   </TableCell>
                   <TableCell className="px-6 py-4 text-sm font-medium">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => handleEdit(syl)} className="text-blue-600 hover:text-blue-900"><Edit className="h-4 w-4" /></button>
-                      <button onClick={() => handleDelete(syl._id)} className="text-red-600 hover:text-red-900"><Trash2 className="h-4 w-4" /></button>
+                      <button onClick={() => handleView(syl)} className="text-green-600 hover:text-green-900" title="View"><Eye className="h-4 w-4" /></button>
+                      <button onClick={() => handleEdit(syl)} className="text-blue-600 hover:text-blue-900" title="Edit"><Edit className="h-4 w-4" /></button>
+                      <button onClick={() => handleDelete(syl._id)} className="text-red-600 hover:text-red-900" title="Delete"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -401,130 +445,110 @@ export default function SyllabusPage() {
                     required
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="e.g. Computer Science Grade 10 2025"
+                    placeholder="e.g. Mathematics Grade 10 Science Stream 2025-2026"
                   />
                 </div>
 
-                <div>
-                  <Dropdown
-                    label="Branch"
-                    name="branchId"
-                    required
-                    value={formData.branchId}
-                    onChange={(e) => {
-                      const branchId = e.target.value;
-                      setFormData({ ...formData, branchId, classId: '', subjectId: '' });
-                      if (branchId) {
-                        fetchClasses(branchId);
-                        setSubjects([]);
-                      } else {
-                        fetchClasses();
-                        setSubjects([]);
-                      }
-                    }}
-                    options={[{label: 'Select Branch', value: ''}, ...branches.map(br => ({label: br.name, value: br._id}))]}
-                    placeholder="Select Branch"
-                  />
-                </div>
+                <BranchSelect
+                  label="Branch (Optional)"
+                  name="branchId"
+                  value={formData.branchId}
+                  onChange={(e) => {
+                    const branchId = e.target.value;
+                    setFormData({ ...formData, branchId, classId: '' });
+                    if (branchId) fetchClasses(branchId);
+                    else fetchClasses();
+                  }}
+                  branches={branches}
+                  placeholder="Select Branch (optional)"
+                />
+
+                <ClassSelect
+                  label="Class (Optional)"
+                  name="classId"
+                  value={formData.classId}
+                  onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
+                  classes={classes}
+                  placeholder="Select Class (optional)"
+                />
+
+                <LevelSelect
+                  label="Level"
+                  name="levelId"
+                  value={formData.levelId}
+                  onChange={(e) => {
+                    const levelId = e.target.value;
+                    setFormData({ ...formData, levelId, gradeId: '', streamId: '', subjectId: '' });
+                  }}
+                  placeholder="Select Level"
+                />
+
+                <GradeSelect
+                  label="Grade"
+                  name="gradeId"
+                  levelId={formData.levelId}
+                  value={formData.gradeId}
+                  onChange={(e) => {
+                    const gradeId = e.target.value;
+                    setFormData({ ...formData, gradeId, subjectId: '' });
+                  }}
+                  placeholder={formData.levelId ? "Select Grade" : "Select Level first"}
+                />
+
+                <StreamSelect
+                  label="Stream (Optional)"
+                  name="streamId"
+                  value={formData.streamId}
+                  onChange={(e) => {
+                    const streamId = e.target.value;
+                    setFormData({ ...formData, streamId, subjectId: '' });
+                  }}
+                  placeholder="Select Stream (optional)"
+                />
 
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
                   <Dropdown
-                    label="Class"
-                    name="classId"
-                    required
-                    value={formData.classId}
-                    onChange={(e) => {
-                      const classId = e.target.value;
-                      setFormData({ ...formData, classId, subjectId: '' });
-                      if (classId) {
-                        fetchSubjects(classId, formData.branchId);
-                      } else {
-                        setSubjects([]);
-                      }
-                    }}
-                    options={[{label: 'Select Class', value: ''}, ...classes.map(c => ({label: c.name, value: c._id}))]}
-                    placeholder="Select Class"
-                  />
-                </div>
-
-                <div>
-                  <Dropdown
-                    label="Level"
-                    name="levelId"
-                    value={formData.levelId}
-                    onChange={(e) => {
-                      const levelId = e.target.value;
-                      setFormData({ ...formData, levelId, gradeId: '' });
-                      if (levelId) {
-                        fetchGrades(levelId);
-                      } else {
-                        fetchGrades();
-                      }
-                    }}
-                    options={[{label: 'Select Level (Optional)', value: ''}, ...levels.map(l => ({label: l.name, value: l._id}))]}
-                    placeholder="Select Level"
-                  />
-                </div>
-
-                <div>
-                  <Dropdown
-                    label="Grade"
-                    name="gradeId"
-                    value={formData.gradeId}
-                    onChange={(e) => setFormData({ ...formData, gradeId: e.target.value })}
-                    options={[{label: 'Select Grade (Optional)', value: ''}, ...grades.map(g => ({label: g.name, value: g._id}))]}
-                    placeholder="Select Grade"
-                  />
-                </div>
-
-                <div>
-                  <Dropdown
-                    label="Stream"
-                    name="streamId"
-                    value={formData.streamId}
-                    onChange={(e) => setFormData({ ...formData, streamId: e.target.value })}
-                    options={[{label: 'Select Stream (Optional)', value: ''}, ...streams.map(s => ({label: s.name, value: s._id}))]}
-                    placeholder="Select Stream"
-                  />
-                </div>
-
-                <div>
-                  <Dropdown
-                    label="Subject"
                     name="subjectId"
                     required
                     value={formData.subjectId}
                     onChange={(e) => setFormData({ ...formData, subjectId: e.target.value })}
-                    options={!formData.classId ? [{label: 'Select class first', value: ''}] : [{label: 'Select Subject', value: ''}, ...subjects.map(s => ({label: s.name, value: s._id}))]}
+                    options={
+                      !formData.gradeId
+                        ? [{ label: 'Select Grade first', value: '' }]
+                        : filteredSubjects.length === 0
+                        ? [{ label: 'No subjects mapped to this grade/stream', value: '' }]
+                        : [
+                            { label: 'Select Subject', value: '' },
+                            ...filteredSubjects.map(s => ({ label: s.name || s, value: s._id || s }))
+                          ]
+                    }
                     placeholder="Select Subject"
                   />
                 </div>
 
-                <div>
-                  <Input
-                    label="Academic Year"
-                    type="text"
-                    required
-                    value={formData.academicYear}
-                    onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
-                    placeholder="e.g. 2025-2026"
-                  />
-                </div>
+                <Input
+                  label="Academic Year"
+                  type="text"
+                  required
+                  value={formData.academicYear}
+                  onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
+                  placeholder="e.g. 2025-2026"
+                />
 
-                <div>
-                  <Dropdown
-                    label="Status"
-                    name="status"
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    options={[
-                      {label: 'Draft', value: 'draft'},
-                      {label: 'Submitted', value: 'submitted'},
-                      {label: 'Approved', value: 'approved'}
-                    ]}
-                    placeholder="Select Status"
-                  />
-                </div>
+                <Dropdown
+                  label="Status"
+                  name="status"
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  options={[
+                    { label: 'Draft', value: 'draft' },
+                    { label: 'Submitted', value: 'submitted' },
+                    { label: 'Approved', value: 'approved' },
+                    { label: 'Published', value: 'published' }
+                  ]}
+                  placeholder="Select Status"
+                />
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Overview</label>
@@ -657,6 +681,281 @@ export default function SyllabusPage() {
                   </CardContent>
                 </Card>
             </form>
+      </Modal>
+
+      {/* View Syllabus Modal */}
+      <Modal
+        open={showViewModal}
+        onClose={() => { setShowViewModal(false); setViewingSyllabus(null); }}
+        title="Syllabus Details"
+        size="lg"
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => { setShowViewModal(false); setViewingSyllabus(null); }}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                setShowViewModal(false);
+                handleEdit(viewingSyllabus);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Edit className="h-4 w-4" />
+              Edit Syllabus
+            </button>
+          </div>
+        }
+      >
+        {viewingSyllabus && (
+          <div className="space-y-6">
+            {/* Header Section */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-100">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{viewingSyllabus.title}</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Subject</p>
+                  <p className="text-sm font-semibold text-gray-900">{viewingSyllabus.subjectId?.name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Grade</p>
+                  <p className="text-sm font-semibold text-gray-900">{viewingSyllabus.gradeId?.name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Stream</p>
+                  <p className="text-sm font-semibold text-gray-900">{viewingSyllabus.streamId?.name || <span className="italic text-gray-400">All Streams</span>}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Academic Year</p>
+                  <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {viewingSyllabus.academicYear}
+                  </p>
+                </div>
+              </div>
+              {(viewingSyllabus.branchId || viewingSyllabus.classId) && (
+                <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-blue-200">
+                  {viewingSyllabus.branchId && (
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Branch</p>
+                      <p className="text-sm font-semibold text-gray-900">{viewingSyllabus.branchId?.name}</p>
+                    </div>
+                  )}
+                  {viewingSyllabus.classId && (
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Class</p>
+                      <p className="text-sm font-semibold text-gray-900">{viewingSyllabus.classId?.name}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Academic Hierarchy */}
+            {(viewingSyllabus.levelId || viewingSyllabus.gradeId || viewingSyllabus.streamId) && (
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    Academic Hierarchy
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    {viewingSyllabus.levelId && (
+                      <div>
+                        <p className="text-xs text-gray-500">Level</p>
+                        <p className="text-sm font-medium text-gray-900">{viewingSyllabus.levelId?.name || '-'}</p>
+                      </div>
+                    )}
+                    {viewingSyllabus.gradeId && (
+                      <div>
+                        <p className="text-xs text-gray-500">Grade</p>
+                        <p className="text-sm font-medium text-gray-900">{viewingSyllabus.gradeId?.name || '-'}</p>
+                      </div>
+                    )}
+                    {viewingSyllabus.streamId && (
+                      <div>
+                        <p className="text-xs text-gray-500">Stream</p>
+                        <p className="text-sm font-medium text-gray-900">{viewingSyllabus.streamId?.name || '-'}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Status */}
+            <div className="flex items-center gap-2">
+              <CheckCircle className={`h-5 w-5 ${viewingSyllabus.status === 'approved' ? 'text-green-600' : 'text-gray-400'}`} />
+              <span className={`px-3 py-1 text-sm font-medium rounded-full ${
+                viewingSyllabus.status === 'approved'
+                  ? 'bg-green-100 text-green-800'
+                  : viewingSyllabus.status === 'submitted'
+                  ? 'bg-blue-100 text-blue-800'
+                  : viewingSyllabus.status === 'published'
+                  ? 'bg-purple-100 text-purple-800'
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                {viewingSyllabus.status?.charAt(0).toUpperCase() + viewingSyllabus.status?.slice(1)}
+              </span>
+            </div>
+
+            {/* Overview */}
+            {viewingSyllabus.overview && (
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Overview</h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">{viewingSyllabus.overview}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Course Objectives */}
+            {viewingSyllabus.courseObjectives?.length > 0 && (
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Course Objectives</h3>
+                  <ul className="space-y-2">
+                    {viewingSyllabus.courseObjectives.map((obj, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-blue-600 font-bold text-sm mt-0.5">{idx + 1}.</span>
+                        <span className="text-sm text-gray-700">{obj}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Learning Outcomes */}
+            {viewingSyllabus.learningOutcomes?.length > 0 && (
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Learning Outcomes</h3>
+                  <ul className="space-y-2">
+                    {viewingSyllabus.learningOutcomes.map((out, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-gray-700">{out}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Teaching Methods */}
+            {viewingSyllabus.teachingMethods?.length > 0 && (
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Teaching Methods</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingSyllabus.teachingMethods.map((method, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-indigo-50 text-indigo-700 text-sm rounded-full border border-indigo-200">
+                        {method}
+                      </span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Chapters */}
+            {viewingSyllabus.chapters?.length > 0 && (
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Chapters/Units</h3>
+                  <div className="space-y-3">
+                    {viewingSyllabus.chapters.map((ch, idx) => (
+                      <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">
+                              Chapter {ch.chapterNumber}: {ch.chapterName}
+                            </p>
+                            {ch.duration && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                {ch.duration.weeks && `${ch.duration.weeks} weeks`}
+                                {ch.duration.hours && ` • ${ch.duration.hours} hours`}
+                              </p>
+                            )}
+                          </div>
+                          {ch.marks && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                              {ch.marks} marks
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Assessment Plan */}
+            {viewingSyllabus.assessmentPlan && (
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Assessment Plan</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {Object.entries(viewingSyllabus.assessmentPlan).map(([key, value]) => (
+                      <div key={key} className="text-center p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+                        <p className="text-xs text-gray-500 capitalize mb-1">
+                          {key.replace(/([A-Z])/g, ' $1').trim()}
+                        </p>
+                        <p className="text-2xl font-bold text-gray-900">{value}%</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 text-right">
+                    <p className="text-sm text-gray-500">
+                      Total: <span className="font-semibold text-gray-900">
+                        {Object.values(viewingSyllabus.assessmentPlan).reduce((sum, val) => sum + (Number(val) || 0), 0)}%
+                      </span>
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Prepared/Approved By */}
+            {(viewingSyllabus.preparedBy || viewingSyllabus.approvedBy) && (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    {viewingSyllabus.preparedBy && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          Prepared By
+                        </p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {viewingSyllabus.preparedBy?.firstName} {viewingSyllabus.preparedBy?.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500">{viewingSyllabus.preparedBy?.employeeId}</p>
+                      </div>
+                    )}
+                    {viewingSyllabus.approvedBy && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          Approved By
+                        </p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {viewingSyllabus.approvedBy?.firstName} {viewingSyllabus.approvedBy?.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500">{viewingSyllabus.approvedBy?.employeeId}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   );

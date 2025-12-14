@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import {
   BookOpen,
   Plus,
@@ -14,6 +16,7 @@ import {
   Building2,
 } from 'lucide-react';
 import Input from '@/components/ui/input';
+import GradeSelect from '@/components/ui/grade-select';
 import Dropdown from '@/components/ui/dropdown';
 import Modal from '@/components/ui/modal';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
@@ -35,7 +38,7 @@ export default function ClassesPage() {
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    grade: 1,
+    grade: '',
     branchId: '',
     academicYear: new Date().getFullYear().toString(),
     sections: [{ name: 'A', capacity: 40, roomNumber: '' }],
@@ -46,6 +49,8 @@ export default function ClassesPage() {
   useEffect(() => {
     loadData();
   }, [searchTerm, branchFilter, statusFilter]);
+
+  const { user } = useAuth();
 
   const loadData = async () => {
     try {
@@ -64,7 +69,8 @@ export default function ClassesPage() {
       if (searchTerm) params.append('search', searchTerm);
       if (branchFilter) params.append('branchId', branchFilter);
       if (statusFilter) params.append('status', statusFilter);
-      const response = await apiClient.get(`/api/super-admin/classes?${params}`);
+      const base = user?.role === 'branch_admin' ? API_ENDPOINTS.BRANCH_ADMIN.CLASSES.LIST : API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST;
+      const response = await apiClient.get(`${base}?${params}`);
 
       if (response?.success) {
         // backend returns { success: true, data: [...] }
@@ -80,7 +86,18 @@ export default function ClassesPage() {
 
   const loadBranches = async () => {
     try {
-      const response = await apiClient.get('/api/super-admin/branches?limit=100');
+      if (user?.role === 'branch_admin') {
+        // Branch admin should only have their own branch available
+        if (user.branchId) {
+          // support either object or id
+          const branch = typeof user.branchId === 'object' ? user.branchId : { _id: user.branchId, name: user.branchName || 'My Branch' };
+          setBranches([branch]);
+          return;
+        }
+      }
+
+      const branchesEndpoint = API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST;
+      const response = await apiClient.get(`${branchesEndpoint}?limit=100`);
       if (response?.success) {
         // branches may be in response.data.branches or response.data
         const branchesData = response.data?.branches || response.data || [];
@@ -111,7 +128,7 @@ export default function ClassesPage() {
     setFormData({
       name: cls.name,
       code: cls.code,
-      grade: cls.grade,
+      grade: cls.grade?._id || cls.grade?.name || '',
       branchId: cls.branchId?._id || '',
       academicYear: cls.academicYear,
       sections: cls.sections.map(s => ({
@@ -139,13 +156,13 @@ export default function ClassesPage() {
       const classPayload = {
         name: formData.name,
         code: formData.code ? formData.code.toUpperCase() : '',
-        grade: Number(formData.grade) || 1,
+      grade: formData.grade,
         branchId: formData.branchId,
         academicYear: formData.academicYear,
         sections: (formData.sections || []).map((s) => {
           const section = {
             name: s.name,
-            capacity: Number(s.capacity) || 0,
+            capacity: s.name ? (Number(s.capacity) || 0) : undefined,
             roomNumber: s.roomNumber || '',
           };
           if (s.classTeacherId) {
@@ -157,15 +174,14 @@ export default function ClassesPage() {
         status: formData.status || 'active',
       };
 
-      const url = editingClass
-        ? `/api/super-admin/classes/${editingClass._id}`
-        : '/api/super-admin/classes';
+      const createEndpoint = user?.role === 'branch_admin' ? API_ENDPOINTS.BRANCH_ADMIN.CLASSES.CREATE : API_ENDPOINTS.SUPER_ADMIN.CLASSES.CREATE;
+      const updateEndpoint = user?.role === 'branch_admin' ? API_ENDPOINTS.BRANCH_ADMIN.CLASSES.UPDATE.replace(':id', editingClass?._id || '') : API_ENDPOINTS.SUPER_ADMIN.CLASSES.UPDATE.replace(':id', editingClass?._id || '');
 
       let response;
       if (editingClass) {
-        response = await apiClient.put(url, classPayload);
+        response = await apiClient.put(updateEndpoint, classPayload);
       } else {
-        response = await apiClient.post(url, classPayload);
+        response = await apiClient.post(createEndpoint, classPayload);
       }
 
       if (response?.success) {
@@ -185,7 +201,8 @@ export default function ClassesPage() {
     if (!classToDelete) return;
 
     try {
-      const response = await apiClient.delete(`/api/super-admin/classes/${classToDelete._id}`);
+      const deleteEndpoint = user?.role === 'branch_admin' ? API_ENDPOINTS.BRANCH_ADMIN.CLASSES.DELETE.replace(':id', classToDelete._id) : API_ENDPOINTS.SUPER_ADMIN.CLASSES.DELETE.replace(':id', classToDelete._id);
+      const response = await apiClient.delete(deleteEndpoint);
 
       if (response?.success) {
         toast.success('Class archived successfully');
@@ -355,7 +372,7 @@ export default function ClassesPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-white">{cls.name}</h3>
-                    <p className="text-blue-100 text-sm">Grade {cls.grade} • {cls.code}</p>
+                    <p className="text-blue-100 text-sm">Grade {cls.grade?.name} • {cls.code}</p>
                   </div>
                   <span
                     className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -449,7 +466,7 @@ export default function ClassesPage() {
           <button type="button" onClick={handleFormSubmit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingClass ? 'Update Class' : 'Create Class'}</button>
         </div>
       )} size="lg">
-        <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleFormSubmit} className="p-2 space-y-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Input name="name" label="Class Name *" placeholder="Class 1" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
@@ -460,9 +477,9 @@ export default function ClassesPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Dropdown name="grade" value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: parseInt(e.target.value) })} options={[...Array(12).keys()].map(i => ({ value: i+1, label: `Grade ${i+1}` }))} />
+              <GradeSelect name="grade" value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} />
             </div>
 
             <div>
@@ -488,7 +505,9 @@ export default function ClassesPage() {
               {formData.sections.map((section, idx) => (
                 <div key={idx} className="flex gap-2 items-center">
                   <Input placeholder="Section name (A, B, C...)" value={section.name} onChange={(e) => updateSection(idx, 'name', e.target.value)} />
-                  <Input type="number" placeholder="Capacity" value={section.capacity} onChange={(e) => updateSection(idx, 'capacity', parseInt(e.target.value) || 0)} className="w-24" />
+                  {section.name ? (
+                    <Input type="number" placeholder="Capacity" value={section.capacity} onChange={(e) => updateSection(idx, 'capacity', parseInt(e.target.value) || 0)} className="w-24" />
+                  ) : null}
                   <Input placeholder="Room" value={section.roomNumber} onChange={(e) => updateSection(idx, 'roomNumber', e.target.value)} className="w-24" />
                   {formData.sections.length > 1 && (
                     <button type="button" onClick={() => removeSection(idx)} className="p-2 text-red-600 hover:bg-red-50 rounded"><X className="w-4 h-4" /></button>
