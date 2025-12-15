@@ -129,6 +129,17 @@ export const API_ENDPOINTS = {
       DELETE: '/api/super-admin/subjects/:id',
     },
 
+    // Timetables Management
+    TIMETABLES: {
+      CREATE: '/api/super-admin/timetables',
+      LIST: '/api/super-admin/timetables',
+      GET: (id) => `/api/super-admin/timetables/${id}`,
+      UPDATE: (id) => `/api/super-admin/timetables/${id}`,
+      DELETE: (id) => `/api/super-admin/timetables/${id}`,
+      CLASS_TIMETABLE: (classId) => `/api/super-admin/timetables/class/${classId}`,
+      TEACHER_TIMETABLE: (teacherId) => `/api/super-admin/timetables/teacher/${teacherId}`,
+    },
+
     // Grades (alias to school endpoints)
     GRADES: {
       LIST: '/api/school/grades',

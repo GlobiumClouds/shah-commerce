@@ -80,8 +80,8 @@ const classSchema = new mongoose.Schema(
   }
 );
 
-// Indexes
-classSchema.index({ code: 1 });
+// Indexes (unique: true already creates index, so only add non-unique indexes)
+// classSchema.index({ code: 1 }); // Removed - unique: true already creates this index
 classSchema.index({ branchId: 1 });
 classSchema.index({ academicYear: 1 });
 classSchema.index({ grade: 1 });
