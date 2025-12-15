@@ -3,12 +3,14 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Lock, AlertCircle, Loader } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Mail, Lock, AlertCircle, Loader, Eye, EyeOff } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -19,7 +21,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Validation
       if (!email || !password) {
         setError('Email and password are required');
         setLoading(false);
@@ -32,15 +33,11 @@ export default function LoginPage() {
         return;
       }
 
-      console.log('sending Response', email, 'password', password);
-
-
       const result = await login(email, password);
 
       if (!result.success) {
         setError(result.message || 'Login failed');
       }
-      // Redirect happens automatically in login function
     } catch (err) {
       setError('An unexpected error occurred');
       console.error('Login error:', err);
@@ -49,7 +46,6 @@ export default function LoginPage() {
     }
   };
 
-  // Test credentials
   const testAccounts = [
     { email: 'superadmin@easeacademy.com', password: 'SuperAdmin@123', role: 'Super Admin' },
     { email: 'hafizshoaib@gmail.com', password: '123456', role: 'Branch Admin' },
@@ -64,74 +60,97 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-            <span className="text-3xl">🎓</span>
+            <div className="flex items-center justify-center mb-4">
+            <div className="w-14 h-14 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="text-2xl text-white">🎓</span>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Ease Academy</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">School Management System</p>
+          <h1 className="text-3xl font-bold text-gray-900">Ease Academy</h1>
+          <p className="text-gray-600 mt-2">School Management System</p>
         </div>
 
         {/* Login Card */}
-        <Card className="shadow-xl">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Sign in to your account to continue</p>
+        <Card className="shadow-lg border-gray-200">
+          <CardHeader className="pb-6">
+            <CardTitle className="text-xl font-semibold text-gray-900">Welcome Back</CardTitle>
+            <CardDescription className="text-gray-600">
+              Sign in to your account to continue
+            </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-5">
             {/* Error Message */}
             {error && (
-              <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-red-800 dark:text-red-200">{error}</p>
-                </div>
+              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+                <p className="text-sm text-red-700">{error}</p>
               </div>
             )}
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor="email" className="text-sm font-medium text-gray-700">
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
+                    id="email"
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
+                    className="pl-9"
                     disabled={loading}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Password
-                </label>
+                <div className="flex justify-between items-center">
+                  <label htmlFor="password" className="text-sm font-medium text-gray-700">
+                    Password
+                  </label>
+                  <Link 
+                    href="/auth/forgot-password" 
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    type="password"
-                    placeholder="••••••••"
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
+                    className="pl-9 pr-10"
                     disabled={loading}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 
               <Button
                 type="submit"
-                className="w-full h-10"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 disabled={loading}
               >
                 {loading ? (
@@ -145,17 +164,14 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Test Credentials */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white dark:bg-gray-950 text-gray-600 dark:text-gray-400">
+            {/* Demo Accounts */}
+            <div className="space-y-3">
+              <div className="text-center">
+                <span className="text-sm text-gray-500 bg-gray-50 px-3">
                   Test Accounts
                 </span>
+                <div className="h-px bg-gray-200 mt-3" />
               </div>
-            </div>
 
             <div className="space-y-2">
               {testAccounts.map((account, index) => (
@@ -177,25 +193,28 @@ export default function LoginPage() {
             </div>
 
             {/* Footer */}
-            <div className="pt-4 text-center text-xs text-gray-600 dark:text-gray-400">
-              <p>Demo application - Use test accounts above</p>
+            <div className="pt-4 border-t border-gray-200">
+              <p className="text-center text-sm text-gray-500">
+                Demo application • Use test accounts above
+              </p>
+            </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Features */}
-        <div className="mt-8 grid grid-cols-3 gap-4">
+        <div className="mt-8 grid grid-cols-3 gap-3">
           <div className="text-center">
-            <div className="text-2xl mb-2">👥</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Multi-Role Support</p>
+            <div className="text-gray-700 text-lg mb-1">👥</div>
+            <p className="text-xs text-gray-500">Multi-Role</p>
           </div>
           <div className="text-center">
-            <div className="text-2xl mb-2">🔒</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Secure Login</p>
+            <div className="text-gray-700 text-lg mb-1">🔒</div>
+            <p className="text-xs text-gray-500">Secure</p>
           </div>
           <div className="text-center">
-            <div className="text-2xl mb-2">🚀</div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Fast & Modern</p>
+            <div className="text-gray-700 text-lg mb-1">⚡</div>
+            <p className="text-xs text-gray-500">Fast</p>
           </div>
         </div>
       </div>
