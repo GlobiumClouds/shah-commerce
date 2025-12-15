@@ -86,19 +86,23 @@ async function updateTeacher(request, authenticatedUser, userDoc, context) {
     }
     const updates = await request.json();
 
-    // If client sent nested teacherProfile object, lift commonly used fields
+    // Find teacher and verify it belongs to admin's branch
+    const teacher = await User.findOne({
+      _id: id,
+      role: 'teacher',
+      branchId: authenticatedUser.branchId,
+    });
+
+    if (!teacher) {
+      return NextResponse.json(
+        { success: false, message: 'Teacher not found' },
+        { status: 404 }
+      );
+    }
+
+    // If client sent nested teacherProfile object, lift all fields to top level
     if (updates.teacherProfile && typeof updates.teacherProfile === 'object') {
-      const tp = updates.teacherProfile;
-      // lift commonly updated teacherProfile fields including employeeId
-      if (tp.employeeId !== undefined) updates.employeeId = tp.employeeId;
-      if (tp.departmentId !== undefined) updates.departmentId = tp.departmentId;
-      if (tp.department !== undefined) updates.department = tp.department;
-      if (tp.salaryDetails !== undefined) updates.salaryDetails = tp.salaryDetails;
-      if (tp.bankAccount !== undefined) updates.bankAccount = tp.bankAccount;
-      if (tp.qualifications !== undefined) updates.qualifications = tp.qualifications;
-      if (tp.subjects !== undefined) updates.subjects = tp.subjects;
-      if (tp.documents !== undefined) updates.documents = tp.documents;
-      if (tp.emergencyContact !== undefined) updates.emergencyContact = tp.emergencyContact;
+      Object.assign(updates, updates.teacherProfile);
       delete updates.teacherProfile;
     }
 
@@ -121,20 +125,6 @@ async function updateTeacher(request, authenticatedUser, userDoc, context) {
     };
 
     removeEmptyStrings(updates);
-
-    // Find teacher and verify it belongs to admin's branch
-    const teacher = await User.findOne({
-      _id: id,
-      role: 'teacher',
-      branchId: authenticatedUser.branchId,
-    });
-
-    if (!teacher) {
-      return NextResponse.json(
-        { success: false, message: 'Teacher not found' },
-        { status: 404 }
-      );
-    }
 
     // Prevent changing branchId and role
     delete updates.branchId;
