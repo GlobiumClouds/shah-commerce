@@ -28,6 +28,7 @@ import {
   Cog,
   Activity,
   Bell,
+  Building2,
   UserPlus,
   UserCog,
   GraduationCap,
@@ -150,15 +151,38 @@ const ROLE_MENUS = {
       ],
     },
     {
-      category: 'Management',
+      category: 'Academic Management',
       items: [
         { name: 'Teachers', path: '/branch-admin/teachers', icon: Users },
         { name: 'Students', path: '/branch-admin/students', icon: BookOpen },
         { name: 'Classes', path: '/branch-admin/classes', icon: School },
+        { name: 'Subjects', path: '/branch-admin/subjects', icon: BookOpen },
+        { name: 'Departments', path: '/branch-admin/departments', icon: Building2 },
+        { name: 'Syllabus', path: '/branch-admin/syllabus', icon: FileText },
+      ],
+    },
+    {
+      category: 'Finance Management',
+      items: [
+        { name: 'Fees', path: '/branch-admin/fees', icon: DollarSign },
+        { name: 'Fee Templates', path: '/branch-admin/fee-templates', icon: Receipt },
+        { name: 'Expenses', path: '/branch-admin/expenses', icon: Wallet },
+      ],
+    },
+    {
+      category: 'Operations',
+      items: [
         { name: 'Attendance', path: '/branch-admin/attendance', icon: Clock },
-        { name: 'Exams', path: '/branch-admin/exams', icon: FileText },
-        { name: 'Finance', path: '/branch-admin/finance', icon: DollarSign },
         { name: 'Events', path: '/branch-admin/events', icon: Calendar },
+        { name: 'Exams', path: '/branch-admin/exams', icon: FileText },
+      ],
+    },
+    {
+      category: 'Academic Structure',
+      items: [
+        { name: 'Levels', path: '/branch-admin/levels', icon: BarChart3 },
+        { name: 'Grades', path: '/branch-admin/grades', icon: TrendingUp },
+        { name: 'Streams', path: '/branch-admin/streams', icon: FolderOpen },
       ],
     },
     {

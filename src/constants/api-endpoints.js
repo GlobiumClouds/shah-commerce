@@ -239,6 +239,89 @@ export const API_ENDPOINTS = {
       DELETE: '/api/branch-admin/subjects/:id',
     },
     
+    // Events Management
+    EVENTS: {
+      CREATE: '/api/branch-admin/events',
+      LIST: '/api/branch-admin/events',
+      GET: '/api/branch-admin/events/:id',
+      UPDATE: '/api/branch-admin/events/:id',
+      DELETE: '/api/branch-admin/events/:id',
+    },
+    
+    // Departments Management
+    DEPARTMENTS: {
+      CREATE: '/api/branch-admin/departments',
+      LIST: '/api/branch-admin/departments',
+      GET: '/api/branch-admin/departments/:id',
+      UPDATE: '/api/branch-admin/departments/:id',
+      DELETE: '/api/branch-admin/departments/:id',
+    },
+    
+    // Syllabus Management
+    SYLLABUS: {
+      CREATE: '/api/branch-admin/syllabus',
+      LIST: '/api/branch-admin/syllabus',
+      GET: '/api/branch-admin/syllabus/:id',
+      UPDATE: '/api/branch-admin/syllabus/:id',
+      DELETE: '/api/branch-admin/syllabus/:id',
+    },
+    
+    // Exams Management
+    EXAMS: {
+      CREATE: '/api/branch-admin/exams',
+      LIST: '/api/branch-admin/exams',
+      GET: '/api/branch-admin/exams/:id',
+      UPDATE: '/api/branch-admin/exams/:id',
+      DELETE: '/api/branch-admin/exams/:id',
+    },
+    
+    // Attendance Management
+    ATTENDANCE: {
+      CREATE: '/api/branch-admin/attendance',
+      LIST: '/api/branch-admin/attendance',
+      GET: '/api/branch-admin/attendance/:id',
+      UPDATE: '/api/branch-admin/attendance/:id',
+      DELETE: '/api/branch-admin/attendance/:id',
+    },
+    
+    // Fee Management
+    FEES: {
+      CREATE: '/api/branch-admin/fees',
+      LIST: '/api/branch-admin/fees',
+      GET: '/api/branch-admin/fees/:id',
+      UPDATE: '/api/branch-admin/fees/:id',
+      DELETE: '/api/branch-admin/fees/:id',
+    },
+    
+    // Fee Templates
+    FEE_TEMPLATES: {
+      CREATE: '/api/branch-admin/fee-templates',
+      LIST: '/api/branch-admin/fee-templates',
+      GET: '/api/branch-admin/fee-templates/:id',
+      UPDATE: '/api/branch-admin/fee-templates/:id',
+      DELETE: '/api/branch-admin/fee-templates/:id',
+    },
+    
+    // Expenses Management
+    EXPENSES: {
+      CREATE: '/api/branch-admin/expenses',
+      LIST: '/api/branch-admin/expenses',
+      GET: '/api/branch-admin/expenses/:id',
+      UPDATE: '/api/branch-admin/expenses/:id',
+      DELETE: '/api/branch-admin/expenses/:id',
+    },
+    
+    // Academic Structure (Read-only)
+    LEVELS: {
+      LIST: '/api/branch-admin/levels',
+    },
+    STREAMS: {
+      LIST: '/api/branch-admin/streams',
+    },
+    GRADES_VIEW: {
+      LIST: '/api/branch-admin/grades',
+    },
+    
     // Reports
     REPORTS: {
       ATTENDANCE: '/api/branch-admin/reports/attendance',

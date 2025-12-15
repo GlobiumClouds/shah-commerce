@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Teacher from '@/backend/models/Teacher';
+import { sendEmail } from '@/backend/utils/emailService';
+import { getTeacherEmailTemplate } from '@/backend/templates/teacherEmail';
 
 // GET - Get single teacher
 async function getTeacher(request, authenticatedUser, userDoc, { params }) {
@@ -87,6 +89,22 @@ async function updateTeacher(request, authenticatedUser, userDoc, { params }) {
     teacher.updatedBy = authenticatedUser.userId;
     await teacher.save();
 
+    // Send update or status-change email
+    try {
+      const recipient = teacher.email;
+      if (recipient) {
+        if (updates.status && (updates.status === 'inactive' || updates.status === 'terminated')) {
+          const html = getTeacherEmailTemplate('TEACHER_STATUS_CHANGED', teacher);
+          sendEmail(recipient, 'Account Status Changed', html);
+        } else {
+          const html = getTeacherEmailTemplate('TEACHER_UPDATED', teacher);
+          sendEmail(recipient, 'Teacher Record Updated', html);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to send teacher update email:', err);
+    }
+
     return NextResponse.json({
       success: true,
       data: teacher,
@@ -115,11 +133,8 @@ async function deleteTeacher(request, authenticatedUser, userDoc, { params }) {
 
     const { id } = params;
 
-    // Find and delete teacher (only from admin's branch)
-    const teacher = await Teacher.findOneAndDelete({
-      _id: id,
-      branchId: authenticatedUser.branchId,
-    });
+    // Find teacher first (verify branch) then delete
+    const teacher = await Teacher.findOne({ _id: id, branchId: authenticatedUser.branchId });
 
     if (!teacher) {
       return NextResponse.json(
@@ -127,6 +142,18 @@ async function deleteTeacher(request, authenticatedUser, userDoc, { params }) {
         { status: 404 }
       );
     }
+
+    // Send deletion/deactivation email before removal
+    try {
+      if (teacher.email) {
+        const html = getTeacherEmailTemplate('TEACHER_STATUS_CHANGED', teacher);
+        sendEmail(teacher.email, 'Account Deleted', html);
+      }
+    } catch (err) {
+      console.error('Failed to send teacher deletion email:', err);
+    }
+
+    await Teacher.findOneAndDelete({ _id: id, branchId: authenticatedUser.branchId });
 
     return NextResponse.json({
       success: true,

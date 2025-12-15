@@ -3,6 +3,8 @@ import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Student from '@/backend/models/Student';
 import User from '@/backend/models/User';
+import { sendEmail } from '@/backend/utils/emailService';
+import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
 import Class from '@/backend/models/Class';
 
 // GET - Get all students for branch admin's branch
@@ -106,12 +108,31 @@ async function createStudent(request, authenticatedUser, userDoc) {
 
     const body = await request.json();
 
-    // Ensure student is created for admin's branch only
+    // Normalize incoming nested fields to match Student schema
     const studentData = {
       ...body,
       branchId: authenticatedUser.branchId, // Force branch to admin's branch
       createdBy: authenticatedUser.userId,
     };
+
+    // Accept profilePhoto as object {url, publicId}
+    if (body.profilePhoto && typeof body.profilePhoto === 'object') {
+      studentData.profilePhoto = {
+        url: body.profilePhoto.url || '',
+        publicId: body.profilePhoto.publicId || '',
+        uploadedAt: body.profilePhoto.uploadedAt || new Date(),
+      };
+    }
+
+    // Map academicInfo.academicYear if provided by frontend
+    if (body.academicInfo && body.academicInfo.academicYear) {
+      studentData.academicYear = body.academicInfo.academicYear;
+    }
+
+    // Map guardianType if provided
+    if (body.guardianType) {
+      studentData.guardianType = body.guardianType;
+    }
 
     // Validate class belongs to this branch if classId provided
     if (studentData.classId) {
@@ -126,6 +147,17 @@ async function createStudent(request, authenticatedUser, userDoc) {
 
     const student = new Student(studentData);
     await student.save();
+
+    // Send enrollment email to student's email if available
+    try {
+      const recipient = student.email || body.email;
+      if (recipient) {
+        const html = getStudentEmailTemplate('STUDENT_CREATED', student);
+        sendEmail(recipient, 'Enrollment Confirmation', html);
+      }
+    } catch (err) {
+      console.error('Failed to send student created email:', err);
+    }
 
     // Create user account if email and password provided
     if (body.email && body.password) {

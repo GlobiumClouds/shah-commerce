@@ -3,6 +3,8 @@ import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Teacher from '@/backend/models/Teacher';
 import User from '@/backend/models/User';
+import { sendEmail } from '@/backend/utils/emailService';
+import { getTeacherEmailTemplate } from '@/backend/templates/teacherEmail';
 
 // GET - Get all teachers for branch admin's branch
 async function getTeachers(request, authenticatedUser, userDoc) {
@@ -114,6 +116,17 @@ async function createTeacher(request, authenticatedUser, userDoc) {
 
     const teacher = new Teacher(teacherData);
     await teacher.save();
+
+    // Send welcome email to teacher if email provided
+    try {
+      const recipient = teacher.email || body.email;
+      if (recipient) {
+        const html = getTeacherEmailTemplate('TEACHER_CREATED', teacher);
+        sendEmail(recipient, 'Welcome to School', html);
+      }
+    } catch (err) {
+      console.error('Failed to send teacher created email:', err);
+    }
 
     // Create user account if email and password provided
     if (body.email && body.password) {

@@ -53,7 +53,9 @@ const studentSchema = new mongoose.Schema(
       trim: true,
     },
     profilePhoto: {
-      type: String,
+      url: { type: String },
+      publicId: { type: String },
+      uploadedAt: { type: Date },
     },
 
     // Address Information
@@ -101,10 +103,16 @@ const studentSchema = new mongoose.Schema(
     },
 
     // Parent/Guardian Information
+    guardianType: {
+      type: String,
+      enum: ['parent', 'guardian'],
+      default: 'parent',
+    },
+
     father: {
-      name: { type: String, required: [true, 'Father name is required'], trim: true },
+      name: { type: String, trim: true, required: function() { return this.guardianType === 'parent'; } },
       occupation: { type: String, trim: true },
-      phone: { type: String, required: [true, 'Father phone is required'], trim: true },
+      phone: { type: String, trim: true, required: function() { return this.guardianType === 'parent'; } },
       email: { type: String, trim: true, lowercase: true },
       cnic: { type: String, trim: true },
       income: { type: Number },
@@ -214,6 +222,23 @@ studentSchema.index({ branchId: 1, classId: 1 });
 studentSchema.index({ status: 1 });
 studentSchema.index({ firstName: 1, lastName: 1 });
 studentSchema.index({ 'father.phone': 1 });
+
+// Pre-save: auto-generate registration number if missing
+studentSchema.pre('save', async function(next) {
+  try {
+    if (this.isNew && !this.registrationNumber && this.branchId) {
+      const Branch = mongoose.model('Branch');
+      const branch = await Branch.findById(this.branchId);
+      const branchCode = branch?.code || 'SCH';
+      const year = new Date().getFullYear().toString().slice(-2);
+      const count = await this.constructor.countDocuments({ branchId: this.branchId });
+      this.registrationNumber = `${branchCode}-${year}-${String(count + 1).padStart(4, '0')}`;
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 const Student = mongoose.models.Student || mongoose.model('Student', studentSchema);
 
