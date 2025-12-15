@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import Grade from './Grade';
 
 const subjectSchema = new mongoose.Schema(
   {

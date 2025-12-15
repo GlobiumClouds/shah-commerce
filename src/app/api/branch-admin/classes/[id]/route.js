@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Class from '@/backend/models/Class';
+import Grade from '@/backend/models/Grade';
 
 // GET - Get single class
 async function getClass(request, authenticatedUser, userDoc, { params }) {
