@@ -33,7 +33,7 @@ export default function LoginPage() {
       }
 
       console.log('sending Response', email, 'password', password);
-      
+
 
       const result = await login(email, password);
 
@@ -53,7 +53,7 @@ export default function LoginPage() {
   const testAccounts = [
     { email: 'superadmin@easeacademy.com', password: 'SuperAdmin@123', role: 'Super Admin' },
     { email: 'hafizshoaib@gmail.com', password: '123456', role: 'Branch Admin' },
-    { email: 'alishahids519@gmail.com', password: '123456', role: 'Teacher' },
+    { email: 'shoaibrazamemon170@gmail.com', password: 'Teacher@123', role: 'Teacher' },
     { email: 'student@easeacademy.com', password: 'student123', role: 'Student' },
   ];
 
@@ -159,16 +159,20 @@ export default function LoginPage() {
 
             <div className="space-y-2">
               {testAccounts.map((account, index) => (
-                <button
+                <Button
                   key={index}
                   type="button"
                   onClick={() => fillTestCredentials(account.email, account.password)}
                   disabled={loading}
-                  className="w-full p-3 text-left text-sm border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                  className="w-full justify-start space-y-0.5"
                 >
-                  <div className="font-medium text-gray-900 dark:text-gray-100">{account.role}</div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400">{account.email}</div>
-                </button>
+                  <div>
+                    {account.role}
+                  </div>
+                  <div>
+                    {account.email}
+                  </div>
+                </Button>
               ))}
             </div>
 
