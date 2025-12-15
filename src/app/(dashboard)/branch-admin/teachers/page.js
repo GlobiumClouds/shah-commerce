@@ -311,8 +311,11 @@ export default function TeachersPage() {
       setUploading(true);
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
-      uploadFormData.append('folder', 'teachers/profiles');
-      const response = await apiClient.post('/api/upload', uploadFormData);
+      uploadFormData.append('fileType', 'profile');
+      // Optionally add userId if needed: uploadFormData.append('userId', currentTeacher?._id || user?._id);
+      const response = await apiClient.axiosInstance.post('/api/upload', uploadFormData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       if (response.success) {
         setFormData((prev) => ({
           ...prev,
@@ -337,8 +340,12 @@ export default function TeachersPage() {
       setUploading(true);
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
-      uploadFormData.append('folder', 'teachers/documents');
-      const response = await apiClient.post('/api/upload', uploadFormData);
+      uploadFormData.append('fileType', 'teacher_document');
+      uploadFormData.append('documentType', documentType);
+      // Optionally add userId if needed: uploadFormData.append('userId', currentTeacher?._id || user?._id);
+      const response = await apiClient.axiosInstance.post('/api/upload', uploadFormData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       if (response.success) {
         const newDoc = {
           type: documentType,
@@ -432,7 +439,18 @@ export default function TeachersPage() {
         return input;
       };
 
-      const payload = cleanPayload(formData) || {};
+      // Ensure emergencyContact is always an object
+      const payload = cleanPayload({
+        ...formData,
+        teacherProfile: {
+          ...formData.teacherProfile,
+          emergencyContact: {
+            name: formData.teacherProfile?.emergencyContact?.name || '',
+            relationship: formData.teacherProfile?.emergencyContact?.relationship || '',
+            phone: formData.teacherProfile?.emergencyContact?.phone || '',
+          },
+        },
+      }) || {};
 
       if (isEditMode) {
         const response = await apiClient.put(
