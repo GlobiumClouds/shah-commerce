@@ -8,7 +8,7 @@ import { generateTeacherQR } from '@/lib/qr-generator';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 
 // GET - Get single teacher
-async function getTeacher(request, authenticatedUser, userDoc, { params }) {
+async function getTeacher(request, authenticatedUser, userDoc, context) {
   try {
     if (authenticatedUser.role !== 'branch_admin') {
       return NextResponse.json(
@@ -19,7 +19,18 @@ async function getTeacher(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { params } = context || {};
+    let { id } = params || {};
+    if (!id) {
+      // fallback: extract id from URL path
+      try {
+        const url = new URL(request.url);
+        const parts = url.pathname.split('/').filter(Boolean);
+        id = parts[parts.length - 1];
+      } catch (e) {
+        id = undefined;
+      }
+    }
 
     const teacher = await User.findOne({
       _id: id,
@@ -51,7 +62,7 @@ async function getTeacher(request, authenticatedUser, userDoc, { params }) {
 }
 
 // PUT - Update teacher
-async function updateTeacher(request, authenticatedUser, userDoc, { params }) {
+async function updateTeacher(request, authenticatedUser, userDoc, context) {
   try {
     if (authenticatedUser.role !== 'branch_admin') {
       return NextResponse.json(
@@ -62,7 +73,17 @@ async function updateTeacher(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { params } = context || {};
+    let { id } = params || {};
+    if (!id) {
+      try {
+        const url = new URL(request.url);
+        const parts = url.pathname.split('/').filter(Boolean);
+        id = parts[parts.length - 1];
+      } catch (e) {
+        id = undefined;
+      }
+    }
     const updates = await request.json();
 
     // If client sent nested teacherProfile object, lift commonly used fields
@@ -262,7 +283,7 @@ async function updateTeacher(request, authenticatedUser, userDoc, { params }) {
 }
 
 // DELETE - Delete teacher
-async function deleteTeacher(request, authenticatedUser, userDoc, { params }) {
+async function deleteTeacher(request, authenticatedUser, userDoc, context) {
   try {
     if (authenticatedUser.role !== 'branch_admin') {
       return NextResponse.json(
@@ -273,7 +294,17 @@ async function deleteTeacher(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { params } = context || {};
+    let { id } = params || {};
+    if (!id) {
+      try {
+        const url = new URL(request.url);
+        const parts = url.pathname.split('/').filter(Boolean);
+        id = parts[parts.length - 1];
+      } catch (e) {
+        id = undefined;
+      }
+    }
 
     // Find teacher first (verify branch) then delete
     const teacher = await User.findOne({ 

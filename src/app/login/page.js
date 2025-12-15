@@ -53,7 +53,7 @@ export default function LoginPage() {
   const testAccounts = [
     { email: 'superadmin@easeacademy.com', password: 'SuperAdmin@123', role: 'Super Admin' },
     { email: 'hafizshoaib@gmail.com', password: '123456', role: 'Branch Admin' },
-    { email: 'teacher@easeacademy.com', password: 'teacher123', role: 'Teacher' },
+    { email: 'alishahids519@gmail.com', password: '123456', role: 'Teacher' },
     { email: 'student@easeacademy.com', password: 'student123', role: 'Student' },
   ];
 
