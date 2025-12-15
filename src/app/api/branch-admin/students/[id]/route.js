@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
-import Student from '@/backend/models/Student';
+import User from '@/backend/models/User';
 import { sendEmail } from '@/backend/utils/emailService';
 import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
 
@@ -19,13 +19,12 @@ async function getStudent(request, authenticatedUser, userDoc, { params }) {
 
     const { id } = params;
 
-    const student = await Student.findOne({
+    const student = await User.findOne({
       _id: id,
-      branchId: authenticatedUser.branchId, // Only get student from admin's branch
+      role: 'student',
+      branchId: authenticatedUser.branchId,
     })
-      .populate('classId', 'name code grade')
-      .populate('parentId', 'fullName email phone')
-      .populate('userId', 'email isActive lastLogin')
+      .populate('studentProfile.classId', 'name code grade')
       .lean();
 
     if (!student) {
@@ -63,29 +62,10 @@ async function updateStudent(request, authenticatedUser, userDoc, { params }) {
     const { id } = params;
     const updates = await request.json();
 
-    // Normalize profilePhoto if provided as object
-    if (updates.profilePhoto && typeof updates.profilePhoto === 'object') {
-      updates.profilePhoto = {
-        url: updates.profilePhoto.url || '',
-        publicId: updates.profilePhoto.publicId || '',
-        uploadedAt: updates.profilePhoto.uploadedAt || new Date(),
-      };
-    }
-
-    // Map academicInfo.academicYear to root academicYear if supplied
-    if (updates.academicInfo && updates.academicInfo.academicYear) {
-      updates.academicYear = updates.academicInfo.academicYear;
-      delete updates.academicInfo;
-    }
-
-    // Map guardianType if sent
-    if (updates.guardianType) {
-      updates.guardianType = updates.guardianType;
-    }
-
     // Find student and verify it belongs to admin's branch
-    const student = await Student.findOne({
+    const student = await User.findOne({
       _id: id,
+      role: 'student',
       branchId: authenticatedUser.branchId,
     });
 
@@ -96,10 +76,79 @@ async function updateStudent(request, authenticatedUser, userDoc, { params }) {
       );
     }
 
-    // Prevent changing branchId
+    // Prevent changing branchId and role
     delete updates.branchId;
+    delete updates.role;
 
-    // Update student
+    // Handle profile photo updates
+    if (updates.profilePhoto && typeof updates.profilePhoto === 'object') {
+      student.profilePhoto = {
+        url: updates.profilePhoto.url || '',
+        publicId: updates.profilePhoto.publicId || '',
+        uploadedAt: updates.profilePhoto.uploadedAt || new Date(),
+      };
+      delete updates.profilePhoto;
+    }
+
+    // Handle studentProfile updates
+    if (updates.classId || updates.academicInfo || updates.guardianType || updates.parentInfo || updates.guardianInfo || updates.documents) {
+      student.studentProfile = student.studentProfile || {};
+      
+      if (updates.classId) {
+        student.studentProfile.classId = updates.classId;
+        delete updates.classId;
+      }
+      if (updates.guardianType) {
+        student.studentProfile.guardianType = updates.guardianType;
+        delete updates.guardianType;
+      }
+      if (updates.academicInfo) {
+        if (updates.academicInfo.academicYear) {
+          student.studentProfile.academicYear = updates.academicInfo.academicYear;
+        }
+        if (updates.academicInfo.previousSchool) {
+          student.studentProfile.previousSchool = student.studentProfile.previousSchool || {};
+          student.studentProfile.previousSchool.name = updates.academicInfo.previousSchool;
+        }
+        delete updates.academicInfo;
+      }
+      if (updates.parentInfo) {
+        student.studentProfile.father = student.studentProfile.father || {};
+        student.studentProfile.mother = student.studentProfile.mother || {};
+        Object.assign(student.studentProfile.father, {
+          name: updates.parentInfo.fatherName,
+          occupation: updates.parentInfo.fatherOccupation,
+          phone: updates.parentInfo.fatherPhone,
+          email: updates.parentInfo.fatherEmail,
+          cnic: updates.parentInfo.fatherCnic,
+        });
+        Object.assign(student.studentProfile.mother, {
+          name: updates.parentInfo.motherName,
+          occupation: updates.parentInfo.motherOccupation,
+          phone: updates.parentInfo.motherPhone,
+          email: updates.parentInfo.motherEmail,
+          cnic: updates.parentInfo.motherCnic,
+        });
+        delete updates.parentInfo;
+      }
+      if (updates.guardianInfo) {
+        student.studentProfile.guardian = student.studentProfile.guardian || {};
+        Object.assign(student.studentProfile.guardian, {
+          name: updates.guardianInfo.name,
+          relation: updates.guardianInfo.relationship,
+          phone: updates.guardianInfo.phone,
+          email: updates.guardianInfo.email,
+          cnic: updates.guardianInfo.cnic,
+        });
+        delete updates.guardianInfo;
+      }
+      if (updates.documents) {
+        student.studentProfile.documents = updates.documents;
+        delete updates.documents;
+      }
+    }
+
+    // Update other fields
     Object.keys(updates).forEach((key) => {
       if (updates[key] !== undefined) {
         student[key] = updates[key];
@@ -111,14 +160,13 @@ async function updateStudent(request, authenticatedUser, userDoc, { params }) {
 
     // Send update or status-change email
     try {
-      const recipient = student.email;
-      if (recipient) {
+      if (student.email) {
         if (updates.status && updates.status === 'inactive') {
           const html = getStudentEmailTemplate('STUDENT_DEACTIVATED', student);
-          sendEmail(recipient, 'Account Deactivated', html);
+          await sendEmail(student.email, 'Account Deactivated', html);
         } else {
           const html = getStudentEmailTemplate('STUDENT_UPDATED', student);
-          sendEmail(recipient, 'Student Record Updated', html);
+          await sendEmail(student.email, 'Student Record Updated', html);
         }
       }
     } catch (err) {
@@ -154,7 +202,11 @@ async function deleteStudent(request, authenticatedUser, userDoc, { params }) {
     const { id } = params;
 
     // Find student first (verify branch) then delete
-    const student = await Student.findOne({ _id: id, branchId: authenticatedUser.branchId });
+    const student = await User.findOne({ 
+      _id: id, 
+      role: 'student',
+      branchId: authenticatedUser.branchId 
+    });
 
     if (!student) {
       return NextResponse.json(
@@ -167,13 +219,17 @@ async function deleteStudent(request, authenticatedUser, userDoc, { params }) {
     try {
       if (student.email) {
         const html = getStudentEmailTemplate('STUDENT_DEACTIVATED', student);
-        sendEmail(student.email, 'Account Deleted', html);
+        await sendEmail(student.email, 'Account Deleted', html);
       }
     } catch (err) {
       console.error('Failed to send student deletion email:', err);
     }
 
-    await Student.findOneAndDelete({ _id: id, branchId: authenticatedUser.branchId });
+    await User.findOneAndDelete({ 
+      _id: id, 
+      role: 'student',
+      branchId: authenticatedUser.branchId 
+    });
 
     return NextResponse.json({
       success: true,

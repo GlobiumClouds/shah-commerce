@@ -355,6 +355,14 @@ const userSchema = new mongoose.Schema(
         publicId: { type: String },
         uploadedAt: { type: Date },
       },
+      
+      // Bank Account Details for Payroll
+      bankAccount: {
+        bankName: { type: String, trim: true },
+        accountNumber: { type: String, trim: true },
+        iban: { type: String, trim: true },
+        branchCode: { type: String, trim: true },
+      },
     },
     
     // ==================== STAFF PROFILE ====================

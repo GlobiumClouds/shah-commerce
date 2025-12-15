@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import Department from '@/backend/models/Department';
-import Teacher from '@/backend/models/Teacher';
+import User from '@/backend/models/User';
 import Subject from '@/backend/models/Subject';
 import { withAuth } from '@/backend/middleware/auth';
 

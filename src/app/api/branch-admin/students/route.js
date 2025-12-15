@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
-import Student from '@/backend/models/Student';
 import User from '@/backend/models/User';
 import { sendEmail } from '@/backend/utils/emailService';
 import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
@@ -33,20 +32,23 @@ async function getStudents(request, authenticatedUser, userDoc) {
     const classId = searchParams.get('classId');
     const status = searchParams.get('status');
 
-    // Build query - only for this branch
-    const query = { branchId: authenticatedUser.branchId };
+    // Build query - only for this branch, role = student
+    const query = { 
+      role: 'student',
+      branchId: authenticatedUser.branchId 
+    };
     
     if (search) {
       query.$or = [
         { firstName: { $regex: search, $options: 'i' } },
         { lastName: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
-        { admissionNumber: { $regex: search, $options: 'i' } },
+        { 'studentProfile.registrationNumber': { $regex: search, $options: 'i' } },
       ];
     }
 
     if (classId) {
-      query.classId = classId;
+      query['studentProfile.classId'] = classId;
     }
 
     if (status) {
@@ -56,14 +58,13 @@ async function getStudents(request, authenticatedUser, userDoc) {
     const skip = (page - 1) * limit;
 
     const [students, total] = await Promise.all([
-      Student.find(query)
-        .populate('classId', 'name code')
-        .populate('parentId', 'fullName email phone')
+      User.find(query)
+        .populate('studentProfile.classId', 'name code')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .lean(),
-      Student.countDocuments(query),
+      User.countDocuments(query),
     ]);
 
     return NextResponse.json({
@@ -108,35 +109,80 @@ async function createStudent(request, authenticatedUser, userDoc) {
 
     const body = await request.json();
 
-    // Normalize incoming nested fields to match Student schema
-    const studentData = {
-      ...body,
-      branchId: authenticatedUser.branchId, // Force branch to admin's branch
+    // Prepare student user data
+    const userData = {
+      role: 'student',
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: body.email,
+      phone: body.phone || '',
+      alternatePhone: body.alternatePhone || '',
+      dateOfBirth: body.dateOfBirth || null,
+      gender: body.gender || 'male',
+      bloodGroup: body.bloodGroup || '',
+      religion: body.religion || '',
+      nationality: body.nationality || 'Pakistani',
+      cnic: body.cnic || '',
+      passwordHash: body.password || `temp${Date.now()}`,
+      branchId: authenticatedUser.branchId,
       createdBy: authenticatedUser.userId,
+      isActive: true,
+      status: body.status || 'active',
     };
 
-    // Accept profilePhoto as object {url, publicId}
+    // Set address
+    if (body.address) {
+      userData.address = body.address;
+    }
+
+    // Set profile photo
     if (body.profilePhoto && typeof body.profilePhoto === 'object') {
-      studentData.profilePhoto = {
+      userData.profilePhoto = {
         url: body.profilePhoto.url || '',
         publicId: body.profilePhoto.publicId || '',
         uploadedAt: body.profilePhoto.uploadedAt || new Date(),
       };
     }
 
-    // Map academicInfo.academicYear if provided by frontend
-    if (body.academicInfo && body.academicInfo.academicYear) {
-      studentData.academicYear = body.academicInfo.academicYear;
-    }
-
-    // Map guardianType if provided
-    if (body.guardianType) {
-      studentData.guardianType = body.guardianType;
-    }
+    // Map student-specific fields to studentProfile
+    userData.studentProfile = {
+      classId: body.classId || null,
+      section: body.section || '',
+      rollNumber: body.rollNumber || '',
+      admissionDate: body.enrollmentDate || body.admissionDate || new Date(),
+      academicYear: body.academicInfo?.academicYear || body.academicYear || new Date().getFullYear().toString(),
+      previousSchool: body.academicInfo ? {
+        name: body.academicInfo.previousSchool || '',
+        lastClass: body.academicInfo.previousClass || '',
+      } : {},
+      guardianType: body.guardianType || 'parent',
+      father: body.parentInfo ? {
+        name: body.parentInfo.fatherName || '',
+        occupation: body.parentInfo.fatherOccupation || '',
+        phone: body.parentInfo.fatherPhone || '',
+        email: body.parentInfo.fatherEmail || '',
+        cnic: body.parentInfo.fatherCnic || '',
+      } : {},
+      mother: body.parentInfo ? {
+        name: body.parentInfo.motherName || '',
+        occupation: body.parentInfo.motherOccupation || '',
+        phone: body.parentInfo.motherPhone || '',
+        email: body.parentInfo.motherEmail || '',
+        cnic: body.parentInfo.motherCnic || '',
+      } : {},
+      guardian: body.guardianInfo ? {
+        name: body.guardianInfo.name || '',
+        relation: body.guardianInfo.relationship || '',
+        phone: body.guardianInfo.phone || '',
+        email: body.guardianInfo.email || '',
+        cnic: body.guardianInfo.cnic || '',
+      } : {},
+      documents: body.documents || [],
+    };
 
     // Validate class belongs to this branch if classId provided
-    if (studentData.classId) {
-      const classDoc = await Class.findById(studentData.classId);
+    if (userData.studentProfile.classId) {
+      const classDoc = await Class.findById(userData.studentProfile.classId);
       if (!classDoc || classDoc.branchId.toString() !== authenticatedUser.branchId.toString()) {
         return NextResponse.json(
           { success: false, message: 'Invalid class for this branch' },
@@ -145,36 +191,17 @@ async function createStudent(request, authenticatedUser, userDoc) {
       }
     }
 
-    const student = new Student(studentData);
+    const student = new User(userData);
     await student.save();
 
     // Send enrollment email to student's email if available
     try {
-      const recipient = student.email || body.email;
-      if (recipient) {
+      if (student.email) {
         const html = getStudentEmailTemplate('STUDENT_CREATED', student);
-        sendEmail(recipient, 'Enrollment Confirmation', html);
+        await sendEmail(student.email, 'Enrollment Confirmation', html);
       }
     } catch (err) {
       console.error('Failed to send student created email:', err);
-    }
-
-    // Create user account if email and password provided
-    if (body.email && body.password) {
-      const userAccount = new User({
-        fullName: `${body.firstName} ${body.lastName}`,
-        email: body.email,
-        phone: body.phone,
-        passwordHash: body.password,
-        role: 'student',
-        branchId: authenticatedUser.branchId,
-        studentId: student._id,
-        isActive: true,
-      });
-      await userAccount.save();
-
-      student.userId = userAccount._id;
-      await student.save();
     }
 
     return NextResponse.json({

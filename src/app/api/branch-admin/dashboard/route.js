@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import User from '@/backend/models/User';
-import Student from '@/backend/models/Student';
-import Teacher from '@/backend/models/Teacher';
 import Class from '@/backend/models/Class';
 import Subject from '@/backend/models/Subject';
 import Event from '@/backend/models/Event';
@@ -43,16 +41,16 @@ async function getDashboard(request, authenticatedUser, userDoc) {
       teachersThisMonth,
     ] = await Promise.all([
       // Total students in branch
-      Student.countDocuments({ branchId }),
+      User.countDocuments({ role: 'student', branchId }),
       
       // Active students
-      Student.countDocuments({ branchId, status: 'active' }),
+      User.countDocuments({ role: 'student', branchId, status: 'active' }),
       
       // Total teachers in branch
-      Teacher.countDocuments({ branchId }),
+      User.countDocuments({ role: 'teacher', branchId }),
       
       // Active teachers
-      Teacher.countDocuments({ branchId, status: 'active' }),
+      User.countDocuments({ role: 'teacher', branchId, status: 'active' }),
       
       // Total classes
       Class.countDocuments({ branchId }),
@@ -71,13 +69,15 @@ async function getDashboard(request, authenticatedUser, userDoc) {
         .lean(),
       
       // Students added this month
-      Student.countDocuments({
+      User.countDocuments({
+        role: 'student',
         branchId,
         createdAt: { $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) },
       }),
       
       // Teachers added this month
-      Teacher.countDocuments({
+      User.countDocuments({
+        role: 'teacher',
         branchId,
         createdAt: { $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) },
       }),
@@ -88,9 +88,9 @@ async function getDashboard(request, authenticatedUser, userDoc) {
       { $match: { branchId: branchId } },
       {
         $lookup: {
-          from: 'students',
+          from: 'users',
           localField: '_id',
-          foreignField: 'classId',
+          foreignField: 'studentProfile.classId',
           as: 'students',
         },
       },

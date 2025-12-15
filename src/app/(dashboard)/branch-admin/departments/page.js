@@ -91,10 +91,14 @@ export default function DepartmentsPage() {
     setSubmitting(true);
 
     try {
+      const payload = { ...formData };
+      // If headTeacherId is empty string, remove it to avoid ObjectId cast errors
+      if (!payload.headTeacherId) delete payload.headTeacherId;
+
       if (isEditMode) {
         const response = await apiClient.put(
           API_ENDPOINTS.BRANCH_ADMIN.DEPARTMENTS.UPDATE.replace(':id', currentDepartment._id),
-          formData
+          payload
         );
         if (response.success) {
           alert('Department updated successfully!');
@@ -102,7 +106,7 @@ export default function DepartmentsPage() {
           fetchDepartments();
         }
       } else {
-        const response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.DEPARTMENTS.CREATE, formData);
+        const response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.DEPARTMENTS.CREATE, payload);
         if (response.success) {
           alert('Department created successfully!');
           setIsModalOpen(false);

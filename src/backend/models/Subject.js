@@ -58,14 +58,14 @@ const subjectSchema = new mongoose.Schema(
     },
     headTeacherId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Teacher',
+      ref: 'User',
     },
     
     // Teachers Assigned
     teachers: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Teacher',
+        ref: 'User',
       },
     ],
     

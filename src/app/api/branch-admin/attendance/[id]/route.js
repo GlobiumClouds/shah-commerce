@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Attendance from '@/backend/models/Attendance';
-import Student from '@/backend/models/Student';
+import User from '@/backend/models/User';
 import Class from '@/backend/models/Class';
 import Subject from '@/backend/models/Subject';
 import Branch from '@/backend/models/Branch';

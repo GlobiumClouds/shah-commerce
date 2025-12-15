@@ -17,10 +17,10 @@ const departmentSchema = new mongoose.Schema(
     },
     description: String,
     
-    // Department Head
+    // Department Head (reference to User)
     headTeacherId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Teacher',
+      ref: 'User',
     },
     
     // Branch
@@ -30,11 +30,11 @@ const departmentSchema = new mongoose.Schema(
       required: true,
     },
     
-    // Staff Members
+    // Staff Members (references to User)
     teachers: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Teacher',
+        ref: 'User',
       },
     ],
     

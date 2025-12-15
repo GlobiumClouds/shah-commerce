@@ -16,6 +16,7 @@ import { Plus, Edit, Trash2, Search, User, Mail, Phone, Eye, BookOpen, Upload, X
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import { toast } from 'sonner';
 
 const TEACHER_STATUS = [
   { value: 'active', label: 'Active' },
@@ -24,23 +25,13 @@ const TEACHER_STATUS = [
   { value: 'terminated', label: 'Terminated' },
 ];
 
-const GENDER_OPTIONS = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'other', label: 'Other' },
-];
-
-const EMPLOYMENT_TYPE = [
-  { value: 'full-time', label: 'Full-Time' },
-  { value: 'part-time', label: 'Part-Time' },
-  { value: 'contract', label: 'Contract' },
-];
-
 export default function TeachersPage() {
   const { user } = useAuth();
   const [teachers, setTeachers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [subjects, setSubjects] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [filteredSubjects, setFilteredSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -58,6 +49,7 @@ export default function TeachersPage() {
   const [pendingDocuments, setPendingDocuments] = useState([]);
 
   const [formData, setFormData] = useState({
+    // Basic user fields
     firstName: '',
     lastName: '',
     email: '',
@@ -69,11 +61,11 @@ export default function TeachersPage() {
     nationality: 'Pakistani',
     religion: '',
     cnic: '',
-    employeeId: '',
-    departmentId: '',
-    joiningDate: new Date().toISOString().split('T')[0],
-    employmentType: 'full-time',
     status: 'active',
+    profilePhoto: {
+      url: '',
+      publicId: '',
+    },
     address: {
       street: '',
       city: '',
@@ -81,41 +73,95 @@ export default function TeachersPage() {
       country: 'Pakistan',
       postalCode: '',
     },
+
+    // Teacher-specific nested profile matching User.teacherProfile
     teacherProfile: {
-      qualification: '',
-      experience: '',
+      employeeId: '',
+      joiningDate: new Date().toISOString().split('T')[0],
+      designation: '',
+      departmentId: '',
+      department: '',
+      employmentType: 'full-time',
+      qualifications: [],
+      highestQualification: '',
+      yearsOfExperience: '',
       specialization: '',
       previousInstitution: '',
       achievements: '',
+      subjects: [],
+      classes: [],
+      salaryDetails: {
+        basicSalary: '',
+        allowances: {
+          houseRent: 0,
+          medical: 0,
+          transport: 0,
+          other: 0,
+        },
+        deductions: {
+          tax: 0,
+          providentFund: 0,
+          insurance: 0,
+          other: 0,
+        },
+      },
+      bankAccount: {
+        bankName: '',
+        accountNumber: '',
+        iban: '',
+        branchCode: '',
+      },
+      emergencyContact: {
+        name: '',
+        relationship: '',
+        phone: '',
+      },
+      documents: [],
     },
-    qualifications: [],
-    assignedSubjects: [],
-    assignedClasses: [],
-    salary: {
-      basicSalary: '',
-      allowances: [],
-      deductions: [],
-      bankName: '',
-      accountNumber: '',
-      accountTitle: '',
-    },
-    emergencyContact: {
-      name: '',
-      relationship: '',
-      phone: '',
-    },
-    profilePhoto: {
-      url: '',
-      publicId: '',
-    },
-    documents: [],
   });
 
   useEffect(() => {
     fetchTeachers();
     fetchDepartments();
     fetchSubjects();
+    fetchClasses();
   }, [search, statusFilter, departmentFilter, pagination.page]);
+
+  // Update filteredSubjects when selected classes or classes list change
+  useEffect(() => {
+    try {
+      const selected = (formData.teacherProfile?.classes || []).map((c) => {
+        // normalize: allow { classId } object or plain id
+        if (!c) return null;
+        if (typeof c === 'string') return c;
+        if (c.classId) return c.classId._id || c.classId;
+        return null;
+      }).filter(Boolean);
+
+      if (selected.length === 0) {
+        setFilteredSubjects([]);
+        return;
+      }
+
+      const subjectIds = new Set();
+      classes.forEach((cls) => {
+        if (selected.includes(String(cls._id)) || selected.includes(cls._id)) {
+          (cls.subjects || []).forEach((s) => subjectIds.add(String(s._id || s)));
+        }
+      });
+
+      if (subjectIds.size === 0) {
+        setFilteredSubjects([]);
+        return;
+      }
+
+      const filtered = (subjects || []).filter((s) => subjectIds.has(String(s._id)));
+      setFilteredSubjects(filtered);
+    } catch (err) {
+      console.error('Error filtering subjects by classes:', err);
+      setFilteredSubjects([]);
+    }
+  }, [formData.teacherProfile?.classes, classes, subjects]);
 
   const fetchTeachers = async () => {
     try {
@@ -162,30 +208,99 @@ export default function TeachersPage() {
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Handle nested fields
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setFormData((prev) => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value,
-        },
-      }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+  const fetchClasses = async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.CLASSES.LIST, { limit: 200 });
+      if (response.success) {
+        setClasses(response.data.classes || response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error);
     }
   };
 
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+
+    // support checkboxes
+    const finalValue = type === 'checkbox' ? checked : value;
+
+    // Set nested path like 'teacherProfile.salaryDetails.allowances.houseRent'
+    const setAtPath = (obj, pathArr, val) => {
+      if (pathArr.length === 0) return val;
+      const [head, ...rest] = pathArr;
+      return {
+        ...obj,
+        [head]: setAtPath(obj?.[head] ?? {}, rest, val),
+      };
+    };
+
+    setFormData((prev) => {
+      if (!name.includes('.')) {
+        return { ...prev, [name]: finalValue };
+      }
+      const path = name.split('.');
+      const newNested = setAtPath(prev, path, finalValue);
+      // Merge shallowly into prev to keep other top-level keys
+      return { ...prev, ...newNested };
+    });
+  };
+
   const handleSubjectToggle = (subjectId) => {
+    setFormData((prev) => {
+      const prevSubjects = prev.teacherProfile?.subjects || [];
+      const next = prevSubjects.includes(subjectId)
+        ? prevSubjects.filter((id) => id !== subjectId)
+        : [...prevSubjects, subjectId];
+      return { ...prev, teacherProfile: { ...prev.teacherProfile, subjects: next } };
+    });
+  };
+
+  const handleClassToggle = (classId) => {
+    setFormData((prev) => {
+      const existing = prev.teacherProfile?.classes || [];
+      const found = existing.find((c) => String(c.classId) === String(classId));
+      if (found) {
+        return {
+          ...prev,
+          teacherProfile: {
+            ...prev.teacherProfile,
+            classes: existing.filter((c) => String(c.classId) !== String(classId)),
+          },
+        };
+      }
+
+      return {
+        ...prev,
+        teacherProfile: {
+          ...prev.teacherProfile,
+          classes: [...existing, { classId, section: '', subjectId: '' }],
+        },
+      };
+    });
+  };
+
+  const handleClassSubjectChange = (classId, subjectId) => {
     setFormData((prev) => ({
       ...prev,
-      assignedSubjects: prev.assignedSubjects.includes(subjectId)
-        ? prev.assignedSubjects.filter((id) => id !== subjectId)
-        : [...prev.assignedSubjects, subjectId],
+      teacherProfile: {
+        ...prev.teacherProfile,
+        classes: (prev.teacherProfile?.classes || []).map((c) =>
+          String(c.classId) === String(classId) ? { ...c, subjectId } : c
+        ),
+      },
+    }));
+  };
+
+  const handleClassSectionChange = (classId, section) => {
+    setFormData((prev) => ({
+      ...prev,
+      teacherProfile: {
+        ...prev.teacherProfile,
+        classes: (prev.teacherProfile?.classes || []).map((c) =>
+          String(c.classId) === String(classId) ? { ...c, section } : c
+        ),
+      },
     }));
   };
 
@@ -227,14 +342,17 @@ export default function TeachersPage() {
       if (response.success) {
         const newDoc = {
           type: documentType,
-          name: file.name,
+          name: file?.name,
           url: response.data.url,
           publicId: response.data.publicId,
           uploadedAt: new Date().toISOString(),
         };
         setFormData((prev) => ({
           ...prev,
-          documents: [...(prev.documents || []), newDoc],
+          teacherProfile: {
+            ...prev.teacherProfile,
+            documents: [...(prev.teacherProfile?.documents || []), newDoc],
+          },
         }));
         alert('Document uploaded successfully!');
       }
@@ -248,30 +366,42 @@ export default function TeachersPage() {
   const removeDocument = (index) => {
     setFormData((prev) => ({
       ...prev,
-      documents: prev.documents.filter((_, i) => i !== index),
+      teacherProfile: {
+        ...prev.teacherProfile,
+        documents: (prev.teacherProfile?.documents || []).filter((_, i) => i !== index),
+      },
     }));
   };
 
   const addQualification = () => {
     setFormData((prev) => ({
       ...prev,
-      qualifications: [...prev.qualifications, { degree: '', institution: '', year: '', grade: '' }],
+      teacherProfile: {
+        ...prev.teacherProfile,
+        qualifications: [...(prev.teacherProfile?.qualifications || []), { degree: '', institution: '', year: '', grade: '' }],
+      },
     }));
   };
 
   const removeQualification = (index) => {
     setFormData((prev) => ({
       ...prev,
-      qualifications: prev.qualifications.filter((_, i) => i !== index),
+      teacherProfile: {
+        ...prev.teacherProfile,
+        qualifications: (prev.teacherProfile?.qualifications || []).filter((_, i) => i !== index),
+      },
     }));
   };
 
   const updateQualification = (index, field, value) => {
     setFormData((prev) => ({
       ...prev,
-      qualifications: prev.qualifications.map((q, i) => 
-        i === index ? { ...q, [field]: value } : q
-      ),
+      teacherProfile: {
+        ...prev.teacherProfile,
+        qualifications: (prev.teacherProfile?.qualifications || []).map((q, i) =>
+          i === index ? { ...q, [field]: value } : q
+        ),
+      },
     }));
   };
 
@@ -280,26 +410,50 @@ export default function TeachersPage() {
     setSubmitting(true);
 
     try {
+      // Clean payload to avoid sending empty strings for enum/ObjectId fields
+      const cleanPayload = (input) => {
+        if (input === null || input === undefined) return undefined;
+        if (Array.isArray(input)) {
+          const arr = input
+            .map((v) => cleanPayload(v))
+            .filter((v) => v !== undefined);
+          return arr;
+        }
+        if (typeof input === 'object') {
+          const out = {};
+          Object.keys(input).forEach((k) => {
+            const v = cleanPayload(input[k]);
+            if (v !== undefined && v !== '') {
+              out[k] = v;
+            }
+          });
+          return out;
+        }
+        return input;
+      };
+
+      const payload = cleanPayload(formData) || {};
+
       if (isEditMode) {
         const response = await apiClient.put(
           API_ENDPOINTS.BRANCH_ADMIN.TEACHERS.UPDATE.replace(':id', currentTeacher._id),
-          formData
+          payload
         );
         if (response.success) {
-          alert('Teacher updated successfully!');
+          toast.success('Teacher updated successfully!');
           setIsModalOpen(false);
           fetchTeachers();
         }
       } else {
-        const response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.TEACHERS.CREATE, formData);
+        const response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.TEACHERS.CREATE, payload);
         if (response.success) {
-          alert('Teacher created successfully!');
+          toast.success('Teacher created successfully!');
           setIsModalOpen(false);
           fetchTeachers();
         }
       }
     } catch (error) {
-      alert(error.message || 'Failed to save teacher');
+      toast.error(error.message || 'Failed to save teacher');
     } finally {
       setSubmitting(false);
     }
@@ -319,46 +473,52 @@ export default function TeachersPage() {
       nationality: teacher.nationality || 'Pakistani',
       religion: teacher.religion || '',
       cnic: teacher.cnic || '',
-      employeeId: teacher.employeeId || '',
-      departmentId: teacher.departmentId?._id || '',
-      joiningDate: teacher.joiningDate ? teacher.joiningDate.split('T')[0] : '',
-      employmentType: teacher.employmentType || 'full-time',
       status: teacher.status || 'active',
-      address: teacher.address || {
-        street: '',
-        city: '',
-        state: '',
-        country: 'Pakistan',
-        postalCode: '',
+      profilePhoto: teacher.profilePhoto || { url: '', publicId: '' },
+      address: teacher.address || { street: '', city: '', state: '', country: 'Pakistan', postalCode: '' },
+      teacherProfile: {
+        employeeId: teacher.teacherProfile?.employeeId || teacher.employeeId || '',
+        joiningDate: teacher.teacherProfile?.joiningDate
+          ? teacher.teacherProfile.joiningDate.split('T')[0]
+          : teacher.joiningDate
+          ? teacher.joiningDate.split('T')[0]
+          : new Date().toISOString().split('T')[0],
+        designation: teacher.teacherProfile?.designation || '',
+        departmentId: teacher.teacherProfile?.departmentId?._id || teacher.departmentId?._id || '',
+        department: teacher.teacherProfile?.department || '',
+        employmentType: teacher.teacherProfile?.employmentType || teacher.employmentType || 'full-time',
+        qualifications: teacher.teacherProfile?.qualifications || teacher.qualifications || [],
+        highestQualification: teacher.teacherProfile?.highestQualification || '',
+        yearsOfExperience: teacher.teacherProfile?.yearsOfExperience || teacher.teacherProfile?.experience || '',
+        specialization: teacher.teacherProfile?.specialization || '',
+        previousInstitution: teacher.teacherProfile?.previousInstitution || '',
+        achievements: teacher.teacherProfile?.achievements || '',
+        subjects: (teacher.teacherProfile?.subjects || teacher.assignedSubjects || teacher.subjects || []).map((s) => s._id || s),
+        classes: teacher.teacherProfile?.classes || teacher.assignedClasses || [],
+        salaryDetails: {
+          basicSalary: teacher.teacherProfile?.salaryDetails?.basicSalary || teacher.salary?.basicSalary || '',
+          allowances: {
+            houseRent: teacher.teacherProfile?.salaryDetails?.allowances?.houseRent ?? (teacher.salary?.allowances?.houseRent ?? 0),
+            medical: teacher.teacherProfile?.salaryDetails?.allowances?.medical ?? (teacher.salary?.allowances?.medical ?? 0),
+            transport: teacher.teacherProfile?.salaryDetails?.allowances?.transport ?? (teacher.salary?.allowances?.transport ?? 0),
+            other: teacher.teacherProfile?.salaryDetails?.allowances?.other ?? (teacher.salary?.allowances?.other ?? 0),
+          },
+          deductions: {
+            tax: teacher.teacherProfile?.salaryDetails?.deductions?.tax ?? (teacher.salary?.deductions?.tax ?? 0),
+            providentFund: teacher.teacherProfile?.salaryDetails?.deductions?.providentFund ?? (teacher.salary?.deductions?.providentFund ?? 0),
+            insurance: teacher.teacherProfile?.salaryDetails?.deductions?.insurance ?? (teacher.salary?.deductions?.insurance ?? 0),
+            other: teacher.teacherProfile?.salaryDetails?.deductions?.other ?? (teacher.salary?.deductions?.other ?? 0),
+          },
+        },
+        bankAccount: {
+          bankName: teacher.teacherProfile?.bankAccount?.bankName || teacher.salary?.bankName || '',
+          accountNumber: teacher.teacherProfile?.bankAccount?.accountNumber || teacher.salary?.accountNumber || '',
+          iban: teacher.teacherProfile?.bankAccount?.iban || '',
+          branchCode: teacher.teacherProfile?.bankAccount?.branchCode || '',
+        },
+        emergencyContact: teacher.teacherProfile?.emergencyContact || teacher.emergencyContact || { name: '', relationship: '', phone: '' },
+        documents: teacher.teacherProfile?.documents || teacher.documents || [],
       },
-      teacherProfile: teacher.teacherProfile || {
-        qualification: '',
-        experience: '',
-        specialization: '',
-        previousInstitution: '',
-        achievements: '',
-      },
-      qualifications: teacher.qualifications || [],
-      assignedSubjects: teacher.assignedSubjects?.map((s) => s._id || s) || [],
-      assignedClasses: teacher.assignedClasses || [],
-      salary: teacher.salary || {
-        basicSalary: '',
-        allowances: [],
-        deductions: [],
-        bankName: '',
-        accountNumber: '',
-        accountTitle: '',
-      },
-      emergencyContact: teacher.emergencyContact || {
-        name: '',
-        relationship: '',
-        phone: '',
-      },
-      profilePhoto: teacher.profilePhoto || {
-        url: '',
-        publicId: '',
-      },
-      documents: teacher.documents || [],
     });
     setIsEditMode(true);
     setActiveTab('personal');
@@ -398,46 +558,29 @@ export default function TeachersPage() {
       nationality: 'Pakistani',
       religion: '',
       cnic: '',
-      employeeId: '',
-      departmentId: '',
-      joiningDate: new Date().toISOString().split('T')[0],
-      employmentType: 'full-time',
       status: 'active',
-      address: {
-        street: '',
-        city: '',
-        state: '',
-        country: 'Pakistan',
-        postalCode: '',
-      },
+      profilePhoto: { url: '', publicId: '' },
+      address: { street: '', city: '', state: '', country: 'Pakistan', postalCode: '' },
       teacherProfile: {
-        qualification: '',
-        experience: '',
+        employeeId: '',
+        joiningDate: new Date().toISOString().split('T')[0],
+        designation: '',
+        departmentId: '',
+        department: '',
+        employmentType: 'full-time',
+        qualifications: [],
+        highestQualification: '',
+        yearsOfExperience: '',
         specialization: '',
         previousInstitution: '',
         achievements: '',
+        subjects: [],
+        classes: [],
+        salaryDetails: { basicSalary: '', allowances: { houseRent: 0, medical: 0, transport: 0, other: 0 }, deductions: { tax: 0, providentFund: 0, insurance: 0, other: 0 } },
+        bankAccount: { bankName: '', accountNumber: '', iban: '', branchCode: '' },
+        emergencyContact: { name: '', relationship: '', phone: '' },
+        documents: [],
       },
-      qualifications: [],
-      assignedSubjects: [],
-      assignedClasses: [],
-      salary: {
-        basicSalary: '',
-        allowances: [],
-        deductions: [],
-        bankName: '',
-        accountNumber: '',
-        accountTitle: '',
-      },
-      emergencyContact: {
-        name: '',
-        relationship: '',
-        phone: '',
-      },
-      profilePhoto: {
-        url: '',
-        publicId: '',
-      },
-      documents: [],
     });
     setIsEditMode(false);
     setActiveTab('personal');
@@ -484,7 +627,7 @@ export default function TeachersPage() {
               onChange={(e) => setDepartmentFilter(e.target.value)}
               options={[
                 { value: '', label: 'All Departments' },
-                ...departments.map((d) => ({ value: d._id, label: d.name })),
+                ...departments.map((d) => ({ value: d._id, label: d?.name })),
               ]}
             />
             <Dropdown
@@ -499,12 +642,10 @@ export default function TeachersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Employee ID</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Department</TableHead>
                 <TableHead>Subjects</TableHead>
-                <TableHead>Employment</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -519,7 +660,6 @@ export default function TeachersPage() {
               ) : (
                 teachers.map((teacher) => (
                   <TableRow key={teacher._id}>
-                    <TableCell className="font-medium">{teacher.employeeId}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {teacher.profilePhoto?.url ? (
@@ -545,9 +685,6 @@ export default function TeachersPage() {
                         <BookOpen className="w-3 h-3" />
                         {teacher.assignedSubjects?.length || teacher.subjects?.length || 0}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="capitalize text-sm">{teacher.employmentType?.replace('-', ' ')}</span>
                     </TableCell>
                     <TableCell>
                       <span
@@ -783,36 +920,14 @@ export default function TeachersPage() {
                       placeholder="XXXXX-XXXXXXX-X"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Employee ID *</label>
-                    <Input
-                      type="text"
-                      name="employeeId"
-                      value={formData.employeeId}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
+                                  <div>
                     <label className="block text-sm font-medium mb-1">Joining Date</label>
                     <Input
                       type="date"
-                      name="joiningDate"
-                      value={formData.joiningDate}
+                      name="teacherProfile.joiningDate"
+                      value={formData.teacherProfile?.joiningDate}
                       onChange={handleInputChange}
                       icon={Calendar}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Employment Type</label>
-                    <Dropdown
-                      name="employmentType"
-                      value={formData.employmentType}
-                      onChange={handleInputChange}
-                      options={EMPLOYMENT_TYPE}
                     />
                   </div>
                 </div>
@@ -830,12 +945,12 @@ export default function TeachersPage() {
                   <div>
                     <label className="block text-sm font-medium mb-1">Department</label>
                     <Dropdown
-                      name="departmentId"
-                      value={formData.departmentId}
+                      name="teacherProfile.departmentId"
+                      value={formData.teacherProfile?.departmentId}
                       onChange={handleInputChange}
                       options={[
                         { value: '', label: 'Select Department' },
-                        ...departments.map((d) => ({ value: d._id, label: d.name })),
+                        ...departments.map((d) => ({ value: d._id, label: d?.name })),
                       ]}
                     />
                   </div>
@@ -909,8 +1024,8 @@ export default function TeachersPage() {
                         <label className="block text-sm font-medium mb-1">Contact Name</label>
                         <Input
                           type="text"
-                          name="emergencyContact.name"
-                          value={formData.emergencyContact.name}
+                          name="teacherProfile.emergencyContact.name"
+                          value={formData.teacherProfile?.emergencyContact?.name}
                           onChange={handleInputChange}
                         />
                       </div>
@@ -918,8 +1033,8 @@ export default function TeachersPage() {
                         <label className="block text-sm font-medium mb-1">Relationship</label>
                         <Input
                           type="text"
-                          name="emergencyContact.relationship"
-                          value={formData.emergencyContact.relationship}
+                          name="teacherProfile.emergencyContact.relationship"
+                          value={formData.teacherProfile?.emergencyContact?.relationship}
                           onChange={handleInputChange}
                         />
                       </div>
@@ -928,8 +1043,8 @@ export default function TeachersPage() {
                       <label className="block text-sm font-medium mb-1">Phone Number</label>
                       <Input
                         type="tel"
-                        name="emergencyContact.phone"
-                        value={formData.emergencyContact.phone}
+                        name="teacherProfile.emergencyContact.phone"
+                        value={formData.teacherProfile?.emergencyContact?.phone}
                         onChange={handleInputChange}
                         icon={Phone}
                       />
@@ -947,8 +1062,8 @@ export default function TeachersPage() {
                     <label className="block text-sm font-medium mb-1">Highest Qualification</label>
                     <Input
                       type="text"
-                      name="teacherProfile.qualification"
-                      value={formData.teacherProfile.qualification}
+                      name="teacherProfile.highestQualification"
+                      value={formData.teacherProfile.highestQualification}
                       onChange={handleInputChange}
                       placeholder="BSc, MSc, PhD..."
                     />
@@ -957,8 +1072,8 @@ export default function TeachersPage() {
                     <label className="block text-sm font-medium mb-1">Years of Experience</label>
                     <Input
                       type="number"
-                      name="teacherProfile.experience"
-                      value={formData.teacherProfile.experience}
+                      name="teacherProfile.yearsOfExperience"
+                      value={formData.teacherProfile.yearsOfExperience}
                       onChange={handleInputChange}
                       min="0"
                     />
@@ -1003,22 +1118,77 @@ export default function TeachersPage() {
                 <div className="border-t pt-4">
                   <label className="block text-sm font-medium mb-2">Assign Subjects</label>
                   <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
-                    {subjects.length === 0 ? (
+                    {((filteredSubjects && filteredSubjects.length > 0) ? filteredSubjects : subjects).length === 0 ? (
                       <p className="text-sm text-gray-500">No subjects available</p>
                     ) : (
-                      subjects.map((subject) => (
+                      ((filteredSubjects && filteredSubjects.length > 0) ? filteredSubjects : subjects).map((subject) => (
                         <div key={subject._id} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={formData.assignedSubjects.includes(subject._id)}
-                            onChange={() => handleSubjectToggle(subject._id)}
-                            className="w-4 h-4"
-                          />
+                              <input
+                                type="checkbox"
+                                checked={formData.teacherProfile?.subjects?.includes(subject._id)}
+                                onChange={() => handleSubjectToggle(subject._id)}
+                                className="w-4 h-4"
+                              />
                           <label className="text-sm">
-                            {subject.name} ({subject.code})
+                            {subject.name} {subject.code ? `(${subject.code})` : ''}
                           </label>
                         </div>
                       ))
+                    )}
+                  </div>
+                </div>
+                {/* Assigned Classes */}
+                <div className="border-t pt-4">
+                  <label className="block text-sm font-medium mb-2">Assign Classes</label>
+                  <div className="border rounded-lg p-3 max-h-56 overflow-y-auto space-y-2">
+                    {classes.length === 0 ? (
+                      <p className="text-sm text-gray-500">No classes available</p>
+                    ) : (
+                      classes.map((cls) => {
+                        const assigned = (formData.teacherProfile?.classes || []).find((c) => String(c.classId) === String(cls._id));
+                        return (
+                          <div key={cls._id} className="border rounded p-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={!!assigned}
+                                  onChange={() => handleClassToggle(cls._id)}
+                                  className="w-4 h-4"
+                                />
+                                <div>
+                                  <div className="font-medium">{cls.name} {cls.code ? `(${cls.code})` : ''}</div>
+                                  <div className="text-xs text-gray-500">{cls.grade?.name || ''} • {cls.studentCount || 0} students</div>
+                                </div>
+                              </div>
+                              {assigned && (
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    value={assigned.section || ''}
+                                    onChange={(e) => handleClassSectionChange(cls._id, e.target.value)}
+                                    className="px-2 py-1 border rounded"
+                                  >
+                                    <option value="">Select Section</option>
+                                    {(cls.sections || []).map((s) => (
+                                      <option key={s.name} value={s.name}>{s.name}</option>
+                                    ))}
+                                  </select>
+                                  <select
+                                    value={assigned.subjectId || ''}
+                                    onChange={(e) => handleClassSubjectChange(cls._id, e.target.value)}
+                                    className="px-2 py-1 border rounded"
+                                  >
+                                    <option value="">Select Subject</option>
+                                    {(cls.subjects || []).map((sub) => (
+                                      <option key={sub._id} value={sub._id}>{sub.name} {sub.code ? `(${sub.code})` : ''}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -1036,13 +1206,13 @@ export default function TeachersPage() {
                   </Button>
                 </div>
 
-                {formData.qualifications.length === 0 ? (
+                {(formData.teacherProfile?.qualifications || []).length === 0 ? (
                   <div className="text-center py-8 text-gray-500 border rounded-lg">
                     No qualifications added yet. Click "Add Qualification" to begin.
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {formData.qualifications.map((qual, index) => (
+                    {(formData.teacherProfile?.qualifications || []).map((qual, index) => (
                       <div key={index} className="border rounded-lg p-4 relative">
                         <button
                           type="button"
@@ -1104,8 +1274,8 @@ export default function TeachersPage() {
                   <label className="block text-sm font-medium mb-1">Basic Salary</label>
                   <Input
                     type="number"
-                    name="salary.basicSalary"
-                    value={formData.salary.basicSalary}
+                    name="teacherProfile.salaryDetails.basicSalary"
+                    value={formData.teacherProfile?.salaryDetails?.basicSalary}
                     onChange={handleInputChange}
                     placeholder="50000"
                     min="0"
@@ -1113,45 +1283,103 @@ export default function TeachersPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Allowances (comma-separated)</label>
-                  <textarea
-                    name="salary.allowances"
-                    value={Array.isArray(formData.salary.allowances) ? formData.salary.allowances.join(', ') : formData.salary.allowances}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setFormData(prev => ({
-                        ...prev,
-                        salary: {
-                          ...prev.salary,
-                          allowances: value.split(',').map(item => item.trim()).filter(item => item),
-                        },
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    rows="2"
-                    placeholder="Housing: 10000, Transport: 5000, Medical: 3000"
-                  />
+                  <label className="block text-sm font-medium mb-1">Allowances</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm mb-1">House Rent</label>
+                      <Input
+                        type="number"
+                        name="teacherProfile.salaryDetails.allowances.houseRent"
+                        value={formData.teacherProfile?.salaryDetails?.allowances?.houseRent}
+                        onChange={handleInputChange}
+                        placeholder="House Rent"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm mb-1">Medical</label>
+                      <Input
+                        type="number"
+                        name="teacherProfile.salaryDetails.allowances.medical"
+                        value={formData.teacherProfile?.salaryDetails?.allowances?.medical}
+                        onChange={handleInputChange}
+                        placeholder="Medical"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm mb-1">Transport</label>
+                      <Input
+                        type="number"
+                        name="teacherProfile.salaryDetails.allowances.transport"
+                        value={formData.teacherProfile?.salaryDetails?.allowances?.transport}
+                        onChange={handleInputChange}
+                        placeholder="Transport"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm mb-1">Other</label>
+                      <Input
+                        type="number"
+                        name="teacherProfile.salaryDetails.allowances.other"
+                        value={formData.teacherProfile?.salaryDetails?.allowances?.other}
+                        onChange={handleInputChange}
+                        placeholder="Other"
+                        min="0"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Deductions (comma-separated)</label>
-                  <textarea
-                    name="salary.deductions"
-                    value={Array.isArray(formData.salary.deductions) ? formData.salary.deductions.join(', ') : formData.salary.deductions}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setFormData(prev => ({
-                        ...prev,
-                        salary: {
-                          ...prev.salary,
-                          deductions: value.split(',').map(item => item.trim()).filter(item => item),
-                        },
-                      }));
-                    }}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    rows="2"
-                    placeholder="Tax: 2000, Insurance: 1000"
-                  />
+                  <label className="block text-sm font-medium mb-1">Deductions</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm mb-1">Tax</label>
+                      <Input
+                        type="number"
+                        name="teacherProfile.salaryDetails.deductions.tax"
+                        value={formData.teacherProfile?.salaryDetails?.deductions?.tax}
+                        onChange={handleInputChange}
+                        placeholder="Tax"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm mb-1">Provident Fund</label>
+                      <Input
+                        type="number"
+                        name="teacherProfile.salaryDetails.deductions.providentFund"
+                        value={formData.teacherProfile?.salaryDetails?.deductions?.providentFund}
+                        onChange={handleInputChange}
+                        placeholder="Provident Fund"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm mb-1">Insurance</label>
+                      <Input
+                        type="number"
+                        name="teacherProfile.salaryDetails.deductions.insurance"
+                        value={formData.teacherProfile?.salaryDetails?.deductions?.insurance}
+                        onChange={handleInputChange}
+                        placeholder="Insurance"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm mb-1">Other</label>
+                      <Input
+                        type="number"
+                        name="teacherProfile.salaryDetails.deductions.other"
+                        value={formData.teacherProfile?.salaryDetails?.deductions?.other}
+                        onChange={handleInputChange}
+                        placeholder="Other"
+                        min="0"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="border-t pt-4">
@@ -1161,8 +1389,8 @@ export default function TeachersPage() {
                       <label className="block text-sm font-medium mb-1">Bank Name</label>
                       <Input
                         type="text"
-                        name="salary.bankName"
-                        value={formData.salary.bankName}
+                        name="teacherProfile.bankAccount.bankName"
+                        value={formData.teacherProfile?.bankAccount?.bankName}
                         onChange={handleInputChange}
                         placeholder="Bank Al Habib, HBL, MCB..."
                       />
@@ -1171,20 +1399,20 @@ export default function TeachersPage() {
                       <label className="block text-sm font-medium mb-1">Account Number</label>
                       <Input
                         type="text"
-                        name="salary.accountNumber"
-                        value={formData.salary.accountNumber}
+                        name="teacherProfile.bankAccount.accountNumber"
+                        value={formData.teacherProfile?.bankAccount?.accountNumber}
                         onChange={handleInputChange}
                         placeholder="XXXXXXXXXXXX"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Account Title</label>
+                      <label className="block text-sm font-medium mb-1">IBAN</label>
                       <Input
                         type="text"
-                        name="salary.accountTitle"
-                        value={formData.salary.accountTitle}
+                        name="teacherProfile.bankAccount.iban"
+                        value={formData.teacherProfile?.bankAccount?.iban}
                         onChange={handleInputChange}
-                        placeholder="Account holder name"
+                        placeholder="PK00ABCD0000000000000000"
                       />
                     </div>
                   </div>
@@ -1216,10 +1444,10 @@ export default function TeachersPage() {
                   </div>
                 </div>
 
-                {formData.documents.length > 0 && (
+                {(formData.teacherProfile?.documents || []).length > 0 && (
                   <div className="space-y-2">
                     <h3 className="text-sm font-semibold">Uploaded Documents</h3>
-                    {formData.documents.map((doc, index) => (
+                    {(formData.teacherProfile?.documents || []).map((doc, index) => (
                       <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-2">
                           <FileText className="w-4 h-4 text-gray-400" />
@@ -1360,10 +1588,6 @@ export default function TeachersPage() {
                 <div>
                   <label className="text-sm font-medium text-gray-500">Department</label>
                   <p>{currentTeacher.departmentId?.name || 'Not Assigned'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Employment Type</label>
-                  <p className="capitalize">{currentTeacher.employmentType?.replace('-', ' ') || '-'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Joining Date</label>

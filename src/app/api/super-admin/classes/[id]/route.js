@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/database';
 import Class from '@/backend/models/Class';
-import Student from '@/backend/models/Student';
+import User from '@/backend/models/User';
 import { withAuth } from '@/backend/middleware/auth';
 import Branch from '@/backend/models/Branch';
 
@@ -53,8 +53,9 @@ async function getClass(request) {
     }
 
     // Get student count
-    const studentCount = await Student.countDocuments({
-      classId: classDoc._id,
+    const studentCount = await User.countDocuments({
+      role: 'student',
+      'studentProfile.classId': classDoc._id,
       status: 'active',
     });
 

@@ -48,11 +48,11 @@ const syllabusSchema = new mongoose.Schema(
     // Teacher
     preparedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Teacher',
+      ref: 'User',
     },
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Teacher',
+      ref: 'User',
     },
     
     // Duration

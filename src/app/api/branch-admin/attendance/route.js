@@ -3,8 +3,7 @@ import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Attendance from '@/backend/models/Attendance';
 import Class from '@/backend/models/Class';
-import Student from '@/backend/models/Student';
-import Class from '@/backend/models/Class';
+import User from '@/backend/models/User';
 import Subject from '@/backend/models/Subject';
 import Branch from '@/backend/models/Branch';
 

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Class from '@/backend/models/Class';
-import Student from '@/backend/models/Student';
+import User from '@/backend/models/User';
 
 // GET - Get all classes for branch admin's branch
 async function getClasses(request, authenticatedUser, userDoc) {
@@ -64,7 +64,11 @@ async function getClasses(request, authenticatedUser, userDoc) {
     // Get student counts for each class
     const classesWithCounts = await Promise.all(
       classes.map(async (classItem) => {
-        const studentCount = await Student.countDocuments({ classId: classItem._id });
+        const studentCount = await User.countDocuments({
+          role: 'student',
+          'studentProfile.classId': classItem._id,
+          status: 'active',
+        });
         return {
           ...classItem,
           studentCount,
