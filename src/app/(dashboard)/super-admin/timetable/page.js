@@ -33,6 +33,8 @@ import {
 import BranchSelect from '@/components/ui/branch-select';
 import ClassSelect from '@/components/ui/class-select';
 import apiClient from '@/lib/api-client';
+import ButtonLoader from '@/components/ui/button-loader';
+import FullPageLoader from '@/components/ui/full-page-loader';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -62,7 +64,11 @@ export default function TimetablePage() {
   
   const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
+  const [selectedSection, setSelectedSection] = useState('');
+  const [selectedTeacher, setSelectedTeacher] = useState('');
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('2024-2025');
+  
+  const [fetchingTimetables, setFetchingTimetables] = useState(false);
   
   const [showDialog, setShowDialog] = useState(false);
   const [editingTimetable, setEditingTimetable] = useState(null);
@@ -332,12 +338,15 @@ export default function TimetablePage() {
 
   const fetchTimetables = async () => {
     try {
+      setFetchingTimetables(true);
       let url = API_ENDPOINTS.SUPER_ADMIN.TIMETABLES.LIST;
       const params = [];
       
-      if (selectedBranch) params.push(`branchId=${selectedBranch}`);
-      if (selectedClass) params.push(`classId=${selectedClass}`);
-      if (selectedAcademicYear) params.push(`academicYear=${selectedAcademicYear}`);
+      if (selectedBranch) params.push(`branchId=${encodeURIComponent(selectedBranch)}`);
+      if (selectedClass) params.push(`classId=${encodeURIComponent(selectedClass)}`);
+      if (selectedSection) params.push(`section=${encodeURIComponent(selectedSection)}`);
+      if (selectedTeacher) params.push(`teacherId=${encodeURIComponent(selectedTeacher)}`);
+      if (selectedAcademicYear) params.push(`academicYear=${encodeURIComponent(selectedAcademicYear)}`);
       
       if (params.length > 0) {
         url += '?' + params.join('&');
@@ -349,6 +358,8 @@ export default function TimetablePage() {
       }
     } catch (error) {
       toast.error('Failed to fetch timetables');
+    } finally {
+      setFetchingTimetables(false);
     }
   };
 
@@ -665,11 +676,42 @@ export default function TimetablePage() {
       // (Automatic lunch addition removed as per user request)
 
       // Otherwise add a normal lecture period after last
-      const startTime = nextStart;
-      const endTime = addMinutes(startTime, periodDuration);
+      let startTime = nextStart;
+      let endTime = addMinutes(startTime, periodDuration);
 
-      // If this doesn't fit, move to next day and add first period
+      // Check if standard period fits
       if (getMinutesDifference(endTime, schoolEndTime) < 0) {
+        // Standard period doesn't fit, check if we can add a shorter period to fill remaining time
+        const remainingMinutes = minutesRemainingFromNextStart;
+        
+        // If there are at least 15 minutes remaining, add a period with adjusted duration
+        if (remainingMinutes >= 15) {
+          endTime = schoolEndTime; // Use all remaining time
+          const periodNumber = sameDayPeriods.length + 1;
+
+          const newPeriod = {
+            periodNumber,
+            day,
+            startTime,
+            endTime,
+            subjectId: '',
+            teacherId: '',
+            periodType: 'lecture',
+            roomNumber: getSectionByName(formData.section)?.roomNumber || '',
+            section: formData.section,
+          };
+
+          if (isDuplicatePeriod(newPeriod)) {
+            toast.error('This time slot is already occupied on this day for this section!');
+            return;
+          }
+
+          setFormData({ ...formData, periods: [...formData.periods, newPeriod] });
+          toast.success(`Added period ${periodNumber} for ${day} (${startTime} - ${endTime}) - ${remainingMinutes} min`);
+          return;
+        }
+        
+        // Less than 15 minutes remaining, move to next day
         const currentDayIndex = DAYS.indexOf(day);
         const nextDayIndex = currentDayIndex + 1;
         if (nextDayIndex >= DAYS.length) {
@@ -775,6 +817,39 @@ export default function TimetablePage() {
   };
 
   const viewTimetable = (timetable) => {
+    // If a teacher filter is active, aggregate that teacher's periods
+    // across all fetched timetables so the view shows the teacher schedule
+    if (selectedTeacher) {
+      const teacherId = selectedTeacher;
+      const aggregated = [];
+      timetables.forEach((tt) => {
+        (tt.periods || []).forEach((p) => {
+          const pTeacherId = typeof p.teacherId === 'object' ? (p.teacherId._id || p.teacherId) : p.teacherId;
+          if (!pTeacherId) return;
+          if (String(pTeacherId) === String(teacherId)) {
+            aggregated.push({
+              // keep original period fields, but attach source class/section/branch for context
+              ...p,
+              className: tt.classId?.name || (tt.classId?._id ? tt.classId?._id : ''),
+              section: tt.section,
+              branchName: tt.branchId?.name || '',
+            });
+          }
+        });
+      });
+
+      const teacherObj = teachers.find(t => String(t._id) === String(teacherId));
+      setViewingTimetable({
+        _id: `teacher-${teacherId}`,
+        name: `Teacher Schedule - ${teacherObj ? `${teacherObj.firstName} ${teacherObj.lastName}` : teacherId}`,
+        branchId: null,
+        classId: null,
+        academicYear: selectedAcademicYear || formData.academicYear,
+        periods: aggregated,
+      });
+      return;
+    }
+
     setViewingTimetable(timetable);
   };
 
@@ -812,23 +887,112 @@ export default function TimetablePage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div className="space-y-2">
               <Label>Branch</Label>
               <BranchSelect
                 value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                placeholder="Select branch"
+                onChange={(e) => {
+                  const branchId = e.target.value;
+                  setSelectedBranch(branchId);
+                  setSelectedClass('');
+                  setSelectedSection('');
+                  setSelectedTeacher('');
+                  if (branchId) {
+                    fetchClasses(branchId);
+                    fetchTeachers(branchId);
+                  } else {
+                    setClasses([]);
+                    setSections([]);
+                    setTeachers([]);
+                  }
+                }}
+                placeholder="All Branches"
                 className="w-full"
                 branches={branches}
               />
             </div>
 
             <div className="space-y-2">
+              <Label>Class</Label>
+              <ClassSelect
+                value={selectedClass}
+                onChange={(e) => {
+                  const classId = e.target.value;
+                  setSelectedClass(classId);
+                  setSelectedSection('');
+                  if (classId) {
+                    fetchSections(classId);
+                  } else {
+                    setSections([]);
+                  }
+                }}
+                classes={classes}
+                placeholder="All Classes"
+                className="w-full"
+                disabled={!selectedBranch}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Section</Label>
+              <Dropdown
+                value={selectedSection}
+                onChange={(e) => setSelectedSection(e.target.value)}
+                options={[
+                  { value: '', label: 'All Sections' },
+                  ...sections.map(s => ({
+                    value: s.name,
+                    label: `${s.name} ${s.roomNumber ? `(Room: ${s.roomNumber})` : ''}`
+                  }))
+                ]}
+                placeholder="All Sections"
+                disabled={!selectedClass}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Teacher</Label>
+              <Dropdown
+                value={selectedTeacher}
+                onChange={(e) => setSelectedTeacher(e.target.value)}
+                options={[
+                  { value: '', label: 'All Teachers' },
+                  ...teachers.map(t => ({
+                    value: t._id,
+                    label: `${t.firstName} ${t.lastName}`
+                  }))
+                ]}
+                placeholder="All Teachers"
+                disabled={!selectedBranch}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Academic Year</Label>
+              <Dropdown
+                value={selectedAcademicYear}
+                onChange={(e) => setSelectedAcademicYear(e.target.value)}
+                options={[
+                  { value: '', label: 'All Years' },
+                  { value: '2023-2024', label: '2023-2024' },
+                  { value: '2024-2025', label: '2024-2025' },
+                  { value: '2025-2026', label: '2025-2026' },
+                ]}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>&nbsp;</Label>
-              <Button onClick={fetchTimetables} className="w-full">
-                <Search className="mr-2 h-4 w-4" />
-                Search
+              <Button onClick={fetchTimetables} className="w-full" disabled={fetchingTimetables}>
+                {fetchingTimetables ? (
+                  <ButtonLoader size={4} />
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    Search
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -859,32 +1023,70 @@ export default function TimetablePage() {
                 </tr>
               </thead>
               <tbody>
-                {timetables.map((timetable) => (
-                  <tr key={timetable._id} className="border-b">
-                    <td className="p-3">{timetable.name}</td>
-                    <td className="p-3">{timetable.branchId?.name || 'N/A'}</td>
-                    <td className="p-3">{timetable.classId?.name || 'N/A'}</td>
-                    <td className="p-3">{timetable.section || 'All'}</td>
-                    <td className="p-3">{timetable.academicYear}</td>
-                    <td className="p-3">
-                      <Badge variant="outline">{timetable.periods?.length || 0} periods</Badge>
-                    </td>
-                    <td className="p-3">{getStatusBadge(timetable.status)}</td>
-                    <td className="p-3">
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => viewTimetable(timetable)}>
-                          <Calendar className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(timetable)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(timetable._id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {selectedTeacher ? (() => {
+                  const teacherId = selectedTeacher;
+                  const aggregated = [];
+                  timetables.forEach((tt) => {
+                    (tt.periods || []).forEach((p) => {
+                      const pTeacherId = typeof p.teacherId === 'object' ? (p.teacherId._1d || p.teacherId._id || p.teacherId) : p.teacherId;
+                      if (!pTeacherId) return;
+                      if (String(pTeacherId) === String(teacherId)) {
+                        aggregated.push({ ...p, className: tt.classId?.name, section: tt.section, branchName: tt.branchId?.name });
+                      }
+                    });
+                  });
+
+                  const classesSet = Array.from(new Set(aggregated.map(a => a.className).filter(Boolean)));
+                  const sectionsSet = Array.from(new Set(aggregated.map(a => a.section).filter(Boolean)));
+                  const branchesSet = Array.from(new Set(aggregated.map(a => a.branchName).filter(Boolean)));
+                  const teacherObj = teachers.find(t => String(t._id) === String(teacherId));
+
+                  return (
+                    <tr key={`teacher-${teacherId}`} className="border-b">
+                      <td className="p-3">{teacherObj ? `${teacherObj.firstName} ${teacherObj.lastName}` : teacherId}</td>
+                      <td className="p-3">{branchesSet.length ? branchesSet.join(', ') : 'N/A'}</td>
+                      <td className="p-3">{classesSet.length ? classesSet.join(', ') : 'N/A'}</td>
+                      <td className="p-3">{sectionsSet.length ? sectionsSet.join(', ') : 'All'}</td>
+                      <td className="p-3">{selectedAcademicYear || 'All'}</td>
+                      <td className="p-3"><Badge variant="outline">{aggregated.length} periods</Badge></td>
+                      <td className="p-3">{getStatusBadge('active')}</td>
+                      <td className="p-3">
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => viewTimetable({})}>
+                            <Calendar className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })() : (
+                  timetables.map((timetable) => (
+                    <tr key={timetable._id} className="border-b">
+                      <td className="p-3">{timetable.name}</td>
+                      <td className="p-3">{timetable.branchId?.name || 'N/A'}</td>
+                      <td className="p-3">{timetable.classId?.name || 'N/A'}</td>
+                      <td className="p-3">{timetable.section || 'All'}</td>
+                      <td className="p-3">{timetable.academicYear}</td>
+                      <td className="p-3">
+                        <Badge variant="outline">{timetable.periods?.length || 0} periods</Badge>
+                      </td>
+                      <td className="p-3">{getStatusBadge(timetable.status)}</td>
+                      <td className="p-3">
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => viewTimetable(timetable)}>
+                            <Calendar className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(timetable)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(timetable._id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -1397,6 +1599,11 @@ export default function TimetablePage() {
                                       {period.teacherId?.firstName}{' '}
                                       {period.teacherId?.lastName}
                                     </div>
+                                    {period.className && (
+                                      <div className="text-xs text-muted-foreground">
+                                        {period.className}{period.section ? ` - ${period.section}` : ''}
+                                      </div>
+                                    )}
                                     <div className="text-xs">
                                       {period.startTime} - {period.endTime}
                                     </div>
@@ -1422,6 +1629,9 @@ export default function TimetablePage() {
             </div>
         </Modal>
       )}
+
+      {/* Loading Overlay */}
+      {fetchingTimetables && <FullPageLoader message="Loading timetables..." />}
     </div>
   );
 }
