@@ -125,8 +125,8 @@ const subjectSchema = new mongoose.Schema(
   }
 );
 
-// Indexes
-subjectSchema.index({ code: 1 });
+// Indexes (unique: true already creates index, so only add non-unique indexes)
+// subjectSchema.index({ code: 1 }); // Removed - unique: true already creates this index
 subjectSchema.index({ classId: 1 });
 subjectSchema.index({ grade: 1 });
 subjectSchema.index({ status: 1 });

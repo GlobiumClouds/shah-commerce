@@ -68,6 +68,7 @@ const ROLE_MENUS = {
         { name: 'Classes', path: '/super-admin/academic/classes', icon: School },
         { name: 'Subjects', path: '/super-admin/academic/subjects', icon: BookOpen },
         { name: 'Syllabus', path: '/super-admin/academic/syllabus', icon: FileText },
+        { name: 'Timetable', path: '/super-admin/timetable', icon: Clock },
       ],
     },
     {

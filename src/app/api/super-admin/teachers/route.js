@@ -206,7 +206,9 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       emergencyContact: body.teacherProfile?.emergencyContact || {},
       documents: body.teacherProfile?.documents || [],
     };
-    
+
+    // Always require a password for teacher login
+    const password = body.password || 'Teacher@123';
     // Create teacher user
     const teacher = new User({
       role: 'teacher',
@@ -227,7 +229,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       teacherProfile,
       status: body.status || 'active',
       remarks: body.remarks || '',
-      passwordHash: body.password || 'Teacher@123', // Will be hashed by pre-save middleware
+      passwordHash: password, // Will be hashed by pre-save middleware
       emailVerified: true,
       createdBy: userDoc._id,
       updatedBy: userDoc._id,

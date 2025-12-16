@@ -114,6 +114,8 @@ async function createTeacher(request, authenticatedUser, userDoc) {
     const body = await request.json();
 
     // Prepare teacher user data
+    // Always require a password for teacher login
+    const password = body.password || 'Teacher@123';
     const userData = {
       role: 'teacher',
       firstName: body.firstName,
@@ -127,7 +129,7 @@ async function createTeacher(request, authenticatedUser, userDoc) {
       religion: body.religion || '',
       nationality: body.nationality || 'Pakistani',
       cnic: body.cnic || '',
-      passwordHash: body.password || `temp${Date.now()}`,
+      passwordHash: password, // Will be hashed by pre-save hook
       branchId: authenticatedUser.branchId,
       createdBy: authenticatedUser.userId,
       isActive: true,

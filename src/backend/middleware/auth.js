@@ -223,10 +223,11 @@ export function requireBranch(branchId) {
 
   /**
    * Wrapper function to apply authentication middleware
-   * Usage: withAuth(async (request, user) => {...}, [middlewares])
+   * Usage: withAuth(async (request, user, userDoc, context) => {...}, [middlewares])
+   * Context includes params for dynamic routes in Next.js 15+
    */
   export function withAuth(handler, middlewares = []) {
-    return async (request) => {
+    return async (request, context) => {
       // Authenticate user
       const auth = await authenticate(request);
     
@@ -245,8 +246,8 @@ export function requireBranch(branchId) {
         }
       }
     
-      // Call the actual handler
-      return handler(request, auth.user, auth.userDoc);
+      // Call the actual handler with context (params for dynamic routes)
+      return handler(request, auth.user, auth.userDoc, context);
     };
   }
 
