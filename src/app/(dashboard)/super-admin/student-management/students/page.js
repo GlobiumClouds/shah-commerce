@@ -11,6 +11,7 @@ import BloodGroupSelect from '@/components/ui/blood-group';
 import GenderSelect from '@/components/ui/gender-select';
 import BranchSelect from '@/components/ui/branch-select';
 import ClassSelect from '@/components/ui/class-select';
+import DepartmentSelect from '@/components/ui/department-select';
 import {
   Users,
   Plus,
@@ -36,6 +37,7 @@ export default function StudentsPage() {
   const [students, setStudents] = useState([]);
   const [branches, setBranches] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -119,6 +121,21 @@ export default function StudentsPage() {
     }
   };
 
+  const loadDepartments = async () => {
+    try {
+      const res = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.DEPARTMENTS.LIST}?limit=200`);
+      if (res && res.success) {
+        const payload = res.data;
+        setDepartments(Array.isArray(payload) ? payload : payload?.departments || []);
+      } else {
+        setDepartments([]);
+      }
+    } catch (err) {
+      console.error('Error loading departments:', err);
+      setDepartments([]);
+    }
+  };
+
   const requestCounter = useRef(0);
 
   const loadStudents = async () => {
@@ -185,7 +202,6 @@ export default function StudentsPage() {
   const handleAddNew = () => {
     setEditingStudent(null);
     setFormData({
-      registrationNumber: '',
       firstName: '',
       lastName: '',
       email: '',
@@ -204,16 +220,19 @@ export default function StudentsPage() {
       },
       branchId: '',
       classId: '',
+      departmentId: '',
       section: '',
       rollNumber: '',
       admissionDate: new Date().toISOString().split('T')[0],
       academicYear: new Date().getFullYear().toString(),
+      previousSchool: { name: '', lastClass: '', marks: 0, leavingDate: '' },
       father: {
         name: '',
         occupation: '',
         phone: '',
         email: '',
         cnic: '',
+        income: 0,
       },
       mother: {
         name: '',
@@ -222,7 +241,16 @@ export default function StudentsPage() {
         email: '',
         cnic: '',
       },
+      guardian: {
+        name: '',
+        relation: '',
+        phone: '',
+        email: '',
+        cnic: '',
+      },
       guardianType: 'parent',
+      feeDiscount: { type: 'fixed', amount: 0, reason: '' },
+      transportFee: { enabled: false, routeId: '', amount: 0 },
       status: 'active',
       remarks: '',
     });
@@ -233,13 +261,13 @@ export default function StudentsPage() {
   const handleEdit = async (student) => {
     setEditingStudent(student);
     setFormData({
-      registrationNumber: student.studentProfile?.registrationNumber || '',
+      // registrationNumber: student.studentProfile?.registrationNumber || '',
       firstName: student.firstName,
       lastName: student.lastName,
       email: student.email || '',
       phone: student.phone || '',
       dateOfBirth: student.dateOfBirth ? format(new Date(student.dateOfBirth), 'yyyy-MM-dd') : '',
-      gender: student.gender,
+      gender: student.gender || 'male',
       bloodGroup: student.bloodGroup || '',
       religion: student.religion || '',
       nationality: student.nationality || 'Pakistani',
@@ -258,12 +286,12 @@ export default function StudentsPage() {
       rollNumber: student.studentProfile?.rollNumber || '',
       admissionDate: student.studentProfile?.admissionDate ? format(new Date(student.studentProfile.admissionDate), 'yyyy-MM-dd') : '',
       academicYear: student.studentProfile?.academicYear || new Date().getFullYear().toString(),
-      previousSchool: student.studentProfile?.previousSchool || '',
-      father: student.studentProfile?.father || { name: '', occupation: '', phone: '', email: '', cnic: '' },
+      previousSchool: student.studentProfile?.previousSchool || { name: '', lastClass: '', marks: 0, leavingDate: '' },
+      father: student.studentProfile?.father || { name: '', occupation: '', phone: '', email: '', cnic: '', income: 0 },
       mother: student.studentProfile?.mother || { name: '', occupation: '', phone: '', email: '', cnic: '' },
-      guardian: student.studentProfile?.guardian || { name: '', relationship: '', phone: '', email: '', cnic: '' },
-      feeDiscount: student.studentProfile?.feeDiscount || 0,
-      transportFee: student.studentProfile?.transportFee || false,
+      guardian: student.studentProfile?.guardian || { name: '', relation: '', phone: '', email: '', cnic: '' },
+      feeDiscount: student.studentProfile?.feeDiscount || { type: 'fixed', amount: 0, reason: '' },
+      transportFee: student.studentProfile?.transportFee || { enabled: false, amount: 0 },
       status: student.status,
       remarks: student.remarks || '',
     });
@@ -355,45 +383,70 @@ export default function StudentsPage() {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.firstName || !formData.lastName || !formData.dateOfBirth || !formData.branchId || !formData.classId || !formData.father.name || !formData.father.phone) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.dateOfBirth || !formData.gender || !formData.branchId || !formData.classId) {
       toast.error('Please fill in all required fields');
       return;
     }
 
+    // Validate parent/guardian information
+    if (formData.guardianType === 'parent') {
+      if (!formData.father?.name || !formData.father?.phone) {
+        toast.error('Please fill in father name and phone');
+        return;
+      }
+    } else if (formData.guardianType === 'guardian') {
+      if (!formData.guardian?.name || !formData.guardian?.phone) {
+        toast.error('Please fill in guardian name and phone');
+        return;
+      }
+    }
+
     setButtonLoading('submitForm', true);
     try {
-      // Restructure data for unified User schema
-      const payload = {
-        role: 'student',
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        dateOfBirth: formData.dateOfBirth,
-        gender: formData.gender,
-        bloodGroup: formData.bloodGroup,
-        nationality: formData.nationality,
-        cnic: formData.cnic,
-        address: formData.address,
-        branchId: formData.branchId,
-        status: formData.status,
-        remarks: formData.remarks,
-        studentProfile: {
-          classId: formData.classId,
-          departmentId: formData.departmentId,
-          section: formData.section,
-          rollNumber: formData.rollNumber,
-          admissionDate: formData.admissionDate,
-          academicYear: formData.academicYear,
-          previousSchool: formData.previousSchool,
-          father: formData.father,
-          mother: formData.mother,
-          guardian: formData.guardian,
-          guardianType: formData.guardianType || 'parent',
-          feeDiscount: formData.feeDiscount,
-          transportFee: formData.transportFee,
-        }
-      };
+    // Clean previousSchool data to avoid empty date strings
+    const cleanedPreviousSchool = {
+      name: formData.previousSchool.name,
+      lastClass: formData.previousSchool.lastClass,
+      marks: formData.previousSchool.marks,
+      ...(formData.previousSchool.leavingDate && { leavingDate: formData.previousSchool.leavingDate }),
+    };
+
+    // Restructure data for unified User schema
+    const payload = {
+      role: 'student',
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      dateOfBirth: formData.dateOfBirth,
+      gender: formData.gender,
+      bloodGroup: formData.bloodGroup,
+      nationality: formData.nationality,
+      cnic: formData.cnic,
+      address: formData.address,
+      branchId: formData.branchId,
+      status: formData.status,
+      remarks: formData.remarks,
+      studentProfile: {
+        classId: formData.classId,
+        ...(formData.departmentId && { departmentId: formData.departmentId }),
+        section: formData.section,
+        rollNumber: formData.rollNumber,
+        admissionDate: formData.admissionDate,
+        academicYear: formData.academicYear,
+        previousSchool: cleanedPreviousSchool,
+        father: formData.father,
+        mother: formData.mother,
+        guardian: formData.guardian,
+        guardianType: formData.guardianType || 'parent',
+        feeDiscount: formData.feeDiscount,
+        transportFee: {
+          enabled: formData.transportFee.enabled,
+          ...(formData.transportFee.routeId && { routeId: formData.transportFee.routeId }),
+          amount: formData.transportFee.amount,
+        },
+      }
+    };
 
       let data;
       if (editingStudent) {
@@ -648,7 +701,7 @@ export default function StudentsPage() {
             <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reg No.</TableHead>
             <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</TableHead>
             <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branch</TableHead>
-            <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Father Info</TableHead>
+            <TableHead className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Father Info</TableHead>
             <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</TableHead>
             <TableHead className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</TableHead>
           </TableRow>
@@ -673,7 +726,7 @@ export default function StudentsPage() {
                 </TableCell>
 
                 <TableCell className="px-6 py-4">
-                  <p className="text-sm font-mono text-gray-900">{student.registrationNumber}</p>
+                  <p className="text-sm font-mono text-gray-900">{student.studentProfile?.registrationNumber}</p>
                   <p className="text-xs text-gray-500">{student.gender === 'male' ? '♂' : '♀'} {student.gender}</p>
                 </TableCell>
 
@@ -714,13 +767,69 @@ export default function StudentsPage() {
         </TableBody>
       </Table>
 
+      {/* Pagination */}
+      {total > limit && (
+        <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
+          <div className="flex items-center">
+            <p className="text-sm text-gray-700">
+              Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to{' '}
+              <span className="font-medium">{Math.min(page * limit, total)}</span> of{' '}
+              <span className="font-medium">{total}</span> results
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(prev => Math.max(1, prev - 1))}
+              disabled={page <= 1}
+            >
+              Previous
+            </Button>
+
+            {/* Page Numbers */}
+            {(() => {
+              const totalPages = Math.ceil(total / limit);
+              const startPage = Math.max(1, page - 2);
+              const endPage = Math.min(totalPages, page + 2);
+              const pages = [];
+
+              for (let i = startPage; i <= endPage; i++) {
+                pages.push(
+                  <Button
+                    key={i}
+                    variant={i === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setPage(i)}
+                    className="w-10"
+                  >
+                    {i}
+                  </Button>
+                );
+              }
+
+              return pages;
+            })()}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(prev => Math.min(Math.ceil(total / limit), prev + 1))}
+              disabled={page >= Math.ceil(total / limit)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Create/Edit Modal */}
       {showModal && (
         <Modal
           open={showModal}
           title={editingStudent ? 'Edit Student' : 'Add New Student'}
           onClose={() => setShowModal(false)}
-          size="lg"
+          size="md"
           footer={(
             <div className="flex items-center justify-between w-full">
               <div>
@@ -764,11 +873,11 @@ export default function StudentsPage() {
               onChange={(id) => setActiveTab(id)}
             />
 
-            <form ref={formRef} onSubmit={handleFormSubmit} className="p-2">
+            <form ref={formRef} id="studentForm" onSubmit={handleFormSubmit} className="p-2">
               {/* Basic Info Tab */}
               {activeTab === 'basic' && (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         First Name <span className="text-red-500">*</span>
@@ -792,7 +901,33 @@ export default function StudentsPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="john.doe@example.com"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Phone <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        placeholder="+92-XXX-XXXXXXX"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Date of Birth <span className="text-red-500">*</span>
@@ -831,9 +966,49 @@ export default function StudentsPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Religion
+                      </label>
+                      <Input
+                        type="text"
+                        value={formData.religion}
+                        onChange={(e) => setFormData({ ...formData, religion: e.target.value })}
+                        placeholder="Islam"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nationality
+                      </label>
+                      <Input
+                        type="text"
+                        value={formData.nationality}
+                        onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                        placeholder="Pakistani"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        CNIC
+                      </label>
+                      <Input
+                        type="text"
+                        value={formData.cnic}
+                        onChange={(e) => setFormData({ ...formData, cnic: e.target.value })}
+                        placeholder="XXXXX-XXXXXXX-X"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Status
+                      </label>
                       <Dropdown
                         value={formData.status}
                         onChange={(e) => setFormData({ ...formData, status: e.target?.value ?? e })}
@@ -845,32 +1020,8 @@ export default function StudentsPage() {
                         ]}
                         placeholder="Select Status"
                       />
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Religion
-                        </label>
-                        <Input
-                          type="text"
-                          value={formData.religion}
-                          onChange={(e) => setFormData({ ...formData, religion: e.target.value })}
-                          // className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Islam"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Nationality
-                        </label>
-                        <Input
-                          type="text"
-                          value={formData.nationality}
-                          onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Pakistani"
-                        />
-                      </div>
                     </div>
+                  </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -937,7 +1088,6 @@ export default function StudentsPage() {
                         />
                       </div>
                     </div>
-                  </div>
                 </>
               )}
 
@@ -945,19 +1095,7 @@ export default function StudentsPage() {
               {activeTab === 'academic' && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Registration Number
-                      </label>
-                      <Input
-                        type="text"
-                        value={formData.registrationNumber}
-                        onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
-                        disabled={editingStudent}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                        placeholder="Auto-generated if empty"
-                      />
-                    </div>
+                   
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1002,7 +1140,7 @@ export default function StudentsPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Section
@@ -1027,6 +1165,19 @@ export default function StudentsPage() {
                         onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="2024-2025"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Roll Number
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.rollNumber}
+                        onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="e.g., 001"
                       />
                     </div>
                   </div>
@@ -1143,7 +1294,14 @@ export default function StudentsPage() {
                       id="guardianType"
                       name="guardianType"
                       value={formData.guardianType}
-                      onChange={(e) => setFormData({ ...formData, guardianType: e.target?.value ?? e })}
+                      onChange={(e) => {
+                        const newType = e.target?.value ?? e;
+                        setFormData({
+                          ...formData,
+                          guardianType: newType,
+                          guardian: newType === 'guardian' ? (formData.guardian || { name: '', relationship: '', phone: '', email: '', cnic: '' }) : formData.guardian
+                        });
+                      }}
                       options={[
                         { value: 'parent', label: 'Parent (Father/Mother)' },
                         { value: 'guardian', label: 'Guardian (Other)' },
@@ -1162,8 +1320,8 @@ export default function StudentsPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Relationship</label>
-                          <Input value={formData.guardian?.relationship} onChange={(e) => setFormData({ ...formData, guardian: { ...formData.guardian, relationship: e.target.value } })} placeholder="e.g., Uncle/Aunt" />
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Relation</label>
+                          <Input value={formData.guardian?.relation} onChange={(e) => setFormData({ ...formData, guardian: { ...formData.guardian, relation: e.target.value } })} placeholder="e.g., Uncle/Aunt" />
                         </div>
                       </div>
 
@@ -1417,6 +1575,24 @@ export default function StudentsPage() {
                     <p className="text-sm text-gray-500">{selectedStudent.studentProfile?.father?.phone || ''}</p>
                     <p className="text-sm mt-2"><strong>Mother:</strong> {selectedStudent.studentProfile?.mother?.name || '-'}</p>
                     <p className="text-sm text-gray-500">{selectedStudent.studentProfile?.mother?.phone || ''}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white border rounded p-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Previous School</h4>
+                    <p className="text-sm"><strong>School Name:</strong> {selectedStudent.studentProfile?.previousSchool?.name || '-'}</p>
+                    <p className="text-sm mt-1"><strong>Last Class:</strong> {selectedStudent.studentProfile?.previousSchool?.lastClass || '-'}</p>
+                    <p className="text-sm mt-1"><strong>Marks:</strong> {selectedStudent.studentProfile?.previousSchool?.marks || '-'}</p>
+                    <p className="text-sm mt-1"><strong>Leaving Date:</strong> {selectedStudent.studentProfile?.previousSchool?.leavingDate ? new Date(selectedStudent.studentProfile.previousSchool.leavingDate).toLocaleDateString() : '-'}</p>
+                  </div>
+
+                  <div className="bg-white border rounded p-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Academic Info</h4>
+                    <p className="text-sm"><strong>Admission Date:</strong> {selectedStudent.studentProfile?.admissionDate ? new Date(selectedStudent.studentProfile.admissionDate).toLocaleDateString() : '-'}</p>
+                    <p className="text-sm mt-1"><strong>Academic Year:</strong> {selectedStudent.studentProfile?.academicYear || '-'}</p>
+                    <p className="text-sm mt-1"><strong>Roll Number:</strong> {selectedStudent.studentProfile?.rollNumber || '-'}</p>
+                    <p className="text-sm mt-1"><strong>Section:</strong> {selectedStudent.studentProfile?.section || '-'}</p>
                   </div>
                 </div>
 

@@ -109,6 +109,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    approved: {
+      type: Boolean,
+      default: false,
+    },
     lastLogin: {
       type: Date,
     },
@@ -465,11 +469,73 @@ const userSchema = new mongoose.Schema(
     // ==================== PARENT PROFILE ====================
     parentProfile: {
       children: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        id: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        name: {
+          type: String,
+          trim: true,
+        },
+        registrationNumber: {
+          type: String,
+          uppercase: true,
+          trim: true,
+        },
+        dateOfBirth: {
+          type: Date,
+        },
+        cnic: {
+          type: String,
+          trim: true,
+        },
+        bFormNumber: {
+          type: String,
+          trim: true,
+        },
+        gender: {
+          type: String,
+          enum: ['male', 'female', 'other'],
+        },
+        classId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Class',
+        },
+        section: {
+          type: String,
+          trim: true,
+        },
       }],
       occupation: String,
       income: Number,
+      fullName: {
+        type: String,
+        trim: true,
+      },
+      phone: {
+        type: String,
+        trim: true,
+      },
+      email: {
+        type: String,
+        lowercase: true,
+        trim: true,
+        match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email'],
+      },
+      cnic: {
+        type: String,
+        trim: true,
+      },
+      address: {
+        street: { type: String, trim: true },
+        city: { type: String, trim: true },
+        state: { type: String, trim: true },
+        postalCode: { type: String, trim: true },
+        country: { type: String, default: 'Pakistan', trim: true },
+      },
+      dateOfBirth: {
+        type: Date,
+      },
     },
     
     // ==================== METADATA ====================
@@ -511,7 +577,7 @@ const userSchema = new mongoose.Schema(
 );
 
 // ==================== INDEXES ====================
-// Note: email, studentProfile.registrationNumber, teacherProfile.employeeId, staffProfile.employeeId 
+// Note: email, studentProfile.registrationNumber, teacherProfile.employeeId, staffProfile.employeeId
 // already have unique indexes defined in schema, so no need to add them again here
 userSchema.index({ role: 1, branchId: 1 });
 userSchema.index({ role: 1, status: 1 });
@@ -519,6 +585,7 @@ userSchema.index({ firstName: 1, lastName: 1 });
 userSchema.index({ 'studentProfile.classId': 1 });
 userSchema.index({ 'teacherProfile.departmentId': 1 });
 userSchema.index({ 'staffProfile.departmentId': 1 });
+userSchema.index({ 'parentProfile.children.id': 1 });
 userSchema.index({ isActive: 1 });
 
 
@@ -626,29 +693,29 @@ userSchema.pre('save', async function(next) {
     // Auto-generate employee ID for teacher/staff
     if ((this.role === 'teacher' || this.role === 'staff') && this.isNew) {
       const profileKey = this.role === 'teacher' ? 'teacherProfile' : 'staffProfile';
-      
+
       if (!this[profileKey]?.employeeId && this.branchId) {
         const Branch = mongoose.model('Branch');
         const branch = await Branch.findById(this.branchId);
         const branchCode = branch?.code || 'SCH';
-        
+
         this[profileKey] = this[profileKey] || {};
         this[profileKey].employeeId = await this.generateEmployeeId(branchCode);
       }
     }
-    
+
     // Auto-generate registration number for student
     if (this.role === 'student' && this.isNew) {
       if (!this.studentProfile?.registrationNumber && this.branchId) {
         const Branch = mongoose.model('Branch');
         const branch = await Branch.findById(this.branchId);
         const branchCode = branch?.code || 'SCH';
-        
+
         this.studentProfile = this.studentProfile || {};
         this.studentProfile.registrationNumber = await this.generateRegistrationNumber(branchCode);
       }
     }
-    
+
     next();
   } catch (error) {
     next(error);

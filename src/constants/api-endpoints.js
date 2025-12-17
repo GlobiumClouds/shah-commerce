@@ -198,6 +198,10 @@ export const API_ENDPOINTS = {
       BULK_CREATE: '/api/super-admin/users/bulk',
       EXPORT: '/api/super-admin/users/export',
     },
+
+    // Parent Approval Management
+    PENDING_PARENTS: '/api/super-admin/pending-parents',
+    APPROVE_PARENT: '/api/super-admin/approve-parent/:id',
   },
 
   // Branch Admin Endpoints
@@ -371,6 +375,10 @@ export const API_ENDPOINTS = {
       EXPENSES: '/api/branch-admin/finance/expenses',
       SUMMARY: '/api/branch-admin/finance/summary',
     },
+
+    // Parent Approval Management
+    PENDING_PARENTS: '/api/branch-admin/pending-parents',
+    APPROVE_PARENT: '/api/branch-admin/approve-parent/:id',
   },
 
   // Teacher Endpoints
@@ -442,58 +450,61 @@ export const API_ENDPOINTS = {
 
   // Parent Endpoints
   PARENT: {
-    DASHBOARD: '/parent/dashboard',
-    
+    // Profile
+    PROFILE: {
+      GET: '/api/parent/profile',
+      UPDATE: '/api/parent/profile',
+      SETTINGS: '/api/parent/profile/settings',
+    },
+
+    // Auth
+    AUTH: {
+      SIGNUP: '/api/parent/auth/signup',
+    },
+
+    // Announcements
+    ANNOUNCEMENTS: '/api/parent/announcements',
+
+    // Attendance
+    ATTENDANCE: '/api/parent/attendance',
+
     // Children
     CHILDREN: {
-      LIST: '/parent/children',
-      GET: '/parent/children/:id',
-      ADD: '/parent/children/add',
-      REMOVE: '/parent/children/:id/remove',
+      LIST: '/api/parent/children',
+      GET: '/api/parent/children/[id]',
+      ASSIGNMENTS: '/api/parent/children/assignments',
+      NOTES: '/api/parent/children/notes',
+      QUIZZES: '/api/parent/children/quizzes',
+      ANNOUNCEMENTS: '/api/parent/children/[id]/announcements',
+      ATTENDANCE: '/api/parent/children/[id]/attendance',
+      MESSAGES: '/api/parent/children/[id]/messages',
     },
-    
-    // Attendance
-    ATTENDANCE: {
-      VIEW: '/parent/attendance/:studentId',
-      REPORT: '/parent/attendance/:studentId/report',
-      SUMMARY: '/parent/attendance/:studentId/summary',
+
+    // Events
+    EVENTS: '/api/parent/events',
+
+    // Messages
+    MESSAGES: {
+      LIST: '/api/parent/messages',
+      COMPOSE: '/api/parent/messages/compose',
     },
-    
-    // Grades
-    GRADES: {
-      VIEW: '/parent/grades/:studentId',
-      REPORT: '/parent/grades/:studentId/report',
-      HISTORY: '/parent/grades/:studentId/history',
+
+    // Notifications
+    NOTIFICATIONS: {
+      LIST: '/api/parent/notifications',
+      GET: '/api/parent/notifications/[id]',
     },
-    
-    // Assignments
-    ASSIGNMENTS: {
-      VIEW: '/parent/assignments/:studentId',
-      DETAILS: '/parent/assignments/:studentId/:assignmentId',
+
+    // Academics
+    ACADEMICS: {
+      SYLLABUS: '/api/parent/academics/syllabus',
     },
-    
-    // Communications
-    COMMUNICATIONS: {
-      LIST: '/parent/communications',
-      SEND: '/parent/communications/send',
-      REPLY: '/parent/communications/:id/reply',
-      TEACHERS: '/parent/communications/teachers',
-    },
-    
-    // Fees
-    FEES: {
-      VIEW: '/parent/fees/:studentId',
-      PAY: '/parent/fees/:studentId/pay',
-      HISTORY: '/parent/fees/:studentId/history',
-      INVOICES: '/parent/fees/:studentId/invoices',
-    },
-    
-    // Leave Requests
-    LEAVE: {
-      APPLY: '/parent/leave/:studentId/apply',
-      LIST: '/parent/leave/:studentId',
-      CANCEL: '/parent/leave/:id/cancel',
-    },
+
+    // Privacy
+    PRIVACY: '/api/parent/privacy',
+
+    // Support
+    SUPPORT: '/api/parent/support',
   },
 
   // Student Endpoints

@@ -36,8 +36,10 @@ import {
   QrCode,
   UserCheck,
   LayoutDashboardIcon,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 
 const ROLE_MENUS = {
@@ -58,10 +60,12 @@ const ROLE_MENUS = {
       category: 'User Management',
       items: [
         { name: 'Administrators', path: '/super-admin/user-management/administrators', icon: UserCog },
+        { name: 'Pending Parents', path: '/super-admin/pending-parents', icon: UserCheck },
       ],
     },
     {
       category: 'Academic',
+      isCollapsible: true,
       items: [
         { name: 'Departments', path: '/super-admin/academic/departments', icon: Briefcase },
         { name: 'Levels', path: '/super-admin/academic/levels', icon: GraduationCap },
@@ -73,6 +77,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Student Management',
+      isCollapsible: true,
       items: [
         { name: 'All Students', path: '/super-admin/student-management/students', icon: Users },
         { name: 'Admissions', path: '/super-admin/student-management/admissions', icon: UserPlus },
@@ -80,12 +85,14 @@ const ROLE_MENUS = {
     },
     {
       category: 'Teacher Management',
+      isCollapsible: true,
       items: [
         { name: 'All Teachers', path: '/super-admin/teacher-management/teachers', icon: Users },
       ],
     },
     {
       category: 'Fee Management',
+      isCollapsible: true,
       items: [
         { name: 'Fee Templates', path: '/super-admin/fee-management/templates', icon: Receipt },
         { name: 'Branch Fees', path: '/super-admin/fee-management/branch-fees', icon: Wallet },
@@ -94,6 +101,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Salary Management',
+      isCollapsible: true,
       items: [
         { name: 'Salary Templates', path: '/super-admin/salary-management/salary-templates', icon: DollarSign },
         { name: 'Payroll Processing', path: '/super-admin/salary-management/payroll', icon: Banknote },
@@ -102,6 +110,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Attendance Management',
+      isCollapsible: true,
       items: [
         { name: 'Student Attendance', path: '/super-admin/attendance-management/student', icon: GraduationCap },
         { name: 'Teacher Attendance', path: '/super-admin/attendance-management/teacher', icon: LayoutDashboardIcon },
@@ -112,6 +121,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Event Management',
+      isCollapsible: true,
       items: [
         { name: 'Calendar View', path: '/super-admin/event-management/calendar', icon: Calendar },
         { name: 'All Events', path: '/super-admin/event-management/events', icon: Calendar },
@@ -119,6 +129,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'System Analytics',
+      isCollapsible: true,
       items: [
         { name: 'Financial Reports', path: '/super-admin/analytics/financial', icon: TrendingUp },
         { name: 'Academic Reports', path: '/super-admin/analytics/academic', icon: BookOpen },
@@ -127,6 +138,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Configuration',
+      isCollapsible: true,
       items: [
         { name: 'General Settings', path: '/super-admin/configuration/general', icon: Settings },
         { name: 'Academic Settings', path: '/super-admin/configuration/academic-settings', icon: School },
@@ -136,6 +148,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Audit & Logs',
+      isCollapsible: true,
       items: [
         { name: 'Activity Logs', path: '/super-admin/audit-logs/activity', icon: Activity },
         { name: 'System Logs', path: '/super-admin/audit-logs/system', icon: Cog },
@@ -153,6 +166,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Academic Management',
+      isCollapsible: true,
       items: [
         { name: 'Teachers', path: '/branch-admin/teachers', icon: Users },
         { name: 'Students', path: '/branch-admin/students', icon: BookOpen },
@@ -161,10 +175,21 @@ const ROLE_MENUS = {
         { name: 'Subjects', path: '/branch-admin/subjects', icon: BookOpen },
         { name: 'Departments', path: '/branch-admin/departments', icon: Building2 },
         { name: 'Syllabus', path: '/branch-admin/syllabus', icon: FileText },
+        { name: 'Pending Parents', path: '/branch-admin/pending-parents', icon: UserCheck },
+      ],
+    },
+    {
+      category: 'Finance Management',
+      isCollapsible: true,
+      items: [
+        { name: 'Fees', path: '/branch-admin/fees', icon: DollarSign },
+        { name: 'Fee Templates', path: '/branch-admin/fee-templates', icon: Receipt },
+        { name: 'Expenses', path: '/branch-admin/expenses', icon: Wallet },
       ],
     },
     {
       category: 'Operations',
+      isCollapsible: true,
       items: [
         { name: 'Attendance', path: '/branch-admin/attendance', icon: Clock },
         { name: 'Events', path: '/branch-admin/events', icon: Calendar },
@@ -173,6 +198,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Academic Structure',
+      isCollapsible: true,
       items: [
         { name: 'Levels', path: '/branch-admin/levels', icon: BarChart3 },
         { name: 'Grades', path: '/branch-admin/grades', icon: TrendingUp },
@@ -204,6 +230,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Classes',
+      isCollapsible: true,
       items: [
         { name: 'My Classes', path: '/teacher/classes', icon: School },
         { name: 'Attendance', path: '/teacher/attendance', icon: Clock },
@@ -213,6 +240,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Account',
+      isCollapsible: true,
       items: [
         { name: 'Profile', path: '/teacher/profile', icon: Users },
         { name: 'Settings', path: '/teacher/settings', icon: Settings },
@@ -229,6 +257,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Student Info',
+      isCollapsible: true,
       items: [
         { name: 'My Children', path: '/parent/children', icon: Users },
         { name: 'Attendance', path: '/parent/attendance', icon: Clock },
@@ -238,6 +267,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Account',
+      isCollapsible: true,
       items: [
         { name: 'Profile', path: '/parent/profile', icon: Users },
         { name: 'Messages', path: '/parent/messages', icon: FileText },
@@ -255,6 +285,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Academics',
+      isCollapsible: true,
       items: [
         { name: 'My Classes', path: '/student/classes', icon: School },
         { name: 'Attendance', path: '/student/attendance', icon: Clock },
@@ -264,6 +295,7 @@ const ROLE_MENUS = {
     },
     {
       category: 'Account',
+      isCollapsible: true,
       items: [
         { name: 'Profile', path: '/student/profile', icon: Users },
         { name: 'Messages', path: '/student/messages', icon: FileText },
@@ -273,13 +305,22 @@ const ROLE_MENUS = {
   ],
 };
 
+// Helper function to determine if section should be collapsible
+const shouldBeCollapsible = (group) => {
+  // If already marked as collapsible, return true
+  if (group.isCollapsible) return true;
+  
+  // If more than 1 item, make it collapsible
+  return group.items.length > 1;
+};
+
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({});
 
-  // Don't render sidebar if user is not authenticated
   if (!user) {
     return null;
   }
@@ -287,16 +328,182 @@ export default function Sidebar() {
   const userRole = user.role || 'student';
   const menuGroups = ROLE_MENUS[userRole] || ROLE_MENUS.student;
 
+  useEffect(() => {
+    // Auto-expand sections that contain the current path
+    menuGroups.forEach((group) => {
+      if (group.items.some(item => pathname === item.path || pathname.startsWith(item.path + '/'))) {
+        setExpandedSections(prev => ({
+          ...prev,
+          [group.category]: true
+        }));
+      }
+    });
+  }, [pathname, menuGroups]);
+
   const handleLogout = async () => {
     await logout();
   };
 
-  // Determine sidebar classes
+  const toggleSection = (sectionName) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionName]: !prev[sectionName]
+    }));
+  };
+
+  const isSectionActive = (items) => {
+    return items.some(item => pathname.startsWith(item.path));
+  };
+
   const sidebarClasses = cn(
     'bg-white border-r border-gray-200 h-screen overflow-y-auto transition-all duration-300 flex flex-col',
     isOpen ? 'w-64' : 'w-20',
     'fixed md:sticky top-0 z-40 md:z-0'
   );
+
+  // Check if current page is inside this section
+  const isCurrentSection = (items) => {
+    return items.some(item => pathname === item.path || pathname.startsWith(item.path + '/'));
+  };
+
+  // Simple Collapsible Component (inline)
+  const CollapsibleSection = ({ group, groupIndex }) => {
+    const isExpanded = expandedSections[group.category] || false;
+    const Icon = group.items[0]?.icon || FolderOpen;
+    
+    // Check if current page is in this section
+    const hasActiveItem = isCurrentSection(group.items);
+
+    return (
+      <div key={groupIndex} className="px-3 py-2">
+        <button
+          onClick={() => toggleSection(group.category)}
+          className={cn(
+            'flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-colors mb-1 hover:bg-gray-100',
+            hasActiveItem
+              ? 'bg-blue-50 text-blue-600 font-medium'
+              : 'text-gray-700'
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <Icon className="h-5 w-5 shrink-0" />
+            <span className="text-sm font-medium">{group.category}</span>
+          </div>
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </button>
+        
+        {isExpanded && (
+          <div className="mt-1 ml-8 space-y-1">
+            {group.items.map((item) => {
+              const ItemIcon = item.icon;
+              const isItemActive = pathname === item.path || pathname.startsWith(item.path + '/');
+
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  onClick={() => setIsMobileOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm hover:bg-gray-100',
+                    isItemActive
+                      ? 'bg-blue-50 text-blue-600 font-medium'
+                      : 'text-gray-600 hover:text-gray-900'
+                  )}
+                >
+                  <ItemIcon className="h-4 w-4 shrink-0" />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Single Item Section (not collapsible)
+  const SingleItemSection = ({ group, groupIndex }) => {
+    // For single item sections, just show the item directly
+    const item = group.items[0];
+    const Icon = item.icon;
+    const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
+
+    return (
+      <div key={groupIndex} className="px-3 py-2">
+        <Link
+          href={item.path}
+          onClick={() => setIsMobileOpen(false)}
+          className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors mb-1 hover:bg-gray-100',
+            isActive
+              ? 'bg-blue-50 text-blue-600 font-medium'
+              : 'text-gray-700'
+          )}
+        >
+          <Icon className="h-5 w-5 shrink-0" />
+          <span className="text-sm font-medium">{item.name}</span>
+        </Link>
+      </div>
+    );
+  };
+
+  // Simple Section for sidebar collapsed view
+  const CollapsedViewSection = ({ group, groupIndex }) => {
+    if (group.isCollapsible || group.items.length > 1) {
+      return (
+        <div key={groupIndex} className="px-2 py-1">
+          {group.items.slice(0, 2).map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
+
+            return (
+              <Link
+                key={item.path}
+                href={item.path}
+                onClick={() => setIsMobileOpen(false)}
+                className={cn(
+                  'flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors mb-1 hover:bg-gray-100',
+                  isActive
+                    ? 'bg-blue-50 text-blue-600 font-medium'
+                    : 'text-gray-700'
+                )}
+                title={item.name}
+              >
+                <Icon className="h-5 w-5 shrink-0" />
+              </Link>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // Single item in collapsed view
+    const item = group.items[0];
+    const Icon = item.icon;
+    const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
+
+    return (
+      <div key={groupIndex} className="px-2 py-1">
+        <Link
+          href={item.path}
+          onClick={() => setIsMobileOpen(false)}
+          className={cn(
+            'flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors mb-1 hover:bg-gray-100',
+            isActive
+              ? 'bg-blue-50 text-blue-600 font-medium'
+              : 'text-gray-700'
+          )}
+          title={item.name}
+        >
+          <Icon className="h-5 w-5 shrink-0" />
+        </Link>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -348,7 +555,7 @@ export default function Sidebar() {
         {/* User Info */}
         <div className={cn('border-b border-gray-200', isOpen ? 'p-4' : 'p-2')}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold shrink-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold shrink-0">
               {user.fullName?.charAt(0).toUpperCase()}
             </div>
             {isOpen && (
@@ -366,37 +573,20 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto">
-          {menuGroups.map((group, groupIndex) => (
-            <div key={groupIndex} className={isOpen ? 'px-3 py-4' : 'px-2 py-4'}>
-              {isOpen && (
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 px-2">
-                  {group.category}
-                </h3>
-              )}
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname.startsWith(item.path);
+          {menuGroups.map((group, groupIndex) => {
+            // If sidebar is collapsed
+            if (!isOpen) {
+              return <CollapsedViewSection key={groupIndex} group={group} groupIndex={groupIndex} />;
+            }
 
-                return (
-                  <Link
-                    key={item.path}
-                    href={item.path}
-                    onClick={() => setIsMobileOpen(false)}
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors mb-1',
-                      isActive
-                        ? 'bg-blue-50 text-blue-600 font-medium'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    )}
-                    title={!isOpen ? item.name : undefined}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    {isOpen && <span className="text-sm">{item.name}</span>}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+            // Expanded sidebar
+            if (group.isCollapsible || group.items.length > 1) {
+              return <CollapsibleSection key={groupIndex} group={group} groupIndex={groupIndex} />;
+            }
+
+            // Single item section in expanded view
+            return <SingleItemSection key={groupIndex} group={group} groupIndex={groupIndex} />;
+          })}
         </nav>
 
         {/* Footer - Logout */}
@@ -404,7 +594,10 @@ export default function Sidebar() {
           <Button
             onClick={handleLogout}
             variant="ghost"
-            className={cn('w-full justify-start text-gray-700', isOpen ? '' : 'px-2')}
+            className={cn(
+              'w-full justify-start text-gray-700 hover:text-red-600 hover:bg-red-50',
+              isOpen ? '' : 'px-2'
+            )}
           >
             <LogOut className="h-5 w-5" />
             {isOpen && <span className="ml-3">Logout</span>}
