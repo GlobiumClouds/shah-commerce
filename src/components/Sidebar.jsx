@@ -39,7 +39,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 
 const ROLE_MENUS = {
@@ -60,6 +60,7 @@ const ROLE_MENUS = {
       category: 'User Management',
       items: [
         { name: 'Administrators', path: '/super-admin/user-management/administrators', icon: UserCog },
+        { name: 'Pending Parents', path: '/super-admin/pending-parents', icon: UserCheck },
       ],
     },
     {
@@ -174,6 +175,7 @@ const ROLE_MENUS = {
         { name: 'Subjects', path: '/branch-admin/subjects', icon: BookOpen },
         { name: 'Departments', path: '/branch-admin/departments', icon: Building2 },
         { name: 'Syllabus', path: '/branch-admin/syllabus', icon: FileText },
+        { name: 'Pending Parents', path: '/branch-admin/pending-parents', icon: UserCheck },
       ],
     },
     {
@@ -317,6 +319,18 @@ export default function Sidebar() {
 
   const userRole = user.role || 'student';
   const menuGroups = ROLE_MENUS[userRole] || ROLE_MENUS.student;
+
+  useEffect(() => {
+    // Auto-expand sections that contain the current path
+    menuGroups.forEach((group) => {
+      if (group.items.some(item => pathname === item.path || pathname.startsWith(item.path + '/'))) {
+        setExpandedSections(prev => ({
+          ...prev,
+          [group.category]: true
+        }));
+      }
+    });
+  }, [pathname, menuGroups]);
 
   const handleLogout = async () => {
     await logout();

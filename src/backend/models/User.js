@@ -109,6 +109,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    approved: {
+      type: Boolean,
+      default: false,
+    },
     lastLogin: {
       type: Date,
     },

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
+import connectDB from '@/lib/database';
 import User from '@/backend/models/User';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
@@ -62,7 +62,7 @@ export async function POST(request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(validatedData.password, 10);
 
-    // Create parent user
+    // Create parent user (inactive until approved)
     const parent = new User({
       role: 'parent',
       fullName: validatedData.fullName,
@@ -72,6 +72,8 @@ export async function POST(request) {
       address: validatedData.address,
       cnic: validatedData.cnic,
       passwordHash: hashedPassword,
+      isActive: false,
+      approved: false,
       parentProfile: {
         children: children,
         occupation: '', // Optional, can be updated later
