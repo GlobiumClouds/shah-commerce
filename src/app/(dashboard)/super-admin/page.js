@@ -105,13 +105,14 @@ export default function SuperAdminDashboard() {
             Super Admin Dashboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Welcome back! Here's what's happening across all branches.
+            Welcome back! Here's what's happening across all branches 
           </p>
         </div>
         <Button onClick={loadDashboardData}>
           Refresh Data
         </Button>
       </div>
+
 
       {/* Row 1: Header Statistics - 6 Widgets */}
       <HeaderStats stats={headerStats} />
@@ -136,3 +137,5 @@ export default function SuperAdminDashboard() {
     </div>
   );
 }
+
+
