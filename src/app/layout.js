@@ -11,6 +11,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+      </head>
       <body className="antialiased bg-gray-50 transition-theme">
         <ThemeProvider defaultTheme="light">
           <AuthProvider>

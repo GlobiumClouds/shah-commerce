@@ -164,14 +164,6 @@ const ROLE_MENUS = {
       ],
     },
     {
-      category: 'Finance Management',
-      items: [
-        { name: 'Fees', path: '/branch-admin/fees', icon: DollarSign },
-        { name: 'Fee Templates', path: '/branch-admin/fee-templates', icon: Receipt },
-        { name: 'Expenses', path: '/branch-admin/expenses', icon: Wallet },
-      ],
-    },
-    {
       category: 'Operations',
       items: [
         { name: 'Attendance', path: '/branch-admin/attendance', icon: Clock },
@@ -185,6 +177,14 @@ const ROLE_MENUS = {
         { name: 'Levels', path: '/branch-admin/levels', icon: BarChart3 },
         { name: 'Grades', path: '/branch-admin/grades', icon: TrendingUp },
         { name: 'Streams', path: '/branch-admin/streams', icon: FolderOpen },
+      ],
+    },
+        {
+      category: 'Finance Management',
+      items: [
+        { name: 'Fees', path: '/branch-admin/fees', icon: DollarSign },
+        { name: 'Fee Templates', path: '/branch-admin/fee-templates', icon: Receipt },
+        { name: 'Expenses', path: '/branch-admin/expenses', icon: Wallet },
       ],
     },
     {

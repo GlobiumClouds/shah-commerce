@@ -7,7 +7,6 @@ import User from '@/backend/models/User';
 import Subject from '@/backend/models/Subject';
 import Branch from '@/backend/models/Branch';
 
-
 // GET - Get all attendance records for branch admin's branch
 async function getAttendance(request, authenticatedUser, userDoc) {
   try {

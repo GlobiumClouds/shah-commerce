@@ -139,6 +139,15 @@ export const API_ENDPOINTS = {
       CLASS_TIMETABLE: (classId) => `/api/super-admin/timetables/class/${classId}`,
       TEACHER_TIMETABLE: (teacherId) => `/api/super-admin/timetables/teacher/${teacherId}`,
     },
+    // Attendance Management
+    ATTENDANCE: {
+      CREATE: '/api/super-admin/attendance',
+      SCAN: '/api/super-admin/attendance/scan',
+      LIST: '/api/super-admin/attendance',
+      GET: '/api/super-admin/attendance/:id',
+      UPDATE: '/api/super-admin/attendance/:id',
+      DELETE: '/api/super-admin/attendance/:id',
+    },
     
 
     // Grades (alias to school endpoints)
@@ -300,6 +309,7 @@ export const API_ENDPOINTS = {
     // Attendance Management
     ATTENDANCE: {
       CREATE: '/api/branch-admin/attendance',
+      SCAN: '/api/branch-admin/attendance/scan',
       LIST: '/api/branch-admin/attendance',
       GET: '/api/branch-admin/attendance/:id',
       UPDATE: '/api/branch-admin/attendance/:id',

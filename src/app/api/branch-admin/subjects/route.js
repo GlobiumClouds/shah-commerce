@@ -4,6 +4,8 @@ import connectDB from '@/lib/database';
 import Subject from '@/backend/models/Subject';
 import Grade from '@/backend/models/Grade';
 import Class from '@/backend/models/Class';
+import Department from '@/backend/models/Department';
+import User from '@/backend/models/User';
 
 // GET - Get all subjects for branch admin's branch (through classes)
 async function getSubjects(request, authenticatedUser, userDoc) {

@@ -47,9 +47,9 @@ const AttendanceSchema = new mongoose.Schema(
         checkInTime: {
           type: String,
         },
-        checkOutTime: {
-          type: String,
-        },
+        // checkOutTime: {
+        //   type: String,
+        // },
       },
     ],
     markedBy: {

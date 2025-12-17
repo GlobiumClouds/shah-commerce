@@ -3,6 +3,8 @@ import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Class from '@/backend/models/Class';
 import Grade from '@/backend/models/Grade';
+import Subject from '@/backend/models/Subject';
+import User from '@/backend/models/User';
 
 // GET - Get single class
 async function getClass(request, authenticatedUser, userDoc, { params }) {

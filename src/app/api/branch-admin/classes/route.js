@@ -4,6 +4,7 @@ import connectDB from '@/lib/database';
 import Class from '@/backend/models/Class';
 import Grade from '@/backend/models/Grade';
 import User from '@/backend/models/User';
+import Subject from '@/backend/models/Subject';
 
 // GET - Get all classes for branch admin's branch
 async function getClasses(request, authenticatedUser, userDoc) {
