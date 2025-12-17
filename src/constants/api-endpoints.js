@@ -139,6 +139,7 @@ export const API_ENDPOINTS = {
       CLASS_TIMETABLE: (classId) => `/api/super-admin/timetables/class/${classId}`,
       TEACHER_TIMETABLE: (teacherId) => `/api/super-admin/timetables/teacher/${teacherId}`,
     },
+    
 
     // Grades (alias to school endpoints)
     GRADES: {
@@ -193,6 +194,16 @@ export const API_ENDPOINTS = {
   // Branch Admin Endpoints
   BRANCH_ADMIN: {
     DASHBOARD: '/api/branch-admin/dashboard',
+    // Timetables Management for branch admin (branch-limited)
+    TIMETABLES: {
+      CREATE: '/api/branch-admin/timetables',
+      LIST: '/api/branch-admin/timetables',
+      GET: (id) => `/api/branch-admin/timetables/${id}`,
+      UPDATE: (id) => `/api/branch-admin/timetables/${id}`,
+      DELETE: (id) => `/api/branch-admin/timetables/${id}`,
+      CLASS_TIMETABLE: (classId) => `/api/branch-admin/timetables/class/${classId}`,
+      TEACHER_TIMETABLE: (teacherId) => `/api/branch-admin/timetables/teacher/${teacherId}`,
+    },
     
     // Teachers Management
     TEACHERS: {
