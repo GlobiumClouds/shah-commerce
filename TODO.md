@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # TODO: Improve UI of School Management System Landing Page (page.js)
 
 ## Tasks
@@ -13,3 +14,13 @@
 - [x] Create plan for improvements
 - [x] Implement changes in page.js
 - [ ] Review and finalize
+=======
+# TODO: Add User Profile Dropdown and Profile Page
+
+## Tasks
+- [x] Update Header.jsx to replace static profile section with a dropdown menu (Profile, Settings, Logout)
+- [x] Implement navigation to profile page on "Profile" click
+- [x] Implement logout functionality on "Logout" click
+- [x] Create new profile page at src/app/(dashboard)/profile/page.js to display user details from useAuth
+- [x] Test dropdown functionality and profile page navigation
+>>>>>>> e497bdd5bd3f9a34a205cb2c7d861ec341fefb0e
