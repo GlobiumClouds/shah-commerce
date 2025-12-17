@@ -6,6 +6,8 @@ import { sendEmail } from '@/backend/utils/emailService';
 import { getTeacherEmailTemplate } from '@/backend/templates/teacherEmail';
 import { generateTeacherQR } from '@/lib/qr-generator';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import Department from '@/backend/models/Department';
+import Subject from '@/backend/models/Subject';
 
 // GET - Get all teachers for branch admin's branch
 async function getTeachers(request, authenticatedUser, userDoc) {

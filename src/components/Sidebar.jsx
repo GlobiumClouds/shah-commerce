@@ -157,6 +157,7 @@ const ROLE_MENUS = {
         { name: 'Teachers', path: '/branch-admin/teachers', icon: Users },
         { name: 'Students', path: '/branch-admin/students', icon: BookOpen },
         { name: 'Classes', path: '/branch-admin/classes', icon: School },
+        { name: 'Timetable', path: '/branch-admin/timetable', icon: Clock },
         { name: 'Subjects', path: '/branch-admin/subjects', icon: BookOpen },
         { name: 'Departments', path: '/branch-admin/departments', icon: Building2 },
         { name: 'Syllabus', path: '/branch-admin/syllabus', icon: FileText },
