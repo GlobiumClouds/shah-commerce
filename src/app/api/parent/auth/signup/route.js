@@ -19,7 +19,7 @@ const parentSignupSchema = z.object({
     dateOfBirth: z.string().transform((str) => new Date(str)),
     bFormNumber: z.string().optional(),
     class: z.string().min(1, 'Class is required'),
-  })).min(1, 'At least one child is required'),
+  })).optional(),
 });
 
 export async function POST(request) {
@@ -37,30 +37,47 @@ export async function POST(request) {
 
     // Process children: Find students by registrationNumber
     const children = [];
-    for (const childData of validatedData.children) {
-      const student = await User.findOne({
-        role: 'student',
-        'studentProfile.registrationNumber': childData.registrationNumber,
-      });
-      if (!student) {
-        return NextResponse.json({ error: `Student with registration number ${childData.registrationNumber} not found` }, { status: 400 });
+    let branchId;
+    if (validatedData.children) {
+      for (const childData of validatedData.children) {
+        const student = await User.findOne({
+          role: 'student',
+          'studentProfile.registrationNumber': childData.registrationNumber,
+        });
+        if (!student) {
+          return NextResponse.json({ error: `Student with registration number ${childData.registrationNumber} not found` }, { status: 400 });
+        }
+        // Set branchId from first student (assuming all children from same branch)
+        if (!branchId) {
+          branchId = student.branchId;
+        }
+        // Populate child object
+        children.push({
+          id: student._id,
+          name: childData.name,
+          registrationNumber: childData.registrationNumber,
+          dateOfBirth: childData.dateOfBirth,
+          cnic: student.cnic,
+          bFormNumber: childData.bFormNumber,
+          gender: student.gender,
+          classId: student.studentProfile.classId,
+          section: student.studentProfile.section,
+        });
       }
-      // Populate child object
-      children.push({
-        id: student._id,
-        name: childData.name,
-        registrationNumber: childData.registrationNumber,
-        dateOfBirth: childData.dateOfBirth,
-        cnic: student.cnic,
-        bFormNumber: childData.bFormNumber,
-        gender: student.gender,
-        classId: student.studentProfile.classId,
-        section: student.studentProfile.section,
-      });
+    }
+    // If no children, set default branchId (for testing)
+    if (!branchId) {
+      // Find a default branch
+      const Branch = (await import('@/backend/models/Branch')).default;
+      const defaultBranch = await Branch.findOne();
+      branchId = defaultBranch ? defaultBranch._id : null;
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+
+    // Convert address string to object
+    const addressObject = { street: validatedData.address };
 
     // Create parent user (inactive until approved)
     const parent = new User({
@@ -69,11 +86,13 @@ export async function POST(request) {
       email: validatedData.email,
       phone: validatedData.phone,
       gender: validatedData.gender,
-      address: validatedData.address,
+      address: addressObject,
+      branchId: branchId,
       cnic: validatedData.cnic,
       passwordHash: hashedPassword,
       isActive: false,
       approved: false,
+      status: 'pending',
       parentProfile: {
         children: children,
         occupation: '', // Optional, can be updated later
@@ -82,7 +101,7 @@ export async function POST(request) {
         phone: validatedData.phone,
         email: validatedData.email,
         cnic: validatedData.cnic,
-        address: validatedData.address,
+        address: addressObject,
       },
     });
 

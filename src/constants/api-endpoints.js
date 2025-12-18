@@ -202,6 +202,7 @@ export const API_ENDPOINTS = {
     // Parent Approval Management
     PENDING_PARENTS: '/api/super-admin/pending-parents',
     APPROVE_PARENT: '/api/super-admin/approve-parent/:id',
+    REJECT_PARENT: '/api/super-admin/reject-parent/:id',
   },
 
   // Branch Admin Endpoints
@@ -379,6 +380,7 @@ export const API_ENDPOINTS = {
     // Parent Approval Management
     PENDING_PARENTS: '/api/branch-admin/pending-parents',
     APPROVE_PARENT: '/api/branch-admin/approve-parent/:id',
+    REJECT_PARENT: '/api/branch-admin/reject-parent/:id',
   },
 
   // Teacher Endpoints
