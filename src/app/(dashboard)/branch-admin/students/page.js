@@ -16,6 +16,7 @@ import ClassSelect from '@/components/ui/class-select';
 import { Plus, Edit, Trash2, Search, User, Mail, Phone, Eye, FileText, Upload, X, Calendar, MapPin, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
+import QRCode from 'qrcode';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -35,7 +36,6 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentStudent, setCurrentStudent] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -58,6 +58,8 @@ export default function StudentsPage() {
     status: 'active',
     printCount: 0,
   });
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -134,6 +136,25 @@ export default function StudentsPage() {
     fetchClasses();
   }, [search, statusFilter, classFilter, pagination.page]);
 
+  useEffect(() => {
+    if (selectedStudent && isCardModalOpen) {
+      const studentData = {
+        id: selectedStudent.studentProfile?.registrationNumber || selectedStudent.admissionNumber || 'Not Assigned',
+        name: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+        class: selectedStudent.studentProfile?.classId?.name || selectedStudent.classId?.name || 'Not Assigned',
+        email: selectedStudent.email,
+        phone: selectedStudent.phone,
+        dob: selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString() : 'N/A',
+        gender: selectedStudent.gender,
+        bloodGroup: selectedStudent.bloodGroup || 'N/A',
+      };
+      const qrData = JSON.stringify(studentData);
+      QRCode.toDataURL(qrData, { width: 100, margin: 1 })
+        .then(url => setQrCodeUrl(url))
+        .catch(err => console.error('Error generating QR code:', err));
+    }
+  }, [selectedStudent, isCardModalOpen]);
+
   const fetchStudents = async () => {
     try {
       setLoading(true);
@@ -170,8 +191,7 @@ export default function StudentsPage() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
-    // Handle nested fields
+
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
       setFormData((prev) => ({
@@ -188,9 +208,9 @@ export default function StudentsPage() {
 
   const handleProfileUpload = async (file) => {
     if (!file) return;
-    
+
     setPendingProfileFile(file);
-    
+
     try {
       setUploading(true);
       const uploadFormData = new FormData();
@@ -198,7 +218,7 @@ export default function StudentsPage() {
       uploadFormData.append('folder', 'students/profiles');
 
       const response = await apiClient.post('/api/upload', uploadFormData);
-      
+
       if (response.success) {
         setFormData((prev) => ({
           ...prev,
@@ -219,7 +239,7 @@ export default function StudentsPage() {
 
   const handleDocumentUpload = async (file, documentType = 'other') => {
     if (!file) return;
-    
+
     try {
       setUploading(true);
       const uploadFormData = new FormData();
@@ -227,7 +247,7 @@ export default function StudentsPage() {
       uploadFormData.append('folder', 'students/documents');
 
       const response = await apiClient.post('/api/upload', uploadFormData);
-      
+
       if (response.success) {
         const newDoc = {
           type: documentType,
@@ -236,7 +256,7 @@ export default function StudentsPage() {
           publicId: response.data.publicId,
           uploadedAt: new Date().toISOString(),
         };
-        
+
         setFormData((prev) => ({
           ...prev,
           documents: [...(prev.documents || []), newDoc],
@@ -384,45 +404,34 @@ export default function StudentsPage() {
 
   const handleIndividualDownload = (student) => {
     setSelectedStudent(student);
-    // Set default card status - in real app, this would come from API
     setCardStatus({
       issueDate: new Date().toISOString().split('T')[0],
-      expireDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 year from now
+      expireDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       status: 'active',
       printCount: 0,
     });
     setIsCardModalOpen(true);
   };
 
-  const handleCardDownload = async () => {
-    if (!selectedStudent) return;
-
-    // Use A6 format (148mm x 105mm landscape) for better compatibility
-    const doc = new jsPDF({
-      orientation: 'landscape',
-      unit: 'mm',
-      format: 'a6'
-    });
-
-    const cardWidth = 148; // A6 width in landscape
-    const cardHeight = 105; // A6 height in landscape
-
+  const generatePDF = async (doc, selectedStudent, cardStatus) => {
+    const cardWidth = 105;
+    const cardHeight = 148;
     const margin = 8;
     let yPosition = margin;
 
-    // White background for better printing
+    // FRONT SIDE
     doc.setFillColor(255, 255, 255);
     doc.rect(0, 0, cardWidth, cardHeight, 'F');
 
-    // Header with school logo placeholder - darker for printing
-    doc.setFillColor(0, 51, 102); // Darker blue header for print
-    doc.rect(0, 0, cardWidth, 15, 'F');
+    // Header
+    doc.setFillColor(0, 51, 102);
+    doc.rect(0, 0, cardWidth, 12, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(12); // Increased font size
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('EASE ACADEMY', cardWidth / 2, 8, { align: 'center' });
-    doc.setFontSize(8); // Increased font size
-    doc.text('Student Identity Card', cardWidth / 2, 13, { align: 'center' });
+    doc.text(String('EASE ACADEMY'), cardWidth / 2, 7, { align: 'center' });
+    doc.setFontSize(6);
+    doc.text(String('Student Identity Card'), cardWidth / 2, 11, { align: 'center' });
 
     yPosition = 18;
 
@@ -435,130 +444,273 @@ export default function StudentsPage() {
 
     if (selectedStudent.profilePhoto?.url) {
       try {
-        // Load image and convert to base64
         const response = await fetch(selectedStudent.profilePhoto.url);
         const blob = await response.blob();
         const reader = new FileReader();
-        reader.onload = function() {
-          const base64 = reader.result;
-          doc.addImage(base64, 'JPEG', margin + 1, yPosition + 1, photoWidth - 2, photoHeight - 2);
-          // Continue with PDF generation after image is added
-          continuePDFGeneration();
-        };
-        reader.readAsDataURL(blob);
+
+        return new Promise((resolve) => {
+          reader.onload = async function () {
+            const base64 = reader.result;
+            doc.addImage(base64, 'JPEG', margin + 1, yPosition + 1, photoWidth - 2, photoHeight - 2);
+
+            // Continue with rest of PDF generation
+            await continuePDFGeneration(doc, selectedStudent, cardStatus, cardWidth, cardHeight, margin, yPosition, photoWidth);
+            resolve();
+          };
+          reader.readAsDataURL(blob);
+        });
       } catch (error) {
         console.error('Error loading image:', error);
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(6);
-        doc.text('Photo', margin + photoWidth / 2, yPosition + photoHeight / 2, { align: 'center' });
-        continuePDFGeneration();
+        doc.text(String('Photo'), margin + photoWidth / 2, yPosition + photoHeight / 2, { align: 'center' });
+        await continuePDFGeneration(doc, selectedStudent, cardStatus, cardWidth, cardHeight, margin, yPosition, photoWidth);
       }
     } else {
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(6);
-      doc.text('Photo', margin + photoWidth / 2, yPosition + photoHeight / 2, { align: 'center' });
-      continuePDFGeneration();
+      doc.text(String('Photo'), margin + photoWidth / 2, yPosition + photoHeight / 2, { align: 'center' });
+      await continuePDFGeneration(doc, selectedStudent, cardStatus, cardWidth, cardHeight, margin, yPosition, photoWidth);
     }
+  };
 
-    function continuePDFGeneration() {
-      // Student Info
-      doc.setFontSize(10); // Increased font size
+  const continuePDFGeneration = async (doc, selectedStudent, cardStatus, cardWidth, cardHeight, margin, yPosition, photoWidth) => {
+    // Move yPosition below the photo
+    yPosition += 25 + 2;
+
+    // Student Info
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 51, 102);
+    doc.text(String('Student Information'), margin + photoWidth + 5, yPosition + 2);
+
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(String(`Name: ${selectedStudent.firstName} ${selectedStudent.lastName}`), margin + photoWidth + 5, yPosition + 8);
+    doc.text(String(`ID: ${selectedStudent.studentProfile?.registrationNumber || selectedStudent.admissionNumber || 'Not Assigned'}`), margin + photoWidth + 5, yPosition + 13);
+    doc.text(String(`Class: ${selectedStudent.studentProfile?.classId?.name || selectedStudent.classId?.name || 'Not Assigned'}`), margin + photoWidth + 5, yPosition + 18);
+    doc.text(String(`Gender: ${selectedStudent.gender}`), margin + photoWidth + 5, yPosition + 23);
+
+    yPosition += 25 + 5;
+
+    // Contact Info
+    doc.setFontSize(7);
+    doc.text(String(`Email: ${selectedStudent.email}`), margin, yPosition);
+    doc.text(String(`Phone: ${selectedStudent.phone || 'N/A'}`), margin + 50, yPosition);
+    yPosition += 6;
+    doc.text(String(`Blood: ${selectedStudent.bloodGroup || 'N/A'}`), margin, yPosition);
+    doc.text(String(`DOB: ${selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString() : 'N/A'}`), margin + 50, yPosition);
+    yPosition += 7;
+
+    // Parent Info
+    if (selectedStudent.parentInfo) {
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0, 51, 102); // Darker blue for printing
-      doc.text(String('Student Information'), margin + photoWidth + 5, yPosition + 4);
+      doc.setTextColor(0, 51, 102);
+      doc.text(String('Emergency Contact'), margin, yPosition);
+      yPosition += 5;
 
-      doc.setFontSize(8); // Increased font size
+      doc.setFontSize(7);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
-      doc.text(String(`Name: ${selectedStudent.firstName} ${selectedStudent.lastName}`), margin + photoWidth + 5, yPosition + 10);
-      doc.text(String(`ID: ${selectedStudent.admissionNumber}`), margin + photoWidth + 5, yPosition + 16);
-      doc.text(String(`Class: ${selectedStudent.classId?.name || 'N/A'}`), margin + photoWidth + 5, yPosition + 22);
-      doc.text(String(`Gender: ${selectedStudent.gender}`), margin + photoWidth + 5, yPosition + 28);
-
-      yPosition += photoHeight + 5;
-
-      // Contact Info
-      doc.setFontSize(7); // Increased font size
-      doc.text(String(`Email: ${selectedStudent.email}`), margin, yPosition);
-      doc.text(String(`Phone: ${selectedStudent.phone || 'N/A'}`), margin + 50, yPosition);
+      doc.text(String(`Father: ${selectedStudent.parentInfo.fatherName || 'N/A'}`), margin, yPosition);
+      doc.text(String(`Phone: ${selectedStudent.parentInfo.fatherPhone || 'N/A'}`), margin + 50, yPosition);
+      yPosition += 5;
+      doc.text(String(`Mother: ${selectedStudent.parentInfo.motherName || 'N/A'}`), margin, yPosition);
+      doc.text(String(`Phone: ${selectedStudent.parentInfo.motherPhone || 'N/A'}`), margin + 50, yPosition);
       yPosition += 6;
-      doc.text(String(`DOB: ${selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString() : 'N/A'}`), margin, yPosition);
-      doc.text(String(`Blood: ${selectedStudent.bloodGroup || 'N/A'}`), margin + 50, yPosition);
-      yPosition += 7;
-
-      // Parent Info
-      if (selectedStudent.parentInfo) {
-        doc.setFontSize(8); // Increased font size
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(0, 51, 102); // Darker blue for printing
-        doc.text(String('Emergency Contact'), margin, yPosition);
-        yPosition += 5;
-
-        doc.setFontSize(7); // Increased font size
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(0, 0, 0);
-        doc.text(String(`Father: ${selectedStudent.parentInfo.fatherName || 'N/A'}`), margin, yPosition);
-        doc.text(String(`Phone: ${selectedStudent.parentInfo.fatherPhone || 'N/A'}`), margin + 50, yPosition);
-        yPosition += 5;
-        doc.text(String(`Mother: ${selectedStudent.parentInfo.motherName || 'N/A'}`), margin, yPosition);
-        doc.text(String(`Phone: ${selectedStudent.parentInfo.motherPhone || 'N/A'}`), margin + 50, yPosition);
-        yPosition += 6;
-      }
-
-      // Address
-      if (selectedStudent.address) {
-        doc.setFontSize(8);
-        doc.setFont('times', 'bold');
-        doc.setTextColor(0, 51, 102);
-        doc.text(String('Address'), margin, yPosition);
-        yPosition += 5;
-
-        doc.setFontSize(6);
-        doc.setFont('times', 'normal');
-        doc.setTextColor(0, 0, 0);
-        const address = `${selectedStudent.address.street || ''} ${selectedStudent.address.city || ''}`.trim();
-        doc.text(String(address || 'N/A'), margin, yPosition);
-        yPosition += 4;
-      }
-
-      // Validity
-      doc.setFontSize(8);
-      doc.setFont('times', 'bold');
-      doc.setTextColor(0, 51, 102);
-      doc.text(String('Valid: ' + cardStatus.issueDate + ' to ' + cardStatus.expireDate), margin, yPosition);
-
-      // Barcode placeholder
-      const barcodeY = cardHeight - 15;
-      doc.setFillColor(0, 0, 0);
-      doc.setLineWidth(0.5);
-      doc.rect(margin, barcodeY, 50, 8, 'FD');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(6);
-      doc.setFont('times', 'normal');
-      doc.text(String(selectedStudent.admissionNumber), margin + 25, barcodeY + 5, { align: 'center' });
-
-      // Footer
-      doc.setFillColor(0, 51, 102);
-      doc.setLineWidth(0.5);
-      doc.rect(0, cardHeight - 8, cardWidth, 8, 'FD');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(6);
-      doc.setFont('times', 'normal');
-      doc.text(String('Property of Ease Academy'), cardWidth / 2, cardHeight - 4, { align: 'center' });
-
-      doc.save(`${selectedStudent.firstName}_${selectedStudent.lastName}_card.pdf`);
-      setIsCardModalOpen(false);
     }
+
+    // Address
+    if (selectedStudent.address) {
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 51, 102);
+      doc.text(String('Address'), margin, yPosition);
+      yPosition += 5;
+
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      const address = `${selectedStudent.address.street || ''} ${selectedStudent.address.city || ''}`.trim();
+      doc.text(String(address || 'N/A'), margin, yPosition);
+      yPosition += 4;
+    }
+
+    // Validity
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 51, 102);
+    doc.text(String('Valid: ' + cardStatus.issueDate + ' to ' + cardStatus.expireDate), margin, yPosition);
+
+    // Barcode placeholder
+    const barcodeY = cardHeight - 15;
+    doc.setFillColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.rect(margin, barcodeY, 50, 8, 'FD');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String(selectedStudent.admissionNumber), margin + 25, barcodeY + 5, { align: 'center' });
+
+    // Footer
+    doc.setFillColor(0, 51, 102);
+    doc.setLineWidth(0.5);
+    doc.rect(0, cardHeight - 8, cardWidth, 8, 'FD');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String('Property of Ease Academy'), cardWidth / 2, cardHeight - 4, { align: 'center' });
+
+    // BACK SIDE
+    doc.addPage();
+
+    // White background for back side
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, cardWidth, cardHeight, 'F');
+
+    // Header for back side
+    doc.setFillColor(0, 51, 102);
+    doc.rect(0, 0, cardWidth, 12, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(String('EASE ACADEMY'), cardWidth / 2, 7, { align: 'center' });
+    doc.setFontSize(6);
+    doc.text(String('Rules & Regulations'), cardWidth / 2, 10, { align: 'center' });
+
+    yPosition = 15;
+
+    // Left Side - Rules and Regulations
+    const leftX = margin;
+    const rightX = cardWidth / 2 + 2;
+
+    // Rules and Regulations Section
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 51, 102);
+    doc.text(String('SCHOOL RULES & REGULATIONS'), leftX, yPosition);
+    yPosition += 5;
+
+    doc.setFontSize(5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+
+    const rules = [
+      '• This card is non-transferable',
+      '• Must be carried at all times',
+      '• Report loss immediately to office',
+      '• Unauthorized use will result in disciplinary action',
+      '• Return card upon leaving the school'
+    ];
+
+    rules.forEach(rule => {
+      doc.text(String(rule), leftX, yPosition);
+      yPosition += 3;
+    });
+
+    yPosition += 2;
+
+    // Emergency Contact Section
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 51, 102);
+    doc.text(String('EMERGENCY CONTACTS'), leftX, yPosition);
+    yPosition += 4;
+
+    doc.setFontSize(5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+
+    const emergencyContacts = [
+      'School Office: +92-XXX-XXXXXXX',
+      'Principal: +92-XXX-XXXXXXX',
+      'Security: +92-XXX-XXXXXXX'
+    ];
+
+    emergencyContacts.forEach(contact => {
+      doc.text(String(contact), leftX, yPosition);
+      yPosition += 3;
+    });
+
+    yPosition += 2;
+
+    // Important Notices
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 51, 102);
+    doc.text(String('IMPORTANT NOTICES'), leftX, yPosition);
+    yPosition += 4;
+
+    doc.setFontSize(4.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+
+    const notices = [
+      '• Keep this card safe and clean',
+      '• Show respect to teachers and staff',
+      '• Follow school dress code',
+      '• Maintain discipline in classrooms',
+      '• Participate in school activities'
+    ];
+
+    notices.forEach(notice => {
+      doc.text(String(notice), leftX, yPosition);
+      yPosition += 2.5;
+    });
+
+    // Right Side - Student Details
+    let rightY = 15;
+
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+
+    doc.text(String(`Father: ${selectedStudent.parentInfo?.fatherName || 'N/A'}`), rightX, rightY);
+    rightY += 5;
+    doc.text(String(`DOB: ${selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}`), rightX, rightY);
+
+    // Signature at bottom right
+    const signatureY = cardHeight - 20;
+    doc.setFontSize(5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(String('Signature'), rightX, signatureY);
+    doc.line(rightX, signatureY + 2, rightX + 30, signatureY + 2);
+
+    // Footer for back side
+    doc.setFillColor(0, 51, 102);
+    doc.rect(0, cardHeight - 10, cardWidth, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String('EASE ACADEMY - Excellence in Education'), cardWidth / 2, cardHeight - 6, { align: 'center' });
+    doc.text(String('www.easeacademy.edu.pk | info@easeacademy.edu.pk'), cardWidth / 2, cardHeight - 3, { align: 'center' });
+  };
+
+  const handleCardDownload = async () => {
+    if (!selectedStudent) return;
+
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a6'
+    });
+
+    await generatePDF(doc, selectedStudent, cardStatus);
+    doc.save(`${selectedStudent.firstName}_${selectedStudent.lastName}_card.pdf`);
+    setIsCardModalOpen(false);
   };
 
   const handleDownload = () => {
     if (downloadFormat === 'pdf') {
       const doc = new jsPDF();
-      doc.text('Students Data', 20, 20);
+      doc.text(String('Students Data'), 20, 20);
 
       let yPosition = 40;
       students.forEach((student, index) => {
-        doc.text(`${index + 1}. ${student.firstName} ${student.lastName} - ${student.email}`, 20, yPosition);
+        doc.text(String(`${index + 1}. ${student.firstName} ${student.lastName} - ${student.email}`), 20, yPosition);
         yPosition += 10;
       });
 
@@ -771,15 +923,14 @@ export default function StudentsPage() {
                     </TableCell>
                     <TableCell>
                       <span
-                        className={`px-2 py-1 rounded-full text-xs ${
-                          student.status === 'active'
-                            ? 'bg-green-100 text-green-700'
-                            : student.status === 'graduated'
+                        className={`px-2 py-1 rounded-full text-xs ${student.status === 'active'
+                          ? 'bg-green-100 text-green-700'
+                          : student.status === 'graduated'
                             ? 'bg-blue-100 text-blue-700'
                             : student.status === 'suspended'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
                       >
                         {student.status}
                       </span>
@@ -851,10 +1002,10 @@ export default function StudentsPage() {
         }
       >
         <Tabs tabs={tabsData} activeTab={activeTab} onChange={setActiveTab} />
-        
+
         <form ref={formRef} onSubmit={handleSubmit}>
           <div className="max-h-[60vh] overflow-y-auto space-y-4 p-1">
-            
+
             {/* Personal Info Tab */}
             {activeTab === 'personal' && (
               <div className="space-y-4">
@@ -1486,7 +1637,7 @@ export default function StudentsPage() {
         }
       >
         {currentStudent && (
-          <div className="spnpm install xlsx0vh] overflow-y-auto">
+          <div className="space-y-6 overflow-y-auto">
             <div className="flex items-center gap-4">
               {currentStudent.profilePhoto?.url ? (
                 <img
@@ -1665,157 +1816,173 @@ export default function StudentsPage() {
             {/* Card Preview */}
             <div className="border-2 border-gray-300 rounded-lg p-4 bg-white">
               <h3 className="font-semibold mb-4 text-center text-gray-800">Card Preview</h3>
-              <div className="max-w-md mx-auto bg-white shadow-2xl rounded-lg overflow-hidden border-4 border-blue-600">
-                {/* School Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white relative">
-                  <div className="absolute inset-0 bg-black opacity-10"></div>
-                  <div className="relative p-4 text-center">
-                    {/* School Logo Placeholder */}
-                    <div className="w-12 h-12 bg-white rounded-full mx-auto mb-2 flex items-center justify-center shadow-lg">
-                      <span className="text-blue-600 font-bold text-lg">EA</span>
-                    </div>
-                    <h4 className="font-bold text-xl mb-1">EASE ACADEMY</h4>
-                    <p className="text-sm opacity-90">Excellence in Education</p>
-                    <p className="text-xs mt-1 font-semibold">STUDENT IDENTITY CARD</p>
-                  </div>
-                  {/* Decorative Border */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500"></div>
-                </div>
 
-                <div className="bg-white p-4">
-                  {/* Photo Section */}
-                  <div className="flex gap-4 mb-4">
-                    <div className="relative">
-                      <div className="w-20 h-24 border-4 border-blue-200 rounded-lg overflow-hidden shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
-                        {selectedStudent.profilePhoto?.url ? (
-                          <img
-                            src={selectedStudent.profilePhoto.url}
-                            alt="Student Photo"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                            <User className="w-10 h-10 text-gray-500" />
-                          </div>
-                        )}
+              <div className="flex justify-center gap-4">
+                {/* Front Side */}
+                <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden relative shadow-lg" style={{ width: '204px', height: '340px' }}>
+                  {/* Header with curved accents */}
+                  <div className="relative bg-white">
+                    <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-r from-blue-600 to-green-600 rounded-b-full"></div>
+                    <div className="relative p-1 text-center pt-3">
+                      {/* Institute Logo */}
+                      <div className="w-6 h-6 bg-white rounded-full mx-auto mb-1 flex items-center justify-center border border-blue-200">
+                        <span className="text-blue-600 font-bold text-xs">EA</span>
                       </div>
-                      {/* Photo Corner Cut */}
-                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 transform rotate-45"></div>
+                      {/* Program Title */}
+                      <div className="bg-blue-50 px-1 py-0.5 rounded mb-1 border border-blue-200">
+                        <p className="text-xs font-bold text-blue-800">EASE ACADEMY</p>
+                      </div>
                     </div>
+                  </div>
 
-                    <div className="flex-1">
-                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                        <h5 className="font-bold text-blue-800 text-sm mb-2 flex items-center gap-2">
-                          <User className="w-4 h-4" />
-                          STUDENT DETAILS
-                        </h5>
-                        <div className="space-y-1 text-xs">
-                          <p><span className="font-semibold text-blue-700">Name:</span> {selectedStudent.firstName} {selectedStudent.lastName}</p>
-                          <p><span className="font-semibold text-blue-700">ID:</span> {selectedStudent.admissionNumber}</p>
-                          <p><span className="font-semibold text-blue-700">Class:</span> {selectedStudent.classId?.name || 'Not Assigned'}</p>
-                          <p><span className="font-semibold text-blue-700">Gender:</span> {selectedStudent.gender}</p>
+                  <div className="p-3">
+                    <div className="flex">
+                      {/* Student Photo */}
+                      <div className="flex-shrink-0 mr-3">
+                        <div className="w-16 h-20 border-2 border-green-500 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center mb-2">
+                          {selectedStudent.profilePhoto?.url ? (
+                            <img
+                              src={selectedStudent.profilePhoto.url}
+                              alt="Student Photo"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <User className="w-6 h-6 text-gray-500" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Student Details */}
+                      <div className="flex-1">
+                        <div className="mb-2">
+                          <p className="font-bold text-[15px] text-gray-900 leading-tight break-words">
+                            {selectedStudent.firstName} {selectedStudent.lastName}
+                          </p>
+                        </div>
+                        <div className="mb-1">
+                          <p className="text-[12px] text-gray-700 leading-tight">
+                            <span className="font-semibold">Class:</span> {selectedStudent.studentProfile?.classId?.name || selectedStudent.classId?.name || 'Not Assigned'}
+                          </p>
+                        </div>
+                        <div className="mb-2">
+                          <p className="text-[12px] font-semibold text-blue-700 leading-tight">
+                            <span className="font-normal text-gray-700">ID:</span> {selectedStudent.studentProfile?.registrationNumber || selectedStudent.admissionNumber || 'Not Assigned'}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[11px] text-gray-600 leading-tight">
+                            <span className="font-semibold">Gender:</span> {selectedStudent.gender}
+                          </p>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Contact Information */}
-                  <div className="bg-gray-50 p-3 rounded-lg mb-4 border border-gray-200">
-                    <h6 className="font-bold text-gray-800 text-xs mb-2 flex items-center gap-1">
-                      <Mail className="w-3 h-3" />
-                      CONTACT INFORMATION
-                    </h6>
-                    <div className="grid grid-cols-1 gap-1 text-xs">
-                      <p><span className="font-semibold text-gray-700">Email:</span> {selectedStudent.email}</p>
-                      <p><span className="font-semibold text-gray-700">Phone:</span> {selectedStudent.phone || 'N/A'}</p>
-                      <p><span className="font-semibold text-gray-700">DOB:</span> {selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
-                      <p><span className="font-semibold text-gray-700">Blood Group:</span> {selectedStudent.bloodGroup || 'N/A'}</p>
-                    </div>
-                  </div>
-
-                  {/* Parent Information */}
-                  {selectedStudent.parentInfo && (
-                    <div className="bg-green-50 p-3 rounded-lg mb-4 border border-green-200">
-                      <h6 className="font-bold text-green-800 text-xs mb-2 flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        EMERGENCY CONTACT
-                      </h6>
-                      <div className="grid grid-cols-1 gap-1 text-xs">
-                        <p><span className="font-semibold text-green-700">Father:</span> {selectedStudent.parentInfo.fatherName || 'N/A'}</p>
-                        <p><span className="font-semibold text-green-700">Phone:</span> {selectedStudent.parentInfo.fatherPhone || 'N/A'}</p>
-                        <p><span className="font-semibold text-green-700">Mother:</span> {selectedStudent.parentInfo.motherName || 'N/A'}</p>
-                        <p><span className="font-semibold text-green-700">Phone:</span> {selectedStudent.parentInfo.motherPhone || 'N/A'}</p>
+                    {/* QR Code at Bottom - Larger Size */}
+                    <div className="mt-4 flex justify-center">
+                      <div className="w-20 h-20 border border-gray-300 rounded-lg bg-white flex items-center justify-center">
+                        {qrCodeUrl ? (
+                          <img src={qrCodeUrl} alt="QR Code" className="w-full h-full p-1" />
+                        ) : (
+                          <div className="text-center">
+                            <span className="text-[9px] text-gray-500 block">QR CODE</span>
+                            <span className="text-[7px] text-gray-400 block">(Scan for details)</span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Address */}
-                  {selectedStudent.address && (
-                    <div className="bg-purple-50 p-3 rounded-lg mb-4 border border-purple-200">
-                      <h6 className="font-bold text-purple-800 text-xs mb-2 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        ADDRESS
-                      </h6>
-                      <p className="text-xs text-purple-700">
-                        {selectedStudent.address.street && `${selectedStudent.address.street}, `}
-                        {selectedStudent.address.city && `${selectedStudent.address.city}, `}
-                        {selectedStudent.address.state && `${selectedStudent.address.state} `}
-                        {selectedStudent.address.postalCode}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Card Validity */}
-                  <div className="bg-red-50 p-3 rounded-lg mb-4 border border-red-200">
-                    <h6 className="font-bold text-red-800 text-xs mb-2">CARD VALIDITY</h6>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-white p-2 rounded border">
-                        <p className="font-semibold text-red-700">Issue Date</p>
-                        <p className="font-bold">{cardStatus.issueDate}</p>
-                      </div>
-                      <div className="bg-white p-2 rounded border">
-                        <p className="font-semibold text-red-700">Expiry Date</p>
-                        <p className="font-bold">{cardStatus.expireDate}</p>
-                      </div>
-                    </div>
-                    <div className="mt-2 text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        cardStatus.status === 'active'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {cardStatus.status.toUpperCase()}
-                      </span>
                     </div>
                   </div>
 
-                  {/* Barcode Placeholder */}
-                  <div className="text-center mb-4">
-                    <div className="inline-block bg-black p-2 rounded">
-                      <div className="w-32 h-8 bg-white flex items-end justify-center space-x-px">
-                        {Array.from({length: 20}, (_, i) => (
-                          <div key={i} className={`w-1 ${i % 3 === 0 ? 'h-6' : i % 2 === 0 ? 'h-4' : 'h-8'} bg-black`}></div>
-                        ))}
-                      </div>
-                      <p className="text-white text-xs mt-1">{selectedStudent.admissionNumber}</p>
-                    </div>
-                  </div>
+                  {/* Bottom accent */}
+                  <div className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-r from-blue-600 to-green-600 rounded-t-full"></div>
                 </div>
 
-                {/* Footer */}
-                <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-3 text-center relative">
-                  <div className="absolute inset-0 bg-black opacity-10"></div>
-                  <div className="relative">
-                    <p className="text-xs font-semibold mb-1">EASE ACADEMY</p>
-                    <p className="text-xs opacity-90">This card is the property of Ease Academy</p>
-                    <p className="text-xs opacity-90">If found, please return to the school office</p>
-                    <div className="mt-2 flex justify-center space-x-4 text-xs">
-                      <span>📞 +92-XXX-XXXXXXX</span>
-                      <span>📧 info@easeacademy.edu.pk</span>
+                {/* Fold Line */}
+                <div className="flex flex-col items-center justify-center px-2">
+                  <div className="w-1 h-full bg-gray-400"></div>
+                  <div className="text-xs text-gray-500 mt-2 transform -rotate-90 whitespace-nowrap">FOLD HERE</div>
+                </div>
+
+                {/* Back Side */}
+                <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden relative shadow-lg" style={{ width: '204px', height: '324px' }}>
+                  {/* Header with curved accents */}
+                  <div className="relative bg-white">
+                    <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-r from-blue-600 to-green-600 rounded-b-full"></div>
+                    <div className="relative p-1 text-center pt-3">
+                      <p className="text-xs font-bold text-blue-800">EASE ACADEMY</p>
+                      <p className="text-[10px] text-blue-600">Student ID Card</p>
                     </div>
                   </div>
-                  {/* Decorative Border */}
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500"></div>
+
+                  <div className="p-3 h-full flex flex-col">
+                    {/* Content Area - Student Details First */}
+                    <div className="space-y-3 mb-3">
+                      {/* Student Details - Top Section */}
+                      <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                        <p className="text-[10px] font-bold text-gray-800 mb-1">Student Details</p>
+                        <div className="text-[9px] text-gray-700 space-y-1">
+                          <div className="flex items-center gap-1">
+                            <span className="font-semibold">Father:</span>
+                            <div className="flex-1 border-b border-dashed border-gray-400 min-h-[12px]">
+                              <span className="px-1">{selectedStudent.parentInfo?.fatherName || ''}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="font-semibold">DOB:</span>
+                            <div className="flex-1 border-b border-dashed border-gray-400 min-h-[12px]">
+                              <span className="px-1">{selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="font-semibold">Blood Group:</span>
+                            <div className="flex-1 border-b border-dashed border-gray-400 min-h-[12px]">
+                              <span className="px-1">{selectedStudent.bloodGroup || ''}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Important Information - Middle Section */}
+                      <div className="bg-blue-50 p-2 rounded border border-blue-200">
+                        <p className="text-[10px] font-bold text-blue-800 mb-1">Important Information</p>
+                        <ul className="text-[9px] text-gray-700 space-y-0.5 list-disc list-inside">
+                          <li>This card is non-transferable</li>
+                          <li>Must be carried at all times</li>
+                          <li>Report loss immediately to office</li>
+                          <li>Valid for academic year only</li>
+                        </ul>
+                      </div>
+
+                      {/* Emergency Contact - Bottom Section */}
+                      {/* <div className="bg-red-50 p-2 rounded border border-red-200">
+                        <p className="text-[10px] font-bold text-red-800 mb-1">Emergency Contact</p>
+                        <div className="text-[9px] text-gray-700 space-y-1">
+                          <div className="flex items-center gap-1">
+                            <span className="font-semibold">School Office:</span>
+                            <div className="flex-1 border-b border-dashed border-gray-400 min-h-[12px]">
+                              <span className="px-1">+92-XXX-XXXXXXX</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="font-semibold">Principal:</span>
+                            <div className="flex-1 border-b border-dashed border-gray-400 min-h-[12px]">
+                              <span className="px-1">+92-XXX-XXXXXXX</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div> */}
+                    </div>
+
+                    {/* Signature Area */}
+                    <div className="mt-auto">
+                      <div className="border-t border-gray-300 pt-2 text-center">
+                        <p className="text-[10px] text-gray-500 mb-1">Authorized Signature</p>
+                        <div className="h-4 border-b border-dashed border-gray-400 mx-8"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom accent */}
+                  <div className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-r from-blue-600 to-green-600 rounded-t-full"></div>
                 </div>
               </div>
             </div>
@@ -1825,5 +1992,6 @@ export default function StudentsPage() {
     </div>
   );
 }
+
 
 
