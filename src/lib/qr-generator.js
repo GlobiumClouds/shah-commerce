@@ -12,7 +12,7 @@ export async function generateQRCode(data, options = {}) {
       errorCorrectionLevel: 'H',
       type: 'image/png',
       quality: 0.95,
-      margin: 1,
+      margin: 5,
       width: 300,
       color: {
         dark: '#000000',

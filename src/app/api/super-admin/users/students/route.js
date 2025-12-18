@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import User from '@/backend/models/User';
-import dbConnect from '@/lib/database';
+import connectDB from '@/lib/database';
 import Branch from '@/backend/models/Branch';
 import Department from '@/backend/models/Department';
 import Class from '@/backend/models/Class';
@@ -12,7 +12,7 @@ import Class from '@/backend/models/Class';
  */
 export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
   try {
-    await dbConnect();
+    await connectDB();
 
     const { searchParams } = new URL(request.url);
     
@@ -90,7 +90,7 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
  */
 export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
   try {
-    await dbConnect();
+    await connectDB();
 
     const body = await request.json();
 

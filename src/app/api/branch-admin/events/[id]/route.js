@@ -15,7 +15,7 @@ async function getEvent(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     const event = await Event.findOne({
       _id: id,
@@ -60,7 +60,7 @@ async function updateEvent(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
     const updates = await request.json();
 
     // Find event and verify it belongs to admin's branch (can't update global events)

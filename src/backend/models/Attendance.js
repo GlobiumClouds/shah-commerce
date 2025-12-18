@@ -28,6 +28,10 @@ const AttendanceSchema = new mongoose.Schema(
       enum: ['daily', 'subject', 'event'],
       default: 'daily',
     },
+    eventId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Event',
+    },
     records: [
       {
         studentId: {
@@ -70,7 +74,8 @@ const AttendanceSchema = new mongoose.Schema(
 // Indexes
 AttendanceSchema.index({ branchId: 1, date: -1 });
 AttendanceSchema.index({ classId: 1, date: -1 });
-AttendanceSchema.index({ branchId: 1, classId: 1, date: -1 }, { unique: true });
+// Unique per branch+class+date+attendanceType+(subjectId|eventId) to allow multiple types per day
+AttendanceSchema.index({ branchId: 1, classId: 1, date: -1, attendanceType: 1, subjectId: 1, eventId: 1 }, { unique: true });
 
 // Virtual for total students
 AttendanceSchema.virtual('totalStudents').get(function () {

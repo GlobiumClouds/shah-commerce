@@ -4,6 +4,8 @@ import connectDB from '@/lib/database';
 import User from '@/backend/models/User';
 import { sendEmail } from '@/backend/utils/emailService';
 import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
+import { generateQRCode } from '@/lib/qr-generator';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 // GET - Get single student
 async function getStudent(request, authenticatedUser, userDoc, { params }) {
@@ -17,7 +19,7 @@ async function getStudent(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     const student = await User.findOne({
       _id: id,
@@ -59,7 +61,7 @@ async function updateStudent(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
     const updates = await request.json();
 
     // Find student and verify it belongs to admin's branch
@@ -171,6 +173,43 @@ async function updateStudent(request, authenticatedUser, userDoc, { params }) {
       }
     } catch (err) {
       console.error('Failed to send student update email:', err);
+    }
+
+    // Ensure student has a QR code; generate and upload if missing
+    try {
+      const hasQr = !!(student.studentProfile && student.studentProfile.qr && student.studentProfile.qr.url);
+      if (!hasQr) {
+        const qrPayload = {
+          id: student._id,
+          registrationNumber: student.studentProfile?.registrationNumber || null,
+          rollNumber: student.studentProfile?.rollNumber || null,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          branchId: student.branchId,
+          classId: student.studentProfile?.classId || null,
+        };
+
+        const qrDataUrl = await generateQRCode(JSON.stringify(qrPayload), {
+          errorCorrectionLevel: 'H',
+          type: 'image/png',
+          // width: 350,
+        });
+
+        const uploadResult = await uploadToCloudinary(qrDataUrl, {
+          folder: `ease-academy/students/${student._id}/qr`,
+          resourceType: 'image',
+        });
+
+        student.studentProfile = student.studentProfile || {};
+        student.studentProfile.qr = {
+          url: uploadResult.url || uploadResult.secure_url || '',
+          publicId: uploadResult.publicId || uploadResult.public_id || '',
+          uploadedAt: new Date(),
+        };
+        await student.save();
+      }
+    } catch (err) {
+      console.error('Failed to generate/upload QR for student (update):', err);
     }
 
     return NextResponse.json({

@@ -4,6 +4,8 @@ import connectDB from '@/lib/database';
 import User from '@/backend/models/User';
 import { sendEmail } from '@/backend/utils/emailService';
 import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
+import { generateQRCode } from '@/lib/qr-generator';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 import Class from '@/backend/models/Class';
 
 // GET - Get all students for branch admin's branch
@@ -66,6 +68,9 @@ async function getStudents(request, authenticatedUser, userDoc) {
         .lean(),
       User.countDocuments(query),
     ]);
+
+    console.log(`Fetched ${students.length} students for branch ${authenticatedUser.branchId}`);
+    console.log(`Total students matching query: ${total}`);
 
     return NextResponse.json({
       success: true,
@@ -202,6 +207,40 @@ async function createStudent(request, authenticatedUser, userDoc) {
       }
     } catch (err) {
       console.error('Failed to send student created email:', err);
+    }
+
+    // Generate QR payload and upload to Cloudinary
+    try {
+      const qrPayload = {
+        id: student._id,
+        registrationNumber: student.studentProfile?.registrationNumber || null,
+        rollNumber: student.studentProfile?.rollNumber || null,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        branchId: student.branchId,
+        classId: student.studentProfile?.classId || null,
+      };
+
+      const qrDataUrl = await generateQRCode(JSON.stringify(qrPayload), {
+        errorCorrectionLevel: 'H',
+        type: 'image/png',
+        width: 350,
+      });
+
+      const uploadResult = await uploadToCloudinary(qrDataUrl, {
+        folder: `ease-academy/students/${student._id}/qr`,
+        resourceType: 'image',
+      });
+
+      student.studentProfile = student.studentProfile || {};
+      student.studentProfile.qr = {
+        url: uploadResult.url || uploadResult.secure_url || '',
+        publicId: uploadResult.publicId || uploadResult.public_id || '',
+        uploadedAt: new Date(),
+      };
+      await student.save();
+    } catch (err) {
+      console.error('Failed to generate/upload QR for student:', err);
     }
 
     return NextResponse.json({

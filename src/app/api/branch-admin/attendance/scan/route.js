@@ -19,6 +19,8 @@ async function scanAttendance(request, authenticatedUser, userDoc) {
     const body = await request.json();
     const qr = body.qr || body;
 
+    console.log('Scanned QR payload:', qr);
+
     if (!qr || (!qr.id && !qr.registrationNumber)) {
       return NextResponse.json({ success: false, message: 'Invalid QR payload' }, { status: 400 });
     }
@@ -48,23 +50,50 @@ async function scanAttendance(request, authenticatedUser, userDoc) {
 
     const date = body.date ? new Date(body.date) : new Date();
     const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-    // find or create attendance for this branch/class/date
-    let attendance = await Attendance.findOne({
+    // Build query for existing attendance respecting attendanceType/subject/event
+    const query = {
       branchId: authenticatedUser.branchId,
       classId,
       date: day,
-    });
+    };
 
+    const requestedType = body.attendanceType || 'daily';
+    if (requestedType === 'event') {
+      if (!body.eventId) {
+        return NextResponse.json({ success: false, message: 'eventId is required for event attendance' }, { status: 400 });
+      }
+      query.attendanceType = 'event';
+      query.eventId = body.eventId;
+    } else if (requestedType === 'subject') {
+      if (!body.subjectId) {
+        return NextResponse.json({ success: false, message: 'subjectId is required for subject attendance' }, { status: 400 });
+      }
+      query.attendanceType = 'subject';
+      query.subjectId = body.subjectId;
+    } else {
+      query.attendanceType = 'daily';
+    }
+
+    // Find or create attendance for this branch/class/date and requested type
+    let attendance = await Attendance.findOne(query);
     if (!attendance) {
-      attendance = new Attendance({
-        branchId: authenticatedUser.branchId,
-        classId,
-        date: day,
-        attendanceType: body.attendanceType || 'daily',
-        records: [],
-        markedBy: authenticatedUser.userId,
-      });
+      // Use atomic upsert to avoid race/duplicate key issues
+      attendance = await Attendance.findOneAndUpdate(
+        query,
+        {
+          $setOnInsert: {
+            branchId: authenticatedUser.branchId,
+            classId,
+            date: day,
+            attendanceType: query.attendanceType,
+            subjectId: query.subjectId || undefined,
+            eventId: query.eventId || undefined,
+            records: [],
+            markedBy: authenticatedUser.userId,
+          },
+        },
+        { new: true, upsert: true }
+      );
     }
 
     const studentId = student._id.toString();
