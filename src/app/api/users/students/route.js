@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import User from '@/backend/models/User';
-import dbConnect from '@/lib/database';
+import connectDB from '@/lib/database';
 import QRCode from 'qrcode';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import Counter from '@/backend/models/Counter';
@@ -15,7 +15,7 @@ import bcrypt from 'bcryptjs';
 // POST - Create a new student, generate roll number (if missing), create QR and upload to Cloudinary
 export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
   try {
-    await dbConnect();
+    await connectDB();
 
     const body = await request.json();
 

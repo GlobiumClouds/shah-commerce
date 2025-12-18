@@ -28,12 +28,6 @@ const STUDENT_STATUS = [
   { value: 'suspended', label: 'Suspended' },
 ];
 
-const GENDER_OPTIONS = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'other', label: 'Other' },
-];
-
 export default function StudentsPage() {
   const { user } = useAuth();
   const [students, setStudents] = useState([]);
@@ -743,7 +737,7 @@ export default function StudentsPage() {
               ) : (
                 students.map((student) => (
                   <TableRow key={student._id}>
-                    <TableCell className="font-medium">{student.admissionNumber}</TableCell>
+                    <TableCell className="font-medium">{student.studentProfile?.registrationNumber || 'N/A'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {student.profilePhoto?.url ? (
@@ -763,10 +757,10 @@ export default function StudentsPage() {
                         {student.email}
                       </div>
                     </TableCell>
-                    <TableCell>{student.classId?.name || 'Not Assigned'}</TableCell>
+                    <TableCell>{student.studentProfile?.classId?.name || 'Not Assigned'}</TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <div>{student.parentInfo?.fatherName || student.guardianInfo?.name || '-'}</div>
+                        <div>{student.studentProfile?.father?.name || student.studentProfile?.guardian?.name || '-'}</div>
                         {(student.parentInfo?.fatherPhone || student.guardianInfo?.phone) && (
                           <div className="flex items-center gap-1 text-gray-500">
                             <Phone className="w-3 h-3" />
