@@ -1,10 +1,10 @@
 // ease-academy/src/app/api/super-admin/classes/%5Bid%5D/route.js
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/database';
 import Class from '@/backend/models/Class';
 import User from '@/backend/models/User';
 import { withAuth } from '@/backend/middleware/auth';
 import Branch from '@/backend/models/Branch';
+import connectDB from '@/lib/database';
 
 // Helper function to extract ID from URL
 function extractIdFromUrl(urlString) {
@@ -21,7 +21,7 @@ function extractIdFromUrl(urlString) {
 // GET - Get single class
 async function getClass(request) {
   try {
-    await dbConnect();
+    await connectDB();
 
     // Extract ID from URL
     const id = extractIdFromUrl(request.url);
@@ -82,7 +82,7 @@ async function getClass(request) {
 // PUT - Update class
 async function updateClass(request, authenticatedUser, userDoc) {
   try {
-    await dbConnect();
+    await connectDB();
 
     // Extract ID from URL
     const id = extractIdFromUrl(request.url);
@@ -166,7 +166,7 @@ async function updateClass(request, authenticatedUser, userDoc) {
 // DELETE - Delete class
 async function deleteClass(request, authenticatedUser, userDoc) {
   try {
-    await dbConnect();
+    await connectDB();
 
     // Extract ID from URL
     const id = extractIdFromUrl(request.url);

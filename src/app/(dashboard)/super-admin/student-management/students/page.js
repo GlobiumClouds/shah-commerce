@@ -444,14 +444,21 @@ const SuperAdminStudentsPage = () => {
 
   const fetchClasses = async () => {
     try {
-      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST, { limit: 100 });
+      const params = { limit: 200 };
+      if (branchFilter) params.branchId = branchFilter;
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST, { params });
       if (response.success) {
-        setClasses(response.data.classes || []);
+        setClasses(response.data.classes || response.data || []);
       }
     } catch (error) {
       console.error('Error fetching classes:', error);
     }
   };
+
+  // Reset class filter when branch changes
+  useEffect(() => {
+    setClassFilter('');
+  }, [branchFilter]);
 
   const fetchDepartments = async () => {
     try {

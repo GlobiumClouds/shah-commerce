@@ -126,13 +126,16 @@ export default function BranchAdminAttendancePage() {
     try {
       setLoading(true);
       const response = await apiClient.get(API_ENDPOINTS.STUDENT.LIST);
-      
-      const filtered = response.data.students?.filter(
-        student => 
-          student.branchId === user.branchId?._id &&
-          student.classId === selectedClass &&
-          student.section === selectedSection
-      ) || [];
+
+      const filtered = response.data.students?.filter((student) => {
+        const studentBranchId = student.branchId || student.branchId?._id;
+        const studentClassId = student.classId || student.studentProfile?.classId || student.studentProfile?.classId?._id;
+        return (
+          (studentBranchId === user.branchId?._id || studentBranchId === user.branchId) &&
+          (studentClassId === selectedClass || studentClassId?._id === selectedClass) &&
+          (student.section === selectedSection)
+        );
+      }) || [];
       
       setStudents(filtered);
       setFilteredStudents(filtered);

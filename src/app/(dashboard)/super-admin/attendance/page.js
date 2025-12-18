@@ -10,7 +10,8 @@ import Dropdown from '@/components/ui/dropdown';
 import Tabs, { TabPanel } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import QRScanner from '@/components/QRScanner';
+import LiveJsQRScanner from '@/components/LiveJsQRScanner';
+import Modal from '@/components/ui/modal';
 import apiClient from '@/lib/api-client';
 import API_ENDPOINTS from '@/constants/api-endpoints';
 import { toast } from 'sonner';
@@ -37,6 +38,9 @@ export default function SuperAdminAttendancePage() {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [attendanceType, setAttendanceType] = useState('daily');
+  const [events, setEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState('');
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -67,12 +71,31 @@ export default function SuperAdminAttendancePage() {
     if (selectedBranch && selectedClass && selectedSection) {
       fetchStudents();
       fetchSubjects();
+      if (attendanceType === 'event') fetchEvents();
     } else {
       setStudents([]);
       setFilteredStudents([]);
       setSubjects([]);
     }
   }, [selectedClass, selectedSection]);
+
+  useEffect(() => {
+    if (attendanceType === 'event' && selectedBranch) {
+      fetchEvents();
+    }
+  }, [attendanceType, selectedBranch]);
+
+  // Clear selectedEvent when attendanceType is not event
+  useEffect(() => {
+    if (attendanceType !== 'event') setSelectedEvent('');
+  }, [attendanceType]);
+
+  // Re-fetch existing attendance when attendanceType/subject/event/date change
+  useEffect(() => {
+    if (students.length > 0) {
+      fetchExistingAttendance(students);
+    }
+  }, [attendanceType, selectedSubject, selectedEvent, attendanceDate]);
   
   // Filter students when search changes
   useEffect(() => {
@@ -106,9 +129,11 @@ export default function SuperAdminAttendancePage() {
   const fetchClasses = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST);
-      // Filter classes by branch if needed
-      setClasses(response.data.classes || []);
+      const params = {};
+      if (selectedBranch) params.branchId = selectedBranch;
+      params.limit = 200;
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST, { params });
+      setClasses(response.data.classes || response.data || []);
     } catch (error) {
       toast.error('Failed to fetch classes');
     } finally {
@@ -126,18 +151,31 @@ export default function SuperAdminAttendancePage() {
       toast.error('Failed to fetch subjects');
     }
   };
+
+  const fetchEvents = async () => {
+    try {
+      const res = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.EVENTS.LIST, { params: { branchId: selectedBranch } });
+      setEvents(res.data.events || res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch events', err);
+      toast.error('Failed to fetch events');
+    }
+  };
   
   const fetchStudents = async () => {
     try {
       setLoading(true);
       const response = await apiClient.get(API_ENDPOINTS.STUDENT.LIST);
       
-      const filtered = response.data.students.filter(
-        student => 
-          student.branchId === selectedBranch &&
-          student.classId === selectedClass &&
-          student.section === selectedSection
-      );
+      const filtered = response.data.students.filter((student) => {
+        const studentBranchId = student.branchId || student.branchId?._id;
+        const studentClassId = student.classId || student.studentProfile?.classId || student.studentProfile?.classId?._id;
+        return (
+          (studentBranchId === selectedBranch || studentBranchId === selectedBranch?._id) &&
+          (studentClassId === selectedClass || studentClassId?._id === selectedClass) &&
+          (student.section === selectedSection)
+        );
+      });
       
       setStudents(filtered);
       setFilteredStudents(filtered);
@@ -153,14 +191,17 @@ export default function SuperAdminAttendancePage() {
   
   const fetchExistingAttendance = async (studentList) => {
     try {
-      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.ATTENDANCE.LIST, {
-        params: {
+      const params = {
           branchId: selectedBranch,
           classId: selectedClass,
           date: attendanceDate,
-          subjectId: selectedSubject || undefined
-        }
-      });
+        };
+
+      if (attendanceType === 'subject') params.subjectId = selectedSubject || undefined;
+      if (attendanceType === 'event') params.eventId = selectedEvent || undefined;
+      params.attendanceType = attendanceType || (selectedSubject ? 'subject' : 'daily');
+
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.ATTENDANCE.LIST, { params });
       
       if (response.data.attendance) {
         const records = {};
@@ -199,8 +240,9 @@ export default function SuperAdminAttendancePage() {
       const res = await apiClient.post(API_ENDPOINTS.SUPER_ADMIN.ATTENDANCE.SCAN, {
         qr: qrData,
         date: attendanceDate,
-        subjectId: selectedSubject || null,
-        attendanceType: selectedSubject ? 'subject' : 'daily'
+        subjectId: attendanceType === 'subject' ? selectedSubject : null,
+        eventId: attendanceType === 'event' ? selectedEvent : null,
+        attendanceType: attendanceType || 'daily'
       });
 
       if (res?.data?.success) {
@@ -208,7 +250,7 @@ export default function SuperAdminAttendancePage() {
         const student = res.data.data?.student;
         if (student && student._id) {
           // update local UI if student is currently loaded
-          if (students.find(s => s._id === student._id) && student.branchId === selectedBranch && student.studentProfile?.classId === selectedClass) {
+          if (students.find(s => s._id === student._id) && student.branchId === selectedBranch && (student.studentProfile?.classId === selectedClass || student.studentProfile?.classId?._id === selectedClass)) {
             setAttendanceRecords(prev => ({ ...prev, [student._id]: 'present' }));
             if (!scannedStudents.find(s => s._id === student._id)) {
               setScannedStudents(prev => [...prev, students.find(s => s._id === student._id)]);
@@ -243,7 +285,8 @@ export default function SuperAdminAttendancePage() {
         section: selectedSection,
         subjectId: selectedSubject || null,
         date: attendanceDate,
-        attendanceType: selectedSubject ? 'subject' : 'daily',
+        attendanceType: attendanceType || (selectedSubject ? 'subject' : 'daily'),
+        eventId: attendanceType === 'event' ? selectedEvent : null,
         records
       };
       
@@ -368,6 +411,35 @@ export default function SuperAdminAttendancePage() {
                 placeholder="All subjects"
               />
             </div>
+
+            <div className="space-y-2">
+              <Label>Attendance Type</Label>
+              <Dropdown
+                name="attendanceType"
+                value={attendanceType}
+                onChange={(e) => setAttendanceType(e.target.value)}
+                options={[
+                  { value: 'daily', label: 'Daily' },
+                  { value: 'subject', label: 'Subject' },
+                  { value: 'event', label: 'Event' },
+                ]}
+                placeholder="Select type"
+              />
+            </div>
+
+            {attendanceType === 'event' && (
+              <div className="space-y-2">
+                <Label>Event *</Label>
+                <Dropdown
+                  name="event"
+                  value={selectedEvent}
+                  onChange={(e) => setSelectedEvent(e.target.value)}
+                  options={events.map(ev => ({ value: ev._id || ev.id, label: `${ev.title} — ${new Date(ev.startDate).toLocaleDateString()}` }))}
+                  placeholder={events.length ? 'Select event' : 'No events found'}
+                  disabled={events.length === 0}
+                />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -431,7 +503,7 @@ export default function SuperAdminAttendancePage() {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Button
-                                variant={attendanceRecords[student._1d] === 'present' ? 'default' : 'outline'}
+                                variant={attendanceRecords[student._id] === 'present' ? 'default' : 'outline'}
                                 size="sm"
                                 onClick={() => handleStatusChange(student._id, 'present')}
                               >
@@ -554,10 +626,16 @@ export default function SuperAdminAttendancePage() {
       )}
       
       {showScanner && (
-        <QRScanner
-          onScan={handleQRScan}
-          onClose={() => setShowScanner(false)}
-        />
+        <Modal open={true} onClose={() => setShowScanner(false)} title="Scan QR Code" size="xl">
+          <div className="p-4">
+            <LiveJsQRScanner
+              onDetected={(data) => handleQRScan(data)}
+              continuous={true}
+              autoStart={true}
+              className="w-full"
+            />
+          </div>
+        </Modal>
       )}
     </div>
   );

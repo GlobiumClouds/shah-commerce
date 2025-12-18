@@ -116,6 +116,7 @@ const ROLE_MENUS = {
         { name: 'Teacher Attendance', path: '/super-admin/attendance-management/teacher', icon: LayoutDashboardIcon },
         { name: 'Manual Entry', path: '/super-admin/attendance-management/manual-entry', icon: Keyboard },
         { name: 'QR Code Scanner', path: '/super-admin/attendance-management/qr-scanner', icon: QrCode },
+        { name: 'Attendance QR Code', path: '/super-admin/attendance', icon: QrCode },
         { name: 'Staff Attendance', path: '/super-admin/attendance-management/staff', icon: UserCheck },
       ],
     },
@@ -205,7 +206,7 @@ const ROLE_MENUS = {
         { name: 'Streams', path: '/branch-admin/streams', icon: FolderOpen },
       ],
     },
-        {
+    {
       category: 'Finance Management',
       items: [
         { name: 'Fees', path: '/branch-admin/fees', icon: DollarSign },
@@ -309,7 +310,7 @@ const ROLE_MENUS = {
 const shouldBeCollapsible = (group) => {
   // If already marked as collapsible, return true
   if (group.isCollapsible) return true;
-  
+
   // If more than 1 item, make it collapsible
   return group.items.length > 1;
 };
@@ -370,7 +371,7 @@ export default function Sidebar() {
   const CollapsibleSection = ({ group, groupIndex }) => {
     const isExpanded = expandedSections[group.category] || false;
     const Icon = group.items[0]?.icon || FolderOpen;
-    
+
     // Check if current page is in this section
     const hasActiveItem = isCurrentSection(group.items);
 
@@ -395,7 +396,7 @@ export default function Sidebar() {
             <ChevronRight className="h-4 w-4" />
           )}
         </button>
-        
+
         {isExpanded && (
           <div className="mt-1 ml-8 space-y-1">
             {group.items.map((item) => {
