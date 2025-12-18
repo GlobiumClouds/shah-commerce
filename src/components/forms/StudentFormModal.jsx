@@ -1,8 +1,4 @@
 'use client';
-
-import React, { useState, useEffect, useRef } from 'react';
-import Modal from '@/components/ui/modal';
-import Input from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Tabs from '@/components/ui/tabs';
 import Dropdown from '@/components/ui/dropdown';
@@ -11,6 +7,9 @@ import GenderSelect from '@/components/ui/gender-select';
 import ClassSelect from '@/components/ui/class-select';
 import DepartmentSelect from '@/components/ui/department-select';
 import BranchSelect from '@/components/ui/branch-select';
+import Input from '@/components/ui/input';
+import Modal from '@/components/ui/modal';
+// import Textarea from '@/components/ui/textarea';
 import {
   User,
   Mail,
@@ -23,6 +22,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const STUDENT_FORM_TABS = [
   { id: 'personal', label: 'Personal Info' },
@@ -423,6 +423,27 @@ const StudentFormModal = ({
     }));
   };
 
+  // Derived sections for the currently selected class
+  const classSections = useMemo(() => {
+    if (!formData.classId || !availableClasses || availableClasses.length === 0) return [];
+    const cls = availableClasses.find(c => String(c._id) === String(formData.classId) || (c._id?._id && String(c._id._id) === String(formData.classId)));
+    return cls?.sections || [];
+  }, [formData.classId, availableClasses]);
+
+  // When class changes, if section no longer exists, set default to first section or empty
+  useEffect(() => {
+    if (formData.classId) {
+      if (classSections.length > 0) {
+        const exists = classSections.some(s => String(s.name) === String(formData.section));
+        if (!exists) {
+          setFormData(prev => ({ ...prev, section: classSections[0].name }));
+        }
+      } else {
+        setFormData(prev => ({ ...prev, section: '' }));
+      }
+    }
+  }, [formData.classId, classSections]);
+
   const handleProfileUpload = async (file) => {
     if (!file) return;
 
@@ -810,13 +831,28 @@ const StudentFormModal = ({
         </div>
         <div>
           <label className="block text-sm font-medium mb-2">Section</label>
-          <Input
-            type="text"
-            name="section"
-            value={formData.section}
-            onChange={handleInputChange}
-            placeholder="A"
-          />
+          {/* {
+            // derive sections from selected class in availableClasses
+            
+          } */}
+           {classSections && classSections.length > 0 ? (
+            <Dropdown
+              name="section"
+              value={formData.section}
+              onChange={(e) => setFormData(prev => ({ ...prev, section: e.target.value }))}
+              options={[{ value: '', label: 'Select Section' }, ...classSections.map(s => ({ value: s.name, label: s.name }))]}
+              placeholder="Select Section"
+            />
+          ) : (
+            <Input
+              type="text"
+              name="section"
+              value={formData.section}
+              onChange={handleInputChange}
+              placeholder="A"
+            />
+          )}
+          {/* <SectionDropdown /> */}
         </div>
         <div>
           <label className="block text-sm font-medium mb-2">Academic Year</label>
@@ -1507,6 +1543,7 @@ const StudentFormModal = ({
     <Modal
       open={isOpen}
       onClose={onClose}
+      closeOnBackdrop={false}
       title={editingStudent ? 'Edit Student' : 'Add New Student'}
       size="xl"
       footer={

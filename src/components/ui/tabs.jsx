@@ -12,6 +12,7 @@ export default function Tabs({ tabs, activeTab, onChange, className = '' }) {
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            type="button"
             onClick={() => onChange(tab.id)}
             className={`
               relative px-4 py-3 text-sm font-medium whitespace-nowrap

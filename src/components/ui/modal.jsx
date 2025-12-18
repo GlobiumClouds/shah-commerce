@@ -13,7 +13,7 @@ import React from 'react';
  *    className: extra classes for dialog
  *    size: 'sm' | 'md' | 'lg' | 'xl' (controls max width)
  */
-export default function Modal({ open, onClose, title, children, footerClassName = '', className = '', size = 'md', footer = null }) {
+export default function Modal({ open, onClose, title, children, footerClassName = '', className = '', size = 'md', footer = null, closeOnBackdrop = true }) {
   if (!open) return null;
 
   const sizeClass = {
@@ -26,7 +26,10 @@ export default function Modal({ open, onClose, title, children, footerClassName 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-4">
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/40" onClick={onClose} />
+      <div
+        className="fixed inset-0 bg-black/40"
+        onClick={closeOnBackdrop ? onClose : undefined}
+      />
 
       {/* Dialog container: limit height and allow internal scrolling */}
       <div
