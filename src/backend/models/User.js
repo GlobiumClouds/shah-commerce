@@ -201,7 +201,7 @@ const userSchema = new mongoose.Schema(
       },
       transportFee: {
         enabled: { type: Boolean, default: false },
-        routeId: { type: mongoose.Schema.Types.ObjectId, ref: 'TransportRoute' },
+        // routeId: { type: mongoose.Schema.Types.ObjectId, ref: 'TransportRoute' },
         amount: { type: Number, default: 0 },
       },
       
