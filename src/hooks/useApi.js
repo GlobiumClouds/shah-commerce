@@ -26,18 +26,24 @@ export function useApi(endpoint, options = {}) {
       try {
         // Handle both { url: '...' } and direct endpoint calls
         let actualEndpoint = endpoint;
-        let actualParams = params;
+        let actualMethod = method;
+        let actualParams = {};
         let actualBody = body;
 
-        if (params && typeof params === 'object' && params.url && !Array.isArray(params)) {
-          actualEndpoint = params.url;
-          actualParams = params.params || {};
-          actualBody = params.body || null;
+        if (params && typeof params === 'object' && !Array.isArray(params)) {
+          if (params.url) {
+            actualEndpoint = params.url;
+            actualMethod = params.method || method;
+            actualParams = params.params || {};
+            actualBody = params.body || null;
+          } else {
+            actualParams = params;
+          }
         }
 
         let response;
 
-        switch (method.toUpperCase()) {
+        switch (actualMethod.toUpperCase()) {
           case 'GET':
             response = await apiClient.get(actualEndpoint, actualParams);
             break;
@@ -51,10 +57,10 @@ export function useApi(endpoint, options = {}) {
             response = await apiClient.patch(actualEndpoint, actualBody || actualParams);
             break;
           case 'DELETE':
-            response = await apiClient.delete(actualEndpoint);
+            response = await apiClient.delete(actualEndpoint, actualParams);
             break;
           default:
-            throw new Error(`Unsupported method: ${method}`);
+            throw new Error(`Unsupported method: ${actualMethod}`);
         }
 
         setData(response.data || response);

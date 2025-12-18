@@ -16,6 +16,7 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const childId = searchParams.get('childId');
+    const search = searchParams.get('search') || '';
 
     if (!childId) {
       return NextResponse.json({ error: 'Child ID is required' }, { status: 400 });
@@ -31,11 +32,23 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Child not found' }, { status: 404 });
     }
 
-    // Assuming assignments are stored as Exams with type 'assignment'
-    const assignments = await Exam.find({
+    // Build search query for assignments
+    const searchQuery = {
       classId: child.studentProfile.classId,
       type: 'assignment',
-    }).populate('subjectId', 'name').sort({ dueDate: 1 });
+    };
+
+    if (search) {
+      searchQuery.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Assuming assignments are stored as Exams with type 'assignment'
+    const assignments = await Exam.find(searchQuery)
+      .populate('subjectId', 'name')
+      .sort({ dueDate: 1 });
 
     return NextResponse.json({ assignments });
   } catch (error) {

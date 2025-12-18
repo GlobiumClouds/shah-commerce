@@ -7,10 +7,10 @@ export const GET = withAuth(async (request, user) => {
   try {
     await connectDB();
 
-    // Find all parents who are not approved
+    // Find all parents who are pending
     const pendingParents = await User.find({
       role: 'parent',
-      approved: false,
+      status: 'pending',
     }).populate({
       path: 'parentProfile.children.id',
       select: 'fullName studentProfile.registrationNumber studentProfile.classId branchId'
