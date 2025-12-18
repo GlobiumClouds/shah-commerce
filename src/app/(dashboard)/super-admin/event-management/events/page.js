@@ -18,6 +18,15 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import API_ENDPOINTS, { buildUrl } from '@/constants/api-endpoints';
+import Input from '@/components/ui/input';
+import BranchSelect from '@/components/ui/branch-select';
+import Dropdown from '@/components/ui/dropdown';
+import Modal from '@/components/ui/modal';
+import { Button } from '@/components/ui/button';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import ButtonLoader from '@/components/ui/button-loader';
+import FullPageLoader from '@/components/ui/full-page-loader';
 
 export default function EventsListPage() {
   const { user } = useAuth();
@@ -30,6 +39,7 @@ export default function EventsListPage() {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -46,17 +56,36 @@ export default function EventsListPage() {
   });
 
   useEffect(() => {
-    fetchEvents();
+    // Fetch branches once
     fetchBranches();
   }, []);
+
+  // Re-fetch events when filters change
+  useEffect(() => {
+    fetchEvents();
+  }, [selectedBranch, selectedType, selectedStatus, search]);
 
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/api/super-admin/events?limit=500');
-      
+
+      const params = {
+        limit: 500,
+        ...(selectedBranch && { branchId: selectedBranch }),
+        ...(selectedType && { eventType: selectedType }),
+        ...(selectedStatus && { status: selectedStatus }),
+        ...(search && { search }),
+      };
+
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.EVENTS.LIST, { params });
+
       if (response.success) {
-        setEvents(response.data);
+        // response.data may be { events, pagination } or an array depending on backend wrapper
+        const payload = response.data || response.data?.events || response.data?.data || response;
+        if (payload.events) setEvents(payload.events);
+        else if (Array.isArray(payload)) setEvents(payload);
+        else if (payload.data && Array.isArray(payload.data.events)) setEvents(payload.data.events);
+        else setEvents(payload);
       }
     } catch (error) {
       toast.error('Failed to fetch events');
@@ -68,8 +97,8 @@ export default function EventsListPage() {
 
   const fetchBranches = async () => {
     try {
-      const response = await apiClient.get('/api/super-admin/branches?limit=100');
-      if (response.success) setBranches(response.data);
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST, { params: { limit: 100 } });
+      if (response.success) setBranches(response.data.branches);
     } catch (error) {
       console.error('Failed to fetch branches:', error);
     }
@@ -77,15 +106,23 @@ export default function EventsListPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setIsSubmitting(true);
     try {
+      // Normalize empty branch to null (global event)
+      const payload = { ...formData, branchId: formData.branchId || null };
+
+      if (!editingId) {
+        // include createdBy only on create
+        payload.createdBy = user?._id || user?.id || null;
+      }
+
       if (editingId) {
-        const response = await apiClient.put(`/api/super-admin/events/${editingId}`, formData);
+        const response = await apiClient.put(buildUrl(API_ENDPOINTS.SUPER_ADMIN.EVENTS.UPDATE, { id: editingId }), payload);
         if (response.success) {
           toast.success('Event updated successfully');
         }
       } else {
-        const response = await apiClient.post('/api/super-admin/events', formData);
+        const response = await apiClient.post(API_ENDPOINTS.SUPER_ADMIN.EVENTS.CREATE, payload);
         if (response.success) {
           toast.success('Event created successfully');
         }
@@ -96,6 +133,8 @@ export default function EventsListPage() {
     } catch (error) {
       toast.error(error.message || 'Failed to save event');
       console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -103,7 +142,7 @@ export default function EventsListPage() {
     if (!confirm('Are you sure you want to delete this event?')) return;
     
     try {
-      const response = await apiClient.delete(`/api/super-admin/events/${id}`);
+      const response = await apiClient.delete(buildUrl(API_ENDPOINTS.SUPER_ADMIN.EVENTS.DELETE, { id }));
       
       if (response.success) {
         toast.success('Event deleted successfully');
@@ -126,7 +165,7 @@ export default function EventsListPage() {
       startTime: event.startTime || '',
       endTime: event.endTime || '',
       location: event.location || '',
-      branchId: event.branchId,
+      branchId: event.branchId?._id || event.branchId || '',
       allDay: event.allDay || false,
       status: event.status,
     });
@@ -154,7 +193,8 @@ export default function EventsListPage() {
   // Filter events
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(search.toLowerCase());
-    const matchesBranch = !selectedBranch || event.branchId === selectedBranch;
+    const eventBranchId = event.branchId?._id || event.branchId || '';
+    const matchesBranch = !selectedBranch || eventBranchId === selectedBranch;
     const matchesType = !selectedType || event.eventType === selectedType;
     const matchesStatus = !selectedStatus || event.status === selectedStatus;
     
@@ -240,136 +280,108 @@ export default function EventsListPage() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Search Events
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by title..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+            <Input
+              label="Search Events"
+              placeholder="Search by title..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              icon={Search}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Branch
-            </label>
-            <select
+            <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+            <BranchSelect
+              id="event-branch"
+              name="branch"
               value={selectedBranch}
               onChange={(e) => setSelectedBranch(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Branches</option>
-              {branches.map((branch) => (
-                <option key={branch._id} value={branch._id}>
-                  {branch.name}
-                </option>
-              ))}
-            </select>
+              branches={branches}
+              placeholder="All Branches"
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Type
-            </label>
-            <select
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <Dropdown
+              name="eventType"
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Types</option>
-              <option value="academic">Academic</option>
-              <option value="holiday">Holiday</option>
-              <option value="exam">Exam</option>
-              <option value="meeting">Meeting</option>
-              <option value="sports">Sports</option>
-              <option value="cultural">Cultural</option>
-              <option value="workshop">Workshop</option>
-              <option value="seminar">Seminar</option>
-              <option value="parent_teacher">Parent-Teacher</option>
-              <option value="celebration">Celebration</option>
-            </select>
+              options={[
+                { label: 'All Types', value: '' },
+                { label: 'Academic', value: 'academic' },
+                { label: 'Holiday', value: 'holiday' },
+                { label: 'Exam', value: 'exam' },
+                { label: 'Meeting', value: 'meeting' },
+                { label: 'Sports', value: 'sports' },
+                { label: 'Cultural', value: 'cultural' },
+                { label: 'Workshop', value: 'workshop' },
+                { label: 'Seminar', value: 'seminar' },
+                { label: 'Parent-Teacher', value: 'parent_teacher' },
+                { label: 'Celebration', value: 'celebration' },
+              ]}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <Dropdown
+              name="status"
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Status</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="ongoing">Ongoing</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="postponed">Postponed</option>
-            </select>
+              options={[
+                { label: 'All Status', value: '' },
+                { label: 'Scheduled', value: 'scheduled' },
+                { label: 'Ongoing', value: 'ongoing' },
+                { label: 'Completed', value: 'completed' },
+                { label: 'Cancelled', value: 'cancelled' },
+                { label: 'Postponed', value: 'postponed' },
+              ]}
+            />
           </div>
 
-          <button
-            onClick={() => setShowModal(true)}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
-          >
+          <Button className="w-full flex items-center justify-center gap-2" onClick={() => setShowModal(true)}>
             <Plus className="h-5 w-5" />
             Add Event
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Events Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading events...</div>
+          <FullPageLoader message="Loading events..." />
         ) : filteredEvents.length === 0 ? (
           <div className="p-8 text-center text-gray-500">No events found</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+            <Table>
+              <TableHeader>
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Event Title
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Dates
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Location
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
-                    Actions
-                  </th>
+                  <TableHead>Event Title</TableHead>
+                  <TableHead>Dates</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Branch</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
+              </TableHeader>
+
+              <TableBody>
                 {filteredEvents.map((event) => (
-                  <tr key={event._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm">
+                  <TableRow key={event._id}>
+                    <TableCell>
                       <div>
                         <p className="font-medium text-gray-900">{event.title}</p>
                         {event.description && (
-                          <p className="text-gray-600 text-xs mt-1 line-clamp-1">
-                            {event.description}
-                          </p>
+                          <p className="text-gray-600 text-xs mt-1 line-clamp-1">{event.description}</p>
                         )}
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-1">
+                    </TableCell>
+
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
                         <Calendar className="h-4 w-4" />
                         <div>
                           <p>{format(parseISO(event.startDate), 'MMM d, yyyy')}</p>
@@ -378,258 +390,142 @@ export default function EventsListPage() {
                           )}
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                        eventTypeColors[event.eventType] || eventTypeColors.other
-                      }`}>
+                    </TableCell>
+
+                    <TableCell>
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${eventTypeColors[event.eventType] || eventTypeColors.other}`}>
                         {event.eventType.replace('_', ' ').toUpperCase()}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm">
+                    </TableCell>
+
+                    <TableCell>
                       {event.location ? (
-                        <div className="flex items-center gap-1 text-gray-600">
-                          <MapPin className="h-4 w-4" />
-                          {event.location}
-                        </div>
+                        <div className="flex items-center gap-1 text-gray-600"><MapPin className="h-4 w-4" />{event.location}</div>
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                        statusColors[event.status] || statusColors.scheduled
-                      }`}>
-                        {event.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-right">
+                    </TableCell>
+
+                    <TableCell className="text-sm text-gray-900">{event.branchId?.name || 'All Branches'}</TableCell>
+
+                    <TableCell>
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${statusColors[event.status] || statusColors.scheduled}`}>{event.status.toUpperCase()}</span>
+                    </TableCell>
+
+                    <TableCell className="text-sm text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEdit(event)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                          title="Edit"
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(event)} title="Edit">
                           <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(event._id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                          title="Delete"
-                        >
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(event._id)} title="Delete">
                           <Trash2 className="h-4 w-4" />
-                        </button>
+                        </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>
 
       {/* Event Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-gray-900">
-                {editingId ? 'Edit Event' : 'Add New Event'}
-              </h2>
-              <button
-                onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
+      <Modal open={showModal} onClose={handleCloseModal} title={editingId ? 'Edit Event' : 'Add New Event'} size="lg" closeOnBackdrop>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <Input label="Event Title *" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Event title" />
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Event Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+            <div className="md:col-span-2">
+              <Input label="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Brief description" />
+            </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows="3"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Event Type *</label>
+              <Dropdown
+                name="eventType"
+                value={formData.eventType}
+                onChange={(e) => setFormData({ ...formData, eventType: e.target.value })}
+                options={[
+                  { label: 'Academic', value: 'academic' },
+                  { label: 'Holiday', value: 'holiday' },
+                  { label: 'Exam', value: 'exam' },
+                  { label: 'Meeting', value: 'meeting' },
+                  { label: 'Sports', value: 'sports' },
+                  { label: 'Cultural', value: 'cultural' },
+                  { label: 'Workshop', value: 'workshop' },
+                  { label: 'Seminar', value: 'seminar' },
+                  { label: 'Parent-Teacher', value: 'parent_teacher' },
+                  { label: 'Celebration', value: 'celebration' },
+                  { label: 'Other', value: 'other' },
+                ]}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Branch (optional)</label>
+              <BranchSelect id="modal-branch" name="branch" value={formData.branchId} onChange={(e) => setFormData({ ...formData, branchId: e.target.value })} branches={branches} placeholder="All Branches (Global)" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+              <input type="date" required value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date *</label>
+              <input type="date" required value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2"><input type="checkbox" checked={formData.allDay} onChange={(e) => setFormData({ ...formData, allDay: e.target.checked })} className="mr-2" />All Day Event</label>
+            </div>
+
+            {!formData.allDay && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                  <input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Event Type *
-                  </label>
-                  <select
-                    required
-                    value={formData.eventType}
-                    onChange={(e) => setFormData({ ...formData, eventType: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="academic">Academic</option>
-                    <option value="holiday">Holiday</option>
-                    <option value="exam">Exam</option>
-                    <option value="meeting">Meeting</option>
-                    <option value="sports">Sports</option>
-                    <option value="cultural">Cultural</option>
-                    <option value="workshop">Workshop</option>
-                    <option value="seminar">Seminar</option>
-                    <option value="parent_teacher">Parent-Teacher</option>
-                    <option value="celebration">Celebration</option>
-                    <option value="other">Other</option>
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                  <input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                 </div>
+              </>
+            )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Branch *
-                  </label>
-                  <select
-                    required
-                    value={formData.branchId}
-                    onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select Branch</option>
-                    {branches.map((branch) => (
-                      <option key={branch._id} value={branch._id}>
-                        {branch.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div className="md:col-span-2">
+                  <Input label="Location" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} placeholder="Location (optional)" />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Start Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    End Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.allDay}
-                      onChange={(e) => setFormData({ ...formData, allDay: e.target.checked })}
-                      className="mr-2"
-                    />
-                    All Day Event
-                  </label>
-                </div>
-
-                {!formData.allDay && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Start Time
-                      </label>
-                      <input
-                        type="time"
-                        value={formData.startTime}
-                        onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        End Time
-                      </label>
-                      <input
-                        type="time"
-                        value={formData.endTime}
-                        onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="scheduled">Scheduled</option>
-                    <option value="ongoing">Ongoing</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                    <option value="postponed">Postponed</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  {editingId ? 'Update Event' : 'Create Event'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <Dropdown
+                name="status"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                options={[
+                  { label: 'Scheduled', value: 'scheduled' },
+                  { label: 'Ongoing', value: 'ongoing' },
+                  { label: 'Completed', value: 'completed' },
+                  { label: 'Cancelled', value: 'cancelled' },
+                  { label: 'Postponed', value: 'postponed' },
+                ]}
+              />
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+            <Button variant="outline" type="button" onClick={handleCloseModal} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? <ButtonLoader /> : (editingId ? 'Update Event' : 'Create Event')}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

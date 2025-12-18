@@ -46,7 +46,7 @@ export async function POST(request) {
           );
         }
         
-        const result = await createEvent(body, user._id);
+        const result = await createEvent(body, user.userId);
         
         return NextResponse.json(result, { status: 201 });
       } catch (error) {
