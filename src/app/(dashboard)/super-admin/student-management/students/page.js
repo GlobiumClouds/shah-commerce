@@ -1,1679 +1,892 @@
+// 'use client';
+
+// import React, { useState, useEffect, useRef } from 'react';
+// import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+// import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+// import { Button } from '@/components/ui/button';
+// import Input from '@/components/ui/input';
+// import Dropdown from '@/components/ui/dropdown';
+// import Tabs from '@/components/ui/tabs';
+// import FullPageLoader from '@/components/ui/full-page-loader';
+// import ButtonLoader from '@/components/ui/button-loader';
+// import { Plus, Edit, Trash2, Search, Eye, Mail, Phone, User } from 'lucide-react';
+// import { useAuth } from '@/hooks/useAuth';
+// import apiClient from '@/lib/api-client';
+// import { API_ENDPOINTS } from '@/constants/api-endpoints';
+// import StudentFormModal from '@/components/forms/StudentFormModal';
+
+// const SuperAdminStudentsPage = () => {
+//   const { user } = useAuth();
+//   const [students, setStudents] = useState([]);
+//   const [branches, setBranches] = useState([]);
+//   const [classes, setClasses] = useState([]);
+//   const [departments, setDepartments] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+//   const [editingStudent, setEditingStudent] = useState(null);
+//   const [submitting, setSubmitting] = useState(false);
+//   const [search, setSearch] = useState('');
+//   const [branchFilter, setBranchFilter] = useState('');
+//   const [classFilter, setClassFilter] = useState('');
+//   const [statusFilter, setStatusFilter] = useState('');
+//   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
+
+//   // Fetch all data
+//   useEffect(() => {
+//     fetchStudents();
+//     fetchBranches();
+//     fetchClasses();
+//     fetchDepartments();
+//   }, [search, branchFilter, classFilter, statusFilter, pagination.page]);
+
+//   const fetchStudents = async () => {
+//     try {
+//       setLoading(true);
+//       const params = {
+//         page: pagination.page,
+//         limit: pagination.limit,
+//         search,
+//         role: 'student',
+//       };
+//       if (branchFilter) params.branchId = branchFilter;
+//       if (classFilter) params.classId = classFilter;
+//       if (statusFilter) params.status = statusFilter;
+
+//       const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.USERS.LIST, params);
+//       if (response.success) {
+//         setStudents(response.data.users || response.data.students || []);
+//         setPagination(response.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 });
+//       }
+//     } catch (error) {
+//       console.error('Error fetching students:', error);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const fetchBranches = async () => {
+//     try {
+//       const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST, { limit: 100 });
+//       if (response.success) {
+//         setBranches(response.data.branches || []);
+//       }
+//     } catch (error) {
+//       console.error('Error fetching branches:', error);
+//     }
+//   };
+
+//   const fetchClasses = async () => {
+//     try {
+//       const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST, { limit: 100 });
+//       if (response.success) {
+//         setClasses(response.data.classes || []);
+//       }
+//     } catch (error) {
+//       console.error('Error fetching classes:', error);
+//     }
+//   };
+
+//   const fetchDepartments = async () => {
+//     try {
+//       const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.DEPARTMENTS.LIST, { limit: 100 });
+//       if (response.success) {
+//         setDepartments(response.data.departments || []);
+//       }
+//     } catch (error) {
+//       console.error('Error fetching departments:', error);
+//     }
+//   };
+
+//   const handleFormSubmit = async (submissionData) => {
+//     try {
+//       setSubmitting(true);
+      
+//       let response;
+      
+//       if (submissionData.isEditMode) {
+//         // Update student
+//         response = await apiClient.put(
+//           API_ENDPOINTS.SUPER_ADMIN.USERS.UPDATE.replace(':id', submissionData.studentId),
+//           {
+//             ...submissionData,
+//             // Remove internal fields
+//             pendingProfileFile: undefined,
+//             pendingDocuments: undefined,
+//             isEditMode: undefined,
+//             studentId: undefined,
+//           }
+//         );
+//       } else {
+//         // Create student
+//         response = await apiClient.post(
+//           API_ENDPOINTS.SUPER_ADMIN.STUDENTS.CREATE,
+//           {
+//             ...submissionData,
+//             pendingProfileFile: undefined,
+//             pendingDocuments: undefined,
+//             isEditMode: undefined,
+//             studentId: undefined,
+//           }
+//         );
+//       }
+
+//       if (response.success) {
+//         // Handle file uploads if any
+//         const studentId = response.data._id || submissionData.studentId;
+        
+//         // Upload profile photo if exists
+//         if (submissionData.pendingProfileFile && studentId) {
+//           const profileFormData = new FormData();
+//           profileFormData.append('file', submissionData.pendingProfileFile);
+//           profileFormData.append('fileType', 'profile');
+//           profileFormData.append('userId', studentId);
+          
+//           await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, profileFormData, {
+//             headers: { 'Content-Type': 'multipart/form-data' },
+//           });
+//         }
+        
+//         // Upload documents if any
+//         if (submissionData.pendingDocuments.length > 0 && studentId) {
+//           for (const doc of submissionData.pendingDocuments) {
+//             const docFormData = new FormData();
+//             docFormData.append('file', doc.file);
+//             docFormData.append('fileType', 'student_document');
+//             docFormData.append('documentType', doc.type);
+//             docFormData.append('userId', studentId);
+            
+//             await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, docFormData, {
+//               headers: { 'Content-Type': 'multipart/form-data' },
+//             });
+//           }
+//         }
+        
+//         // Refresh data and close modal
+//         fetchStudents();
+//         setIsFormModalOpen(false);
+//         setEditingStudent(null);
+//       }
+//     } catch (error) {
+//       console.error('Error saving student:', error);
+//     } finally {
+//       setSubmitting(false);
+//     }
+//   };
+
+//   const handleEdit = (student) => {
+//     setEditingStudent(student);
+//     setIsFormModalOpen(true);
+//   };
+
+//   const handleAddNew = () => {
+//     setEditingStudent(null);
+//     setIsFormModalOpen(true);
+//   };
+
+//   if (loading && students.length === 0) {
+//     return <FullPageLoader message="Loading students..." />;
+//   }
+
+//   return (
+//     <div className="p-6">
+//       <Card>
+//         <CardHeader className="border-b">
+//           <div className="flex items-center justify-between">
+//             <CardTitle>Students Management (Super Admin)</CardTitle>
+//             <Button onClick={handleAddNew}>
+//               <Plus className="w-4 h-4 mr-2" />
+//               Add Student
+//             </Button>
+//           </div>
+//         </CardHeader>
+
+//         <CardContent>
+//           {/* Filters */}
+//           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+//             <Input
+//               placeholder="Search students..."
+//               value={search}
+//               onChange={(e) => setSearch(e.target.value)}
+//               icon={Search}
+//             />
+//             <Dropdown
+//               placeholder="Filter by branch"
+//               value={branchFilter}
+//               onChange={(e) => setBranchFilter(e.target.value)}
+//               options={[
+//                 { value: '', label: 'All Branches' },
+//                 ...branches.map(b => ({ value: b._id, label: b.name })),
+//               ]}
+//             />
+//             <Dropdown
+//               placeholder="Filter by class"
+//               value={classFilter}
+//               onChange={(e) => setClassFilter(e.target.value)}
+//               options={[
+//                 { value: '', label: 'All Classes' },
+//                 ...classes.map(c => ({ value: c._id, label: c.name })),
+//               ]}
+//             />
+//             <Dropdown
+//               placeholder="Filter by status"
+//               value={statusFilter}
+//               onChange={(e) => setStatusFilter(e.target.value)}
+//               options={[
+//                 { value: '', label: 'All Status' },
+//                 { value: 'active', label: 'Active' },
+//                 { value: 'inactive', label: 'Inactive' },
+//                 { value: 'graduated', label: 'Graduated' },
+//                 { value: 'transferred', label: 'Transferred' },
+//               ]}
+//             />
+//           </div>
+
+//           {/* Table */}
+//           <Table>
+//             <TableHeader>
+//               <TableRow>
+//                 <TableHead>Student</TableHead>
+//                 <TableHead>Registration #</TableHead>
+//                 <TableHead>Class</TableHead>
+//                 <TableHead>Branch</TableHead>
+//                 <TableHead>Parent</TableHead>
+//                 <TableHead>Status</TableHead>
+//                 <TableHead>Actions</TableHead>
+//               </TableRow>
+//             </TableHeader>
+//             <TableBody>
+//               {students.length === 0 ? (
+//                 <TableRow>
+//                   <TableCell colSpan={7} className="text-center text-gray-500">
+//                     No students found
+//                   </TableCell>
+//                 </TableRow>
+//               ) : (
+//                 students.map((student) => (
+//                   <TableRow key={student._id}>
+//                     <TableCell>
+//                       <div className="flex items-center gap-2">
+//                         {student.profilePhoto?.url ? (
+//                           <img src={student.profilePhoto.url} alt="" className="w-8 h-8 rounded-full object-cover" />
+//                         ) : (
+//                           <User className="w-8 h-8 p-1 rounded-full bg-gray-100" />
+//                         )}
+//                         <div>
+//                           <div className="font-medium">{student.firstName} {student.lastName}</div>
+//                           <div className="text-xs text-gray-500">{student.email}</div>
+//                         </div>
+//                       </div>
+//                     </TableCell>
+//                     <TableCell>
+//                       <div className="font-mono text-sm">
+//                         {student.studentProfile?.registrationNumber || 'N/A'}
+//                       </div>
+//                     </TableCell>
+//                     <TableCell>
+//                       {student.studentProfile?.classId?.name || 'Not Assigned'}
+//                     </TableCell>
+//                     <TableCell>
+//                       {student.branchId?.name || 'N/A'}
+//                     </TableCell>
+//                     <TableCell>
+//                       <div className="text-sm">
+//                         <div>{student.studentProfile?.father?.name || student.studentProfile?.guardian?.name || '-'}</div>
+//                         <div className="flex items-center gap-1 text-gray-500 text-xs">
+//                           <Phone className="w-3 h-3" />
+//                           {student.studentProfile?.father?.phone || student.studentProfile?.guardian?.phone || '-'}
+//                         </div>
+//                       </div>
+//                     </TableCell>
+//                     <TableCell>
+//                       <span
+//                         className={`px-2 py-1 rounded-full text-xs ${
+//                           student.status === 'active'
+//                             ? 'bg-green-100 text-green-700'
+//                             : student.status === 'graduated'
+//                             ? 'bg-blue-100 text-blue-700'
+//                             : student.status === 'suspended'
+//                             ? 'bg-red-100 text-red-700'
+//                             : 'bg-gray-100 text-gray-700'
+//                         }`}
+//                       >
+//                         {student.status}
+//                       </span>
+//                     </TableCell>
+//                     <TableCell>
+//                       <div className="flex gap-2">
+//                         <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(student)}>
+//                           <Edit className="w-4 h-4" />
+//                         </Button>
+//                         <Button variant="ghost" size="icon-sm">
+//                           <Eye className="w-4 h-4" />
+//                         </Button>
+//                       </div>
+//                     </TableCell>
+//                   </TableRow>
+//                 ))
+//               )}
+//             </TableBody>
+//           </Table>
+//         </CardContent>
+//       </Card>
+
+//       {/* Student Form Modal */}
+//       <StudentFormModal
+//         isOpen={isFormModalOpen}
+//         onClose={() => {
+//           setIsFormModalOpen(false);
+//           setEditingStudent(null);
+//         }}
+//         onSubmit={handleFormSubmit}
+//         editingStudent={editingStudent}
+//         isSubmitting={submitting}
+//         branches={branches}
+//         classes={classes}
+//         departments={departments}
+//         userRole="super_admin"
+//       />
+//     </div>
+//   );
+// };
+
+// export default SuperAdminStudentsPage;
+
+
+
+
+
+
+
+
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import Modal from '@/components/ui/modal';
-import Input from '@/components/ui/input';
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import Tabs from '@/components/ui/tabs';
-import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import Input from '@/components/ui/input';
 import Dropdown from '@/components/ui/dropdown';
-import BloodGroupSelect from '@/components/ui/blood-group';
-import GenderSelect from '@/components/ui/gender-select';
-import BranchSelect from '@/components/ui/branch-select';
-import ClassSelect from '@/components/ui/class-select';
-import DepartmentSelect from '@/components/ui/department-select';
-import {
-  Users,
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  UserPlus,
-  GraduationCap,
-  Mail,
-  Phone,
-  Calendar,
-  MapPin,
-  X,
-  Upload,
-  Eye,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { format } from 'date-fns';
+import FullPageLoader from '@/components/ui/full-page-loader';
+import ButtonLoader from '@/components/ui/button-loader';
+import { Plus, Edit, Trash2, Search, Eye, Mail, Phone, User, Download } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
-import API_ENDPOINTS from '../../../../../constants/api-endpoints';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import StudentFormModal from '@/components/forms/StudentFormModal';
+import StudentViewModal from '@/components/modals/StudentViewModal';
 
-export default function StudentsPage() {
+const SuperAdminStudentsPage = () => {
+  const { user } = useAuth();
   const [students, setStudents] = useState([]);
   const [branches, setBranches] = useState([]);
   const [classes, setClasses] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  const [showModal, setShowModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showQrPreview, setShowQrPreview] = useState(false);
-  const [qrUrl, setQrUrl] = useState('');
-
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  
+  // Modals
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
-  const [formData, setFormData] = useState({});
-  const [activeTab, setActiveTab] = useState('parent');
-  const formRef = useRef(null);
-
-  const [pendingProfileFile, setPendingProfileFile] = useState(null);
-  const [pendingDocuments, setPendingDocuments] = useState([]);
-  const [uploading, setUploading] = useState(false);
-
-  const [studentToDelete, setStudentToDelete] = useState(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [studentToActivate, setStudentToActivate] = useState(null);
-  const [showActivateModal, setShowActivateModal] = useState(false);
-
+  const [viewingStudent, setViewingStudent] = useState(null);
+  
+  const [submitting, setSubmitting] = useState(false);
+  const [search, setSearch] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
   const [classFilter, setClassFilter] = useState('');
-  const [genderFilter, setGenderFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
+  const [deleteModal, setDeleteModal] = useState({ open: false, student: null });
 
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
-  const [total, setTotal] = useState(0);
+  // Fetch all data
+  useEffect(() => {
+    fetchStudents();
+    fetchBranches();
+    fetchClasses();
+    fetchDepartments();
+  }, [search, branchFilter, classFilter, statusFilter, pagination.page]);
 
-  const [loadingStates, setLoadingStates] = useState({});
-  const setButtonLoading = (key, value) => {
-    setLoadingStates(prev => ({ ...prev, [key]: value }));
-  };
-  const isButtonLoading = (key) => loadingStates[key] || false;
-
-  const loadClasses = async (selectedBranchId = null) => {
+  const fetchStudents = async () => {
     try {
-      const branchToUse = selectedBranchId || branchFilter || '';
-      const params = new URLSearchParams();
-      if (branchToUse) params.append('branchId', branchToUse);
-      params.append('limit', '100');
+      setLoading(true);
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit,
+        search,
+        role: 'student',
+        populate: 'branchId,studentProfile.classId,studentProfile.departmentId'
+      };
+      if (branchFilter) params.branchId = branchFilter;
+      if (classFilter) params.classId = classFilter;
+      if (statusFilter) params.status = statusFilter;
 
-      const data = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST}?${params}`);
-      if (data && data.success) {
-        const payload = data.data;
-        // classes route returns data as an array (data.data) or wrapped in { classes }
-        let items = [];
-        if (Array.isArray(payload)) {
-          items = payload;
-        } else if (Array.isArray(payload?.classes)) {
-          items = payload.classes;
-        }
-
-        setClasses(items);
-      } else {
-        setClasses([]);
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.USERS.LIST, params);
+      if (response.success) {
+        setStudents(response.data.users || response.data.students || []);
+        setPagination(response.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 });
       }
     } catch (error) {
-      // apiClient throws a friendly error object in many cases; log useful details
-      console.error('Error loading classes:', error?.message ? error.message : error);
-      setClasses([]);
-    }
-  };
-
-  const loadBranches = async () => {
-    try {
-      const res = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST}?limit=200`);
-      if (res && res.success) {
-        const payload = res.data;
-        setBranches(Array.isArray(payload) ? payload : payload?.branches || []);
-      } else {
-        setBranches([]);
-      }
-    } catch (err) {
-      console.error('Error loading branches:', err);
-      setBranches([]);
-    }
-  };
-
-  const loadDepartments = async () => {
-    try {
-      const res = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.DEPARTMENTS.LIST}?limit=200`);
-      if (res && res.success) {
-        const payload = res.data;
-        setDepartments(Array.isArray(payload) ? payload : payload?.departments || []);
-      } else {
-        setDepartments([]);
-      }
-    } catch (err) {
-      console.error('Error loading departments:', err);
-      setDepartments([]);
-    }
-  };
-
-  const requestCounter = useRef(0);
-
-  const loadStudents = async () => {
-    setLoading(true);
-    const myRequestId = ++requestCounter.current;
-    try {
-      const params = new URLSearchParams();
-      params.append('page', String(page || 1));
-      params.append('limit', String(limit || 50));
-      if (branchFilter) params.append('branchId', branchFilter);
-      if (classFilter) params.append('classId', classFilter);
-      if (genderFilter) params.append('gender', genderFilter);
-      if (statusFilter) params.append('status', statusFilter);
-      if (debouncedSearch) params.append('search', debouncedSearch);
-
-      const res = await apiClient.get(`${API_ENDPOINTS.SUPER_ADMIN.STUDENTS.LIST}?${params.toString()}`);
-      // If another request started after this one, ignore this response
-      if (myRequestId !== requestCounter.current) return;
-
-      if (res && res.success) {
-        const studentsData = Array.isArray(res.data) ? res.data : res.data?.students || [];
-        setStudents(studentsData);
-        setTotal(res.pagination?.total || (Array.isArray(res.data) ? res.data.length : 0));
-      } else {
-        setStudents([]);
-        setTotal(0);
-      }
-    } catch (err) {
-      // ignore stale errors if a newer request exists
-      if (myRequestId !== requestCounter.current) return;
-      console.error('Error loading students:', err);
-      setStudents([]);
-      setTotal(0);
+      console.error('Error fetching students:', error);
     } finally {
-      if (myRequestId === requestCounter.current) setLoading(false);
+      setLoading(false);
     }
   };
 
-  // Load initial data and whenever filters/pagination change
-  useEffect(() => {
-    loadBranches();
-  }, []);
-
-  useEffect(() => {
-    loadStudents();
-  }, [page, limit, branchFilter, classFilter, genderFilter, statusFilter, debouncedSearch]);
-
-  // Debounce search input to avoid repeated loads while typing
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 500);
-    return () => clearTimeout(t);
-  }, [searchTerm]);
-
-  // Keep class options in sync with the selected branch filter
-  useEffect(() => {
-    // when branchFilter changes, reload classes for that branch
+  const fetchBranches = async () => {
     try {
-      loadClasses(branchFilter || null);
-    } catch (err) {
-      console.error('Failed to load classes on branch change:', err);
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST, { limit: 100 });
+      if (response.success) {
+        setBranches(response.data.branches || []);
+      }
+    } catch (error) {
+      console.error('Error fetching branches:', error);
     }
-  }, [branchFilter]);
-
-  const handleAddNew = () => {
-    setEditingStudent(null);
-    setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      dateOfBirth: '',
-      gender: 'male',
-      bloodGroup: '',
-      religion: '',
-      nationality: 'Pakistani',
-      address: {
-        street: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: 'Pakistan',
-      },
-      branchId: '',
-      classId: '',
-      departmentId: '',
-      section: '',
-      rollNumber: '',
-      admissionDate: new Date().toISOString().split('T')[0],
-      academicYear: new Date().getFullYear().toString(),
-      previousSchool: { name: '', lastClass: '', marks: 0, leavingDate: '' },
-      father: {
-        name: '',
-        occupation: '',
-        phone: '',
-        email: '',
-        cnic: '',
-        income: 0,
-      },
-      mother: {
-        name: '',
-        occupation: '',
-        phone: '',
-        email: '',
-        cnic: '',
-      },
-      guardian: {
-        name: '',
-        relation: '',
-        phone: '',
-        email: '',
-        cnic: '',
-      },
-      guardianType: 'parent',
-      feeDiscount: { type: 'fixed', amount: 0, reason: '' },
-      transportFee: { enabled: false, routeId: '', amount: 0 },
-      status: 'active',
-      remarks: '',
-    });
-    setActiveTab('parent');
-    setShowModal(true);
   };
 
-  const handleEdit = async (student) => {
-    setEditingStudent(student);
-    setFormData({
-      // registrationNumber: student.studentProfile?.registrationNumber || '',
-      firstName: student.firstName,
-      lastName: student.lastName,
-      email: student.email || '',
-      phone: student.phone || '',
-      dateOfBirth: student.dateOfBirth ? format(new Date(student.dateOfBirth), 'yyyy-MM-dd') : '',
-      gender: student.gender || 'male',
-      bloodGroup: student.bloodGroup || '',
-      religion: student.religion || '',
-      nationality: student.nationality || 'Pakistani',
-      cnic: student.cnic || '',
-      address: student.address || {
-        street: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: 'Pakistan',
-      },
-      branchId: student.branchId?._id || student.branchId || '',
-      classId: student.studentProfile?.classId?._id || student.studentProfile?.classId || '',
-      departmentId: student.studentProfile?.departmentId?._id || '',
-      section: student.studentProfile?.section || '',
-      rollNumber: student.studentProfile?.rollNumber || '',
-      admissionDate: student.studentProfile?.admissionDate ? format(new Date(student.studentProfile.admissionDate), 'yyyy-MM-dd') : '',
-      academicYear: student.studentProfile?.academicYear || new Date().getFullYear().toString(),
-      previousSchool: student.studentProfile?.previousSchool || { name: '', lastClass: '', marks: 0, leavingDate: '' },
-      father: student.studentProfile?.father || { name: '', occupation: '', phone: '', email: '', cnic: '', income: 0 },
-      mother: student.studentProfile?.mother || { name: '', occupation: '', phone: '', email: '', cnic: '' },
-      guardian: student.studentProfile?.guardian || { name: '', relation: '', phone: '', email: '', cnic: '' },
-      feeDiscount: student.studentProfile?.feeDiscount || { type: 'fixed', amount: 0, reason: '' },
-      transportFee: student.studentProfile?.transportFee || { enabled: false, amount: 0 },
-      status: student.status,
-      remarks: student.remarks || '',
-    });
-    // Ensure classes for this student's branch are loaded so class/section selects populate
+  const fetchClasses = async () => {
     try {
-      await loadClasses(student.branchId?._id || student.branchId || '');
-    } catch (err) {
-      // ignore - classes will be empty
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST, { limit: 100 });
+      if (response.success) {
+        setClasses(response.data.classes || []);
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error);
     }
-
-    setActiveTab('parent');
-    setShowModal(true);
   };
 
-  const openView = async (student) => {
-    setSelectedStudent(student);
-    // ensure classes loaded for the branch to display class name/sections properly
-    try { await loadClasses(student.branchId?._id || student.branchId || ''); } catch (e) { }
-    setShowViewModal(true);
-  };
-
-  const closeView = () => {
-    setShowViewModal(false);
-    setSelectedStudent(null);
-  };
-
-  const handleProfileUpload = async (file) => {
-    if (!selectedStudent) return;
+  const fetchDepartments = async () => {
     try {
-      setUploading(true);
-      const form = new FormData();
-      form.append('file', file);
-      form.append('fileType', 'profile');
-      form.append('userId', selectedStudent._id);
-
-      const res = await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      if (res && res.success) {
-        toast.success('Profile photo uploaded');
-        // server returns updated user in some responses; if so, update selectedStudent
-        if (res.data) setSelectedStudent(res.data);
-        loadStudents();
-      } else {
-        toast.error(res?.message || 'Upload failed');
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.DEPARTMENTS.LIST, { limit: 100 });
+      if (response.success) {
+        setDepartments(response.data.departments || []);
       }
-    } catch (err) {
-      console.error('Profile upload error:', err);
-      toast.error(err.message || 'Upload failed');
-    } finally {
-      setUploading(false);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
     }
   };
 
-  const handleDocumentUpload = async (file, documentType = 'other') => {
-    if (!selectedStudent) return;
+  const handleFormSubmit = async (submissionData) => {
     try {
-      setUploading(true);
-      const form = new FormData();
-      form.append('file', file);
-      form.append('fileType', 'student_document');
-      form.append('documentType', documentType);
-      form.append('userId', selectedStudent._id);
-
-      const res = await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      if (res && res.success) {
-        toast.success('Document uploaded');
-        // merge new document into selectedStudent if returned
-        const newDoc = res.data?.document;
-        if (newDoc) {
-          setSelectedStudent(prev => ({ ...prev, studentProfile: { ...prev.studentProfile, documents: [...(prev.studentProfile?.documents || []), newDoc] } }));
-        }
-        loadStudents();
-      } else {
-        toast.error(res?.message || 'Upload failed');
-      }
-    } catch (err) {
-      console.error('Document upload error:', err);
-      toast.error(err.message || 'Upload failed');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.dateOfBirth || !formData.gender || !formData.branchId || !formData.classId) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
-    // Validate parent/guardian information
-    if (formData.guardianType === 'parent') {
-      if (!formData.father?.name || !formData.father?.phone) {
-        toast.error('Please fill in father name and phone');
-        return;
-      }
-    } else if (formData.guardianType === 'guardian') {
-      if (!formData.guardian?.name || !formData.guardian?.phone) {
-        toast.error('Please fill in guardian name and phone');
-        return;
-      }
-    }
-
-    setButtonLoading('submitForm', true);
-    try {
-    // Clean previousSchool data to avoid empty date strings
-    const cleanedPreviousSchool = {
-      name: formData.previousSchool.name,
-      lastClass: formData.previousSchool.lastClass,
-      marks: formData.previousSchool.marks,
-      ...(formData.previousSchool.leavingDate && { leavingDate: formData.previousSchool.leavingDate }),
-    };
-
-    // Restructure data for unified User schema
-    const payload = {
-      role: 'student',
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      phone: formData.phone,
-      dateOfBirth: formData.dateOfBirth,
-      gender: formData.gender,
-      bloodGroup: formData.bloodGroup,
-      nationality: formData.nationality,
-      cnic: formData.cnic,
-      address: formData.address,
-      branchId: formData.branchId,
-      status: formData.status,
-      remarks: formData.remarks,
-      studentProfile: {
-        classId: formData.classId,
-        ...(formData.departmentId && { departmentId: formData.departmentId }),
-        section: formData.section,
-        rollNumber: formData.rollNumber,
-        admissionDate: formData.admissionDate,
-        academicYear: formData.academicYear,
-        previousSchool: cleanedPreviousSchool,
-        father: formData.father,
-        mother: formData.mother,
-        guardian: formData.guardian,
-        guardianType: formData.guardianType || 'parent',
-        feeDiscount: formData.feeDiscount,
-        transportFee: {
-          enabled: formData.transportFee.enabled,
-          ...(formData.transportFee.routeId && { routeId: formData.transportFee.routeId }),
-          amount: formData.transportFee.amount,
-        },
-      }
-    };
-
-      let data;
-      if (editingStudent) {
-        const url = API_ENDPOINTS.SUPER_ADMIN.USERS.UPDATE.replace(':id', editingStudent._id);
-        data = await apiClient.put(url, payload);
-      } else {
-        const url = API_ENDPOINTS.SUPER_ADMIN.STUDENTS.CREATE;
-        data = await apiClient.post(url, payload);
-      }
-
-      if (data.success) {
-        toast.success(data.message);
-        // After create/update, upload any pending files (profile/documents)
-        try {
-          const userId = editingStudent ? editingStudent._id : (data.data?._id || data.data?._id);
-
-          if (pendingProfileFile && userId) {
-            const form = new FormData();
-            form.append('file', pendingProfileFile);
-            form.append('fileType', 'profile');
-            form.append('userId', userId);
-            const upRes = await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, form, { headers: { 'Content-Type': 'multipart/form-data' } });
-            if (upRes && upRes.success) {
-              toast.success('Profile photo uploaded');
-            }
+      setSubmitting(true);
+      
+      let response;
+      
+      if (submissionData.isEditMode) {
+        // Update student
+        response = await apiClient.put(
+          API_ENDPOINTS.SUPER_ADMIN.USERS.UPDATE.replace(':id', submissionData.studentId),
+          {
+            ...submissionData,
+            pendingProfileFile: undefined,
+            pendingDocuments: undefined,
+            isEditMode: undefined,
+            studentId: undefined,
           }
-
-          if (pendingDocuments.length > 0 && userId) {
-            for (const d of pendingDocuments) {
-              const form = new FormData();
-              form.append('file', d.file);
-              form.append('fileType', 'student_document');
-              form.append('documentType', d.type || 'other');
-              form.append('userId', userId);
-              try {
-                const docRes = await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, form, { headers: { 'Content-Type': 'multipart/form-data' } });
-                if (docRes && docRes.success) {
-                  toast.success(`${d.file.name} uploaded`);
-                }
-              } catch (err) {
-                console.error('Doc upload failed:', err);
-                toast.error(`Failed to upload ${d.file.name}`);
-              }
-            }
-          }
-        } catch (err) {
-          console.error('Pending uploads error:', err);
-          toast.error('Some uploads failed');
-        } finally {
-          // clear pending uploads
-          setPendingProfileFile(null);
-          setPendingDocuments([]);
-        }
-
-        setShowModal(false);
-        loadStudents();
-
-        // If a QR was generated and uploaded, show preview to the admin
-        if (!editingStudent && data.data?.studentProfile?.qr?.url) {
-          setQrUrl(data.data.studentProfile.qr.url);
-          setShowQrPreview(true);
-        }
+        );
       } else {
-        toast.error(data.message || 'Operation failed');
+        // Create student
+        response = await apiClient.post(
+          API_ENDPOINTS.SUPER_ADMIN.STUDENTS.CREATE,
+          {
+            ...submissionData,
+            pendingProfileFile: undefined,
+            pendingDocuments: undefined,
+            isEditMode: undefined,
+            studentId: undefined,
+          }
+        );
+      }
+
+      if (response.success) {
+        // Handle file uploads if any
+        const studentId = response.data._id || submissionData.studentId;
+        
+        // Upload profile photo if exists
+        if (submissionData.pendingProfileFile && studentId) {
+          const profileFormData = new FormData();
+          profileFormData.append('file', submissionData.pendingProfileFile);
+          profileFormData.append('fileType', 'profile');
+          profileFormData.append('userId', studentId);
+          
+          await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, profileFormData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        }
+        
+        // Upload documents if any
+        if (submissionData.pendingDocuments.length > 0 && studentId) {
+          for (const doc of submissionData.pendingDocuments) {
+            const docFormData = new FormData();
+            docFormData.append('file', doc.file);
+            docFormData.append('fileType', 'student_document');
+            docFormData.append('documentType', doc.type);
+            docFormData.append('userId', studentId);
+            
+            await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, docFormData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            });
+          }
+        }
+        
+        // Refresh data and close modal
+        fetchStudents();
+        setIsFormModalOpen(false);
+        setEditingStudent(null);
       }
     } catch (error) {
       console.error('Error saving student:', error);
-      toast.error(error.message || 'Failed to save student');
     } finally {
-      setButtonLoading('submitForm', false);
+      setSubmitting(false);
     }
+  };
+
+  const handleEdit = (student) => {
+    setEditingStudent(student);
+    setIsFormModalOpen(true);
+  };
+
+  const handleView = (student) => {
+    setViewingStudent(student);
+    setIsViewModalOpen(true);
   };
 
   const handleDelete = async () => {
-    if (!studentToDelete) return;
-
-    setButtonLoading('deleteStudent', true);
+    if (!deleteModal.student) return;
+    
     try {
-      const delUrl = API_ENDPOINTS.SUPER_ADMIN.USERS.DELETE.replace(':id', studentToDelete._id);
-      const data = await apiClient.delete(delUrl);
-
-      if (data.success) {
-        toast.success('Student deactivated successfully');
-        setShowDeleteModal(false);
-        setStudentToDelete(null);
-        loadStudents();
-      } else {
-        toast.error(data.message || 'Failed to deactivate student');
+      setSubmitting(true);
+      const response = await apiClient.delete(
+        API_ENDPOINTS.SUPER_ADMIN.USERS.DELETE.replace(':id', deleteModal.student._id)
+      );
+      
+      if (response.success) {
+        fetchStudents();
+        setDeleteModal({ open: false, student: null });
       }
     } catch (error) {
-      console.error('Error deactivating student:', error);
-      toast.error('Failed to deactivate student');
+      console.error('Error deleting student:', error);
     } finally {
-      setButtonLoading('deleteStudent', false);
+      setSubmitting(false);
     }
   };
 
-  const handleActivate = async () => {
-    if (!studentToActivate) return;
-
-    setButtonLoading('activateStudent', true);
-    try {
-      const payload = { status: 'active', isActive: true };
-      const updateUrl = API_ENDPOINTS.SUPER_ADMIN.USERS.UPDATE.replace(':id', studentToActivate._id);
-      const data = await apiClient.put(updateUrl, payload);
-
-      if (data && data.success) {
-        toast.success('Student activated successfully');
-        setShowActivateModal(false);
-        setStudentToActivate(null);
-        loadStudents();
-      } else {
-        toast.error(data.message || 'Failed to activate student');
-      }
-    } catch (error) {
-      console.error('Error activating student:', error);
-      toast.error('Failed to activate student');
-    } finally {
-      setButtonLoading('activateStudent', false);
-    }
+  const handleAddNew = () => {
+    setEditingStudent(null);
+    setIsFormModalOpen(true);
   };
 
-  // Calculate stats
-  const totalStudents = Array.isArray(students) ? students.length : 0;
-  const maleStudents = Array.isArray(students) ? students.filter(s => s.gender === 'male').length : 0;
-  const femaleStudents = Array.isArray(students) ? students.filter(s => s.gender === 'female').length : 0;
-  const activeStudents = Array.isArray(students) ? students.filter(s => s.status === 'active').length : 0;
+  const exportToExcel = () => {
+    // Implement export functionality
+    console.log('Exporting to Excel');
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+  if (loading && students.length === 0) {
+    return <FullPageLoader message="Loading students..." />;
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Student Management</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage student admissions and records</p>
-        </div>
-        <Button onClick={handleAddNew} className="flex items-center gap-2">
-          <UserPlus className="w-4 h-4" />
-          Add Student
-        </Button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between">
+    <div className="p-6 space-y-6">
+      {/* Header Card */}
+      <Card>
+        <CardHeader className="border-b">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <p className="text-sm text-gray-600">Total Students</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{totalStudents}</p>
+              <CardTitle>Students Management</CardTitle>
+              <p className="text-sm text-gray-600 mt-1">Super Admin Panel - Manage all students</p>
             </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-blue-600" />
+            <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={exportToExcel}>
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+              <Button onClick={handleAddNew}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Student
+              </Button>
             </div>
           </div>
-        </div>
+        </CardHeader>
 
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Active Students</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{activeStudents}</p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <GraduationCap className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Male Students</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{maleStudents}</p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Female Students</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{femaleStudents}</p>
-            </div>
-            <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-pink-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="min-w-0">
+        <CardContent>
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search students..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              icon={Search}
             />
-          </div>
-
-          <BranchSelect
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            branches={branches}
-            placeholder="All Branches"
-          />
-
-          <ClassSelect
-            value={classFilter}
-            onChange={(e) => setClassFilter(e.target.value)}
-            classes={classes}
-            placeholder="All Classes"
-          />
-
-          <GenderSelect
-            value={genderFilter}
-            onChange={(e) => setGenderFilter(e.target.value)}
-            placeholder="All Genders"
-          />
-
-          <Dropdown
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            options={[
-              { value: 'active', label: 'Active' },
-              { value: 'inactive', label: 'Inactive' },
-              { value: 'graduated', label: 'Graduated' },
-              { value: 'transferred', label: 'Transferred' },
-            ]}
-            placeholder="All Status"
-          />
-        </div>
-      </div>
-
-      {/* Students Table (using global Table components) */}
-      <Table className="w-full">
-        <TableHeader className="bg-gray-50 border-b border-gray-200">
-          <TableRow>
-            <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</TableHead>
-            <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reg No.</TableHead>
-            <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</TableHead>
-            <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branch</TableHead>
-            <TableHead className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Father Info</TableHead>
-            <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</TableHead>
-            <TableHead className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-
-        <TableBody className="divide-y divide-gray-200">
-          {students.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7} className="px-6 py-12 text-center text-gray-500">No students found. Add your first student to get started.</TableCell>
-            </TableRow>
-          ) : (
-            students.map((student) => (
-              <TableRow key={student._id} className="hover:bg-gray-50">
-                <TableCell className="px-6 py-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{student.firstName} {student.lastName}</p>
-                    <div className="flex items-center gap-4 mt-1">
-                      {student.email && <p className="text-xs text-gray-500 flex items-center gap-1"><Mail className="w-3 h-3" />{student.email}</p>}
-                      {student.phone && <p className="text-xs text-gray-500 flex items-center gap-1"><Phone className="w-3 h-3" />{student.phone}</p>}
-                    </div>
-                  </div>
-                </TableCell>
-
-                <TableCell className="px-6 py-4">
-                  <p className="text-sm font-mono text-gray-900">{student.studentProfile?.registrationNumber}</p>
-                  <p className="text-xs text-gray-500">{student.gender === 'male' ? '♂' : '♀'} {student.gender}</p>
-                </TableCell>
-
-                <TableCell className="px-6 py-4">
-                  <p className="text-sm text-gray-900">{student.classId?.name}</p>
-                  <p className="text-xs text-gray-500">Grade {student.classId?.grade}</p>
-                </TableCell>
-
-                <TableCell className="px-6 py-4">
-                  <p className="text-sm text-gray-900">{student.branchId?.name}</p>
-                  <p className="text-xs text-gray-500">{student.branchId?.city}</p>
-                </TableCell>
-
-                <TableCell className="px-6 py-4">
-                  <p className="text-sm text-gray-900">{student.father?.name}</p>
-                  <p className="text-xs text-gray-500 flex items-center gap-1"><Phone className="w-3 h-3" />{student.father?.phone}</p>
-                </TableCell>
-
-                <TableCell className="px-6 py-4">
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${student.status === 'active' ? 'bg-green-100 text-green-700' : student.status === 'graduated' ? 'bg-blue-100 text-blue-700' : student.status === 'transferred' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'
-                    }`}>{student.status}</span>
-                </TableCell>
-
-                <TableCell className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button size="icon-sm" variant="ghost" onClick={() => handleEdit(student)} title="Edit"><Edit className="w-4 h-4" /></Button>
-                    <Button size="icon-sm" variant="ghost" onClick={() => openView(student)} title="View"><Eye className="w-4 h-4" /></Button>
-                    {student.status === 'inactive' ? (
-                      <Button size="icon-sm" variant="ghost" onClick={() => { setStudentToActivate(student); setShowActivateModal(true); }} title="Activate"><UserPlus className="w-4 h-4" /></Button>
-                    ) : (
-                      <Button size="icon-sm" variant="ghost" onClick={() => { setStudentToDelete(student); setShowDeleteModal(true); }} title="Deactivate"><Trash2 className="w-4 h-4" /></Button>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-
-      {/* Pagination */}
-      {total > limit && (
-        <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
-          <div className="flex items-center">
-            <p className="text-sm text-gray-700">
-              Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to{' '}
-              <span className="font-medium">{Math.min(page * limit, total)}</span> of{' '}
-              <span className="font-medium">{total}</span> results
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(prev => Math.max(1, prev - 1))}
-              disabled={page <= 1}
-            >
-              Previous
-            </Button>
-
-            {/* Page Numbers */}
-            {(() => {
-              const totalPages = Math.ceil(total / limit);
-              const startPage = Math.max(1, page - 2);
-              const endPage = Math.min(totalPages, page + 2);
-              const pages = [];
-
-              for (let i = startPage; i <= endPage; i++) {
-                pages.push(
-                  <Button
-                    key={i}
-                    variant={i === page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setPage(i)}
-                    className="w-10"
-                  >
-                    {i}
-                  </Button>
-                );
-              }
-
-              return pages;
-            })()}
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(prev => Math.min(Math.ceil(total / limit), prev + 1))}
-              disabled={page >= Math.ceil(total / limit)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Create/Edit Modal */}
-      {showModal && (
-        <Modal
-          open={showModal}
-          title={editingStudent ? 'Edit Student' : 'Add New Student'}
-          onClose={() => setShowModal(false)}
-          size="md"
-          footer={(
-            <div className="flex items-center justify-between w-full">
-              <div>
-                <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-              </div>
-              <div className="flex items-center gap-2">
-                {(() => {
-                  const TAB_ORDER = ['parent', 'basic', 'academic'];
-                  const idx = TAB_ORDER.indexOf(activeTab);
-                  return (
-                    <>
-                      {idx > 0 && (
-                        <Button variant="ghost" onClick={() => setActiveTab(TAB_ORDER[idx - 1])}>Previous</Button>
-                      )}
-
-                      {idx < TAB_ORDER.length - 1 && (
-                        <Button onClick={() => setActiveTab(TAB_ORDER[idx + 1])}>Next</Button>
-                      )}
-
-                      {idx === TAB_ORDER.length - 1 && (
-                        <Button onClick={() => formRef.current && (formRef.current.requestSubmit ? formRef.current.requestSubmit() : formRef.current.submit())} disabled={isButtonLoading('submitForm')}>
-                          {isButtonLoading('submitForm') ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Saving...</>) : (editingStudent ? 'Update Student' : 'Add Student')}
-                        </Button>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          )}
-        >
-          <div className="space-y-4">
-            {/* Tabs */}
-            <Tabs
-              tabs={[
-                { id: 'parent', label: 'Parent Info' },
-                { id: 'basic', label: 'Basic Info' },
-                { id: 'academic', label: 'Academic Info' },
+            <Dropdown
+              placeholder="Filter by branch"
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              options={[
+                { value: '', label: 'All Branches' },
+                ...branches.map(b => ({ value: b._id, label: b.name })),
               ]}
-              activeTab={activeTab}
-              onChange={(id) => setActiveTab(id)}
             />
+            <Dropdown
+              placeholder="Filter by class"
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              options={[
+                { value: '', label: 'All Classes' },
+                ...classes.map(c => ({ value: c._id, label: c.name })),
+              ]}
+            />
+            <Dropdown
+              placeholder="Filter by status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              options={[
+                { value: '', label: 'All Status' },
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+                { value: 'graduated', label: 'Graduated' },
+                { value: 'transferred', label: 'Transferred' },
+              ]}
+            />
+          </div>
 
-            <form ref={formRef} id="studentForm" onSubmit={handleFormSubmit} className="p-2">
-              {/* Basic Info Tab */}
-              {activeTab === 'basic' && (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        First Name <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        value={formData.firstName}
-                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                        placeholder="John"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Last Name <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        value={formData.lastName}
-                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                        placeholder="Doe"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="john.doe@example.com"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Phone <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="+92-XXX-XXXXXXX"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Date of Birth <span className="text-red-500">*</span>
-                      </label>
-                      <Input
-                        type="date"
-                        value={formData.dateOfBirth}
-                        onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Gender <span className="text-red-500">*</span>
-                      </label>
-                      <GenderSelect
-                        id="gender"
-                        name="gender"
-                        value={formData.gender}
-                        onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                        placeholder="Select Gender"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Blood Group
-                      </label>
-                      <BloodGroupSelect
-                        id="bloodGroup"
-                        name="bloodGroup"
-                        value={formData.bloodGroup}
-                        onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                        placeholder="Select Blood Group"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Religion
-                      </label>
-                      <Input
-                        type="text"
-                        value={formData.religion}
-                        onChange={(e) => setFormData({ ...formData, religion: e.target.value })}
-                        placeholder="Islam"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nationality
-                      </label>
-                      <Input
-                        type="text"
-                        value={formData.nationality}
-                        onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
-                        placeholder="Pakistani"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        CNIC
-                      </label>
-                      <Input
-                        type="text"
-                        value={formData.cnic}
-                        onChange={(e) => setFormData({ ...formData, cnic: e.target.value })}
-                        placeholder="XXXXX-XXXXXXX-X"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Status
-                      </label>
-                      <Dropdown
-                        value={formData.status}
-                        onChange={(e) => setFormData({ ...formData, status: e.target?.value ?? e })}
-                        options={[
-                          { value: 'active', label: 'Active' },
-                          { value: 'inactive', label: 'Inactive' },
-                          { value: 'graduated', label: 'Graduated' },
-                          { value: 'transferred', label: 'Transferred' },
-                        ]}
-                        placeholder="Select Status"
-                      />
-                    </div>
-                  </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Address
-                      </label>
-                      <textarea
-                        value={formData.address.street}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          address: { ...formData.address, street: e.target.value }
-                        })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        rows="2"
-                        placeholder="Street address"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          City
-                        </label>
-                        <Input
-                          type="text"
-                          value={formData.address.city}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            address: { ...formData.address, city: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Lahore"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          State
-                        </label>
-                        <Input
-                          type="text"
-                          value={formData.address.state}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            address: { ...formData.address, state: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Punjab"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Postal Code
-                        </label>
-                        <Input
-                          type="text"
-                          value={formData.address.postalCode}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            address: { ...formData.address, postalCode: e.target.value }
-                          })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="54000"
-                        />
-                      </div>
-                    </div>
-                </>
-              )}
-
-              {/* Academic Info Tab */}
-              {activeTab === 'academic' && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Admission Date <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.admissionDate}
-                        onChange={(e) => setFormData({ ...formData, admissionDate: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Branch <span className="text-red-500">*</span></label>
-                      <Dropdown
-                        id="form-branch"
-                        name="branchId"
-                        value={formData.branchId}
-                        onChange={async (e) => {
-                          const b = e.target.value;
-                          setFormData(prev => ({ ...prev, branchId: b, classId: '', section: '' }));
-                          try { await loadClasses(b); } catch (err) { console.error('Failed to load classes for branch:', err); }
-                        }}
-                        options={[{ label: 'Select Branch', value: '' }, ...branches.map(branch => ({ label: `${branch.name} - ${branch.address?.city}`, value: branch._id }))]}
-                        placeholder="Select Branch"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Class <span className="text-red-500">*</span></label>
-                      <Dropdown
-                        id="form-class"
-                        name="classId"
-                        value={formData.classId}
-                        onChange={(e) => setFormData(prev => ({ ...prev, classId: e.target.value, section: '' }))}
-                        options={[{ label: 'Select Class', value: '' }, ...classes.map(cls => ({ label: `${cls.name} (Grade ${cls.grade})`, value: cls._id }))]}
-                        placeholder="Select Class"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Section
-                      </label>
-                      <Dropdown
-                        id="form-section"
-                        name="section"
-                        value={formData.section}
-                        onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-                        options={[{ label: 'Select Section', value: '' }, ...((classes.find(c => c._id === formData.classId)?.sections || []).map((s, idx) => ({ label: s.name || s, value: s.name || s._id })))]}
-                        placeholder="Select Section"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Academic Year <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.academicYear}
-                        onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="2024-2025"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Roll Number
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.rollNumber}
-                        onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="e.g., 001"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Status
-                      </label>
-                      <select
-                        value={formData.status}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="graduated">Graduated</option>
-                        <option value="transferred">Transferred</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Remarks
-                    </label>
-                    <textarea
-                      value={formData.remarks}
-                      onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      rows="3"
-                      placeholder="Any additional notes..."
-                    />
-
-                    {/* Uploads in Add/Edit form */}
-                    <div className="mt-4 border-t pt-4">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Profile Photo (optional)</p>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setPendingProfileFile(e.target.files?.[0] || null)}
-                      />
-                      {pendingProfileFile && (
-                        <div className="mt-2 flex items-center justify-between bg-gray-50 p-2 rounded">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-white overflow-hidden rounded">
-                              <img src={URL.createObjectURL(pendingProfileFile)} alt="preview" className="w-full h-full object-cover" />
+          {/* Table */}
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader className="bg-gray-50">
+                <TableRow>
+                  <TableHead className="font-semibold">Student</TableHead>
+                  <TableHead className="font-semibold">Registration #</TableHead>
+                  <TableHead className="font-semibold">Class</TableHead>
+                  <TableHead className="font-semibold">Branch</TableHead>
+                  <TableHead className="font-semibold">Parent</TableHead>
+                  <TableHead className="font-semibold">Status</TableHead>
+                  <TableHead className="font-semibold text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {students.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <User className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p>No students found</p>
+                      <p className="text-sm mt-1">Add your first student to get started</p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  students.map((student) => (
+                    <TableRow key={student._id} className="hover:bg-gray-50">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {student.profilePhoto?.url ? (
+                            <img 
+                              src={student.profilePhoto.url} 
+                              alt="" 
+                              className="w-10 h-10 rounded-full object-cover border" 
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-100 border flex items-center justify-center">
+                              <User className="w-5 h-5 text-gray-400" />
                             </div>
-                            <div>
-                              <p className="text-sm font-medium">{pendingProfileFile.name}</p>
-                              <p className="text-xs text-gray-500">{Math.round(pendingProfileFile.size / 1024)} KB</p>
+                          )}
+                          <div>
+                            <div className="font-medium text-gray-900">
+                              {student.firstName} {student.lastName}
+                            </div>
+                            <div className="text-xs text-gray-500 flex items-center gap-1">
+                              <Mail className="w-3 h-3" />
+                              {student.email}
                             </div>
                           </div>
-                          <button type="button" className="text-sm text-red-600" onClick={() => setPendingProfileFile(null)}>Remove</button>
                         </div>
-                      )}
-
-                      <div className="mt-4">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Attach Documents (optional)</p>
-                        <div className="flex items-center gap-2">
-                          <Dropdown
-                            id="addDocType"
-                            name="addDocType"
-                            value={undefined}
-                            onChange={() => { }}
-                            options={[
-                              { value: 'b_form', label: 'B-Form' },
-                              { value: 'birth_certificate', label: 'Birth Certificate' },
-                              { value: 'previous_result', label: 'Previous Result' },
-                              { value: 'other', label: 'Other' },
-                            ]}
-                            placeholder="Select"
-                          />
-                          <input type="file" id="addDocFile" />
-                          <Button onClick={() => {
-                            const fileInput = document.getElementById('addDocFile');
-                            const typeSelect = document.getElementById('addDocType');
-                            const file = fileInput?.files?.[0];
-                            const type = typeSelect?.value || 'other';
-                            if (file) {
-                              setPendingDocuments(prev => [...prev, { file, type }]);
-                              fileInput.value = '';
-                            }
-                          }}>Add</Button>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-mono text-sm font-medium text-gray-900">
+                          {student.studentProfile?.registrationNumber || 'N/A'}
                         </div>
-
-                        {pendingDocuments.length > 0 && (
-                          <div className="mt-3 space-y-2">
-                            {pendingDocuments.map((d, idx) => (
-                              <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                                <div>
-                                  <p className="text-sm font-medium">{d.file.name}</p>
-                                  <p className="text-xs text-gray-500">Type: {d.type}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <button type="button" className="text-sm text-red-600" onClick={() => setPendingDocuments(prev => prev.filter((_, i) => i !== idx))}>Remove</button>
-                                </div>
-                              </div>
-                            ))}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-gray-900">
+                          {student.studentProfile?.classId?.name || 'Not Assigned'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-gray-900">
+                          {student.branchId?.name || 'N/A'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium">
+                            {student.studentProfile?.father?.name || student.studentProfile?.guardian?.name || '-'}
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Parent Info Tab */}
-              {activeTab === 'parent' && (
-                <>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Contact Type</label>
-                    <Dropdown
-                      id="guardianType"
-                      name="guardianType"
-                      value={formData.guardianType}
-                      onChange={(e) => {
-                        const newType = e.target?.value ?? e;
-                        setFormData({
-                          ...formData,
-                          guardianType: newType,
-                          guardian: newType === 'guardian' ? (formData.guardian || { name: '', relationship: '', phone: '', email: '', cnic: '' }) : formData.guardian
-                        });
-                      }}
-                      options={[
-                        { value: 'parent', label: 'Parent (Father/Mother)' },
-                        { value: 'guardian', label: 'Guardian (Other)' },
-                      ]}
-                      placeholder="Select contact type"
-                    />
-                  </div>
-
-                  {formData.guardianType === 'guardian' ? (
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <h3 className="font-medium text-gray-900 mb-4">Guardian Information</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Guardian Name <span className="text-red-500">*</span></label>
-                          <Input value={formData.guardian?.name} onChange={(e) => setFormData({ ...formData, guardian: { ...formData.guardian, name: e.target.value } })} placeholder="Guardian Name" />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Relation</label>
-                          <Input value={formData.guardian?.relation} onChange={(e) => setFormData({ ...formData, guardian: { ...formData.guardian, relation: e.target.value } })} placeholder="e.g., Uncle/Aunt" />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Phone <span className="text-red-500">*</span></label>
-                          <Input type="tel" value={formData.guardian?.phone} onChange={(e) => setFormData({ ...formData, guardian: { ...formData.guardian, phone: e.target.value } })} placeholder="+92-XXX-XXXXXXX" />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                          <Input type="email" value={formData.guardian?.email} onChange={(e) => setFormData({ ...formData, guardian: { ...formData.guardian, email: e.target.value } })} placeholder="guardian@example.com" />
-                        </div>
-                      </div>
-
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">CNIC</label>
-                        <Input value={formData.guardian?.cnic} onChange={(e) => setFormData({ ...formData, guardian: { ...formData.guardian, cnic: e.target.value } })} placeholder="XXXXX-XXXXXXX-X" />
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="border border-gray-200 rounded-lg p-4 mb-4">
-                        <h3 className="font-medium text-gray-900 mb-4">Father Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Father Name <span className="text-red-500">*</span></label>
-                            <Input value={formData.father.name} onChange={(e) => setFormData({ ...formData, father: { ...formData.father, name: e.target.value } })} placeholder="John Doe Sr." />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Occupation</label>
-                            <Input value={formData.father.occupation} onChange={(e) => setFormData({ ...formData, father: { ...formData.father, occupation: e.target.value } })} placeholder="Business" />
+                          <div className="text-xs text-gray-500 flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            {student.studentProfile?.father?.phone || student.studentProfile?.guardian?.phone || '-'}
                           </div>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Phone <span className="text-red-500">*</span></label>
-                            <Input type="tel" value={formData.father.phone} onChange={(e) => setFormData({ ...formData, father: { ...formData.father, phone: e.target.value } })} placeholder="+92-XXX-XXXXXXX" />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                            <Input type="email" value={formData.father.email} onChange={(e) => setFormData({ ...formData, father: { ...formData.father, email: e.target.value } })} placeholder="father@example.com" />
-                          </div>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            student.status === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : student.status === 'graduated'
+                              ? 'bg-blue-100 text-blue-700'
+                              : student.status === 'suspended'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {student.status}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon-sm" 
+                            onClick={() => handleView(student)}
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon-sm" 
+                            onClick={() => handleEdit(student)}
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon-sm" 
+                            onClick={() => setDeleteModal({ open: true, student })}
+                            title="Delete"
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-
-                        <div className="mt-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">CNIC</label>
-                          <Input value={formData.father.cnic} onChange={(e) => setFormData({ ...formData, father: { ...formData.father, cnic: e.target.value } })} placeholder="XXXXX-XXXXXXX-X" />
-                        </div>
-                      </div>
-
-                      <div className="border border-gray-200 rounded-lg p-4">
-                        <h3 className="font-medium text-gray-900 mb-4">Mother Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Mother Name</label>
-                            <Input value={formData.mother.name} onChange={(e) => setFormData({ ...formData, mother: { ...formData.mother, name: e.target.value } })} placeholder="Jane Doe" />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Occupation</label>
-                            <Input value={formData.mother.occupation} onChange={(e) => setFormData({ ...formData, mother: { ...formData.mother, occupation: e.target.value } })} placeholder="Teacher" />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                            <Input type="tel" value={formData.mother.phone} onChange={(e) => setFormData({ ...formData, mother: { ...formData.mother, phone: e.target.value } })} placeholder="+92-XXX-XXXXXXX" />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                            <Input type="email" value={formData.mother.email} onChange={(e) => setFormData({ ...formData, mother: { ...formData.mother, email: e.target.value } })} placeholder="mother@example.com" />
-                          </div>
-                        </div>
-
-                        <div className="mt-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">CNIC</label>
-                          <Input value={formData.mother.cnic} onChange={(e) => setFormData({ ...formData, mother: { ...formData.mother, cnic: e.target.value } })} placeholder="XXXXX-XXXXXXX-X" />
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
-
-              {/* Footer handled by Modal footer prop */}
-            </form>
-          </div>
-
-        </Modal>
-      )}
-      {/* Activate Modal (uses shared Modal with sticky footer) */}
-      {showActivateModal && (
-        <Modal
-          open={showActivateModal}
-          onClose={() => setShowActivateModal(false)}
-          title="Activate Student"
-          size="sm"
-          footer={(
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setShowActivateModal(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleActivate}
-                disabled={isButtonLoading('activateStudent')}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isButtonLoading('activateStudent') ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Activating...
-                  </>
-                ) : (
-                  'Activate'
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
-              </button>
-            </div>
-          )}
-        >
-          <div className="p-4">
-            <p className="text-gray-600">
-              Are you sure you want to activate "{studentToActivate?.firstName} {studentToActivate?.lastName}"? The student will be marked as active.
-            </p>
+              </TableBody>
+            </Table>
           </div>
-        </Modal>
-      )}
 
-      {/* Delete Modal (uses shared Modal component with sticky footer) */}
-      {showDeleteModal && (
-        <Modal
-          open={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          title="Deactivate Student"
-          size="sm"
-          footerClassName=""
-          footer={(
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isButtonLoading('deleteStudent')}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {isButtonLoading('deleteStudent') ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Deactivating...
-                  </>
-                ) : (
-                  'Deactivate'
-                )}
-              </button>
-            </div>
-          )}
-        >
-          <div className="p-4">
-            <p className="text-gray-600">
-              Are you sure you want to deactivate "{studentToDelete?.firstName} {studentToDelete?.lastName}"? The student will be marked as inactive.
-            </p>
-          </div>
-        </Modal>
-      )}
-      {/* QR Preview Modal */}
-      {showQrPreview && (
-        <Modal open={showQrPreview} title="Student QR" onClose={() => { setShowQrPreview(false); setQrUrl(''); }}>
-          <div className="p-4">
-            {qrUrl ? (
-              <div className="flex flex-col items-center">
-                <img src={qrUrl} alt="Student QR" className="max-w-full h-auto" />
-                <div className="mt-4 flex items-center gap-2">
-                  <a href={qrUrl} target="_blank" rel="noreferrer" className="px-4 py-2 bg-blue-600 text-white rounded-lg">Open</a>
-                  <a href={qrUrl} download className="px-4 py-2 bg-green-600 text-white rounded-lg">Download</a>
-                  <button onClick={() => { setShowQrPreview(false); setQrUrl(''); }} className="px-4 py-2 bg-gray-100 rounded-lg">Close</button>
-                </div>
+          {/* Pagination */}
+          {pagination.pages > 1 && (
+            <div className="flex items-center justify-between mt-6">
+              <div className="text-sm text-gray-600">
+                Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} students
               </div>
-            ) : (
-              <p className="text-gray-600">No QR available</p>
-            )}
-          </div>
-        </Modal>
-      )}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                  disabled={pagination.page === 1}
+                >
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
+                    let pageNum;
+                    if (pagination.pages <= 5) {
+                      pageNum = i + 1;
+                    } else if (pagination.page <= 3) {
+                      pageNum = i + 1;
+                    } else if (pagination.page >= pagination.pages - 2) {
+                      pageNum = pagination.pages - 4 + i;
+                    } else {
+                      pageNum = pagination.page - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={pagination.page === pageNum ? "default" : "outline"}
+                        size="sm"
+                        className="w-8 h-8 p-0"
+                        onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                  disabled={pagination.page >= pagination.pages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Student Form Modal */}
+      <StudentFormModal
+        isOpen={isFormModalOpen}
+        onClose={() => {
+          setIsFormModalOpen(false);
+          setEditingStudent(null);
+        }}
+        onSubmit={handleFormSubmit}
+        editingStudent={editingStudent}
+        isSubmitting={submitting}
+        branches={branches}
+        classes={classes}
+        departments={departments}
+        userRole="super_admin"
+      />
 
       {/* Student View Modal */}
-      {showViewModal && selectedStudent && (
-        <Modal open={showViewModal} title="" onClose={closeView} size="lg">
-          <div className="p-6">
-            <div className="flex flex-col md:flex-row gap-6">
-              {/* Left: Avatar & basic */}
-              <div className="md:w-1/3 bg-gray-50 rounded-lg p-4 flex flex-col items-center gap-4">
-                <div className="w-36 h-36 rounded-full overflow-hidden bg-white border">
-                  {selectedStudent.profilePhoto?.url ? (
-                    <img src={selectedStudent.profilePhoto.url} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-gray-400">No Photo</div>
-                  )}
-                </div>
+      <StudentViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => {
+          setIsViewModalOpen(false);
+          setViewingStudent(null);
+        }}
+        student={viewingStudent}
+        branches={branches}
+        classes={classes}
+        departments={departments}
+      />
 
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold text-gray-900">{selectedStudent.firstName} {selectedStudent.lastName}</h3>
-                  <p className="text-sm text-gray-500">{selectedStudent.email || selectedStudent.phone || ''}</p>
-                  <div className="mt-2">
-                    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded ${selectedStudent.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                      {selectedStudent.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="w-full mt-3 text-sm">
-                  <div className="flex justify-between py-1 border-b"><span className="text-gray-500">Registration</span><span className="font-medium">{selectedStudent.studentProfile?.registrationNumber || '-'}</span></div>
-                  <div className="flex justify-between py-1 border-b"><span className="text-gray-500">Class</span><span className="font-medium">{(() => { const id = selectedStudent.studentProfile?.classId?._id || selectedStudent.studentProfile?.classId || selectedStudent.classId?._id || selectedStudent.classId; const found = classes.find(c => String(c._id) === String(id)); return found?.name || '-'; })()}</span></div>
-                  <div className="flex justify-between py-1 border-b"><span className="text-gray-500">Branch</span><span className="font-medium">{selectedStudent.branchId?.name || '-'}</span></div>
-                  <div className="flex justify-between py-1"><span className="text-gray-500">Roll</span><span className="font-medium">{selectedStudent.studentProfile?.rollNumber || '-'}</span></div>
-                </div>
-
-                {/* QR preview if exists */}
-                {selectedStudent.studentProfile?.qr?.url && (
-                  <div className="w-full mt-4">
-                    <p className="text-xs text-gray-500 mb-2">QR Code</p>
-                    <img src={selectedStudent.studentProfile.qr.url} alt="QR" className="mx-auto w-28 h-28 object-contain" />
-                  </div>
-                )}
-              </div>
-
-              {/* Right: Details & Documents */}
-              <div className="flex-1 flex flex-col gap-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white border rounded p-4">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Contact</h4>
-                    <p className="text-sm"><strong>Phone:</strong> {selectedStudent.phone || '-'}</p>
-                    <p className="text-sm mt-1"><strong>Email:</strong> {selectedStudent.email || '-'}</p>
-                    <p className="text-sm mt-2"><strong>DOB:</strong> {selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString() : '-'}</p>
-                  </div>
-
-                  <div className="bg-white border rounded p-4">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Parents</h4>
-                    <p className="text-sm"><strong>Father:</strong> {selectedStudent.studentProfile?.father?.name || '-'}</p>
-                    <p className="text-sm text-gray-500">{selectedStudent.studentProfile?.father?.phone || ''}</p>
-                    <p className="text-sm mt-2"><strong>Mother:</strong> {selectedStudent.studentProfile?.mother?.name || '-'}</p>
-                    <p className="text-sm text-gray-500">{selectedStudent.studentProfile?.mother?.phone || ''}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white border rounded p-4">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Previous School</h4>
-                    <p className="text-sm"><strong>School Name:</strong> {selectedStudent.studentProfile?.previousSchool?.name || '-'}</p>
-                    <p className="text-sm mt-1"><strong>Last Class:</strong> {selectedStudent.studentProfile?.previousSchool?.lastClass || '-'}</p>
-                    <p className="text-sm mt-1"><strong>Marks:</strong> {selectedStudent.studentProfile?.previousSchool?.marks || '-'}</p>
-                    <p className="text-sm mt-1"><strong>Leaving Date:</strong> {selectedStudent.studentProfile?.previousSchool?.leavingDate ? new Date(selectedStudent.studentProfile.previousSchool.leavingDate).toLocaleDateString() : '-'}</p>
-                  </div>
-
-                  <div className="bg-white border rounded p-4">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Academic Info</h4>
-                    <p className="text-sm"><strong>Admission Date:</strong> {selectedStudent.studentProfile?.admissionDate ? new Date(selectedStudent.studentProfile.admissionDate).toLocaleDateString() : '-'}</p>
-                    <p className="text-sm mt-1"><strong>Academic Year:</strong> {selectedStudent.studentProfile?.academicYear || '-'}</p>
-                    <p className="text-sm mt-1"><strong>Roll Number:</strong> {selectedStudent.studentProfile?.rollNumber || '-'}</p>
-                    <p className="text-sm mt-1"><strong>Section:</strong> {selectedStudent.studentProfile?.section || '-'}</p>
-                  </div>
-                </div>
-
-                <div className="bg-white border rounded p-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-gray-700">Documents</h4>
-                    <div className="flex items-center gap-2">
-                      <Dropdown
-                        id="viewDocType"
-                        name="viewDocType"
-                        value={undefined}
-                        onChange={() => { }}
-                        options={[
-                          { value: 'b_form', label: 'B-Form' },
-                          { value: 'birth_certificate', label: 'Birth Certificate' },
-                          { value: 'previous_result', label: 'Previous Result' },
-                          { value: 'other', label: 'Other' },
-                        ]}
-                        placeholder="Select"
-                      />
-                      <input type="file" id="viewDocFile" className="text-sm" />
-                      <Button onClick={() => {
-                        const fileInput = document.getElementById('viewDocFile');
-                        const type = document.getElementById('viewDocType')?.value || 'other';
-                        const file = fileInput?.files?.[0];
-                        if (file) handleDocumentUpload(file, type);
-                      }}>Upload</Button>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {selectedStudent.studentProfile?.documents?.length > 0 ? selectedStudent.studentProfile.documents.map((d, i) => (
-                      <div key={d.publicId || i} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-white rounded overflow-hidden border flex items-center justify-center">
-                            {d.url && d.url.match(/\.jpg$|\.jpeg$|\.png$|\.gif$/i) ? (
-                              <img src={d.url} alt={d.name || d.type} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="text-xs text-gray-500 px-2">{d.type}</div>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">{d.name || d.type}</p>
-                            <p className="text-xs text-gray-500">{d.uploadedAt ? new Date(d.uploadedAt).toLocaleString() : ''}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <a href={d.url} target="_blank" rel="noreferrer" className="text-blue-600 text-sm">Open</a>
-                          <button type="button" className="text-sm text-red-600" onClick={async () => {
-                            if (!d.publicId) return;
-                            try {
-                              const delUrl = `${API_ENDPOINTS.COMMON.UPLOAD}?publicId=${encodeURIComponent(d.publicId)}&fileType=student_document&documentId=${d._id}`;
-                              const del = await apiClient.delete(delUrl);
-                              if (del && del.success) {
-                                toast.success('Document deleted');
-                                setSelectedStudent(prev => ({ ...prev, studentProfile: { ...prev.studentProfile, documents: prev.studentProfile.documents.filter(doc => doc.publicId !== d.publicId) } }));
-                                loadStudents();
-                              } else {
-                                toast.error(del?.message || 'Delete failed');
-                              }
-                            } catch (err) {
-                              console.error('Delete doc error', err);
-                              toast.error('Delete failed');
-                            }
-                          }}>Delete</button>
-                        </div>
-                      </div>
-                    )) : (
-                      <div className="col-span-2 text-sm text-gray-500">No documents uploaded</div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <button onClick={closeView} className="px-4 py-2 bg-gray-100 rounded">Close</button>
-                </div>
-              </div>
+      {/* Delete Confirmation Modal */}
+      {deleteModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Student</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete {deleteModal.student?.firstName} {deleteModal.student?.lastName}? 
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteModal({ open: false, student: null })}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={submitting}
+              >
+                {submitting ? <ButtonLoader /> : 'Delete Student'}
+              </Button>
             </div>
           </div>
-        </Modal>
+        </div>
       )}
     </div>
   );
-}
+};
+
+export default SuperAdminStudentsPage;

@@ -1,3 +1,4 @@
+//src/app/api/branch-admin/students/[id]/route.js
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
@@ -149,40 +150,76 @@ async function createStudent(request, authenticatedUser, userDoc) {
       };
     }
 
+    // Handle medical info
+    if (body.medicalInfo) {
+      // Store in remarks or a separate field if needed
+      userData.remarks = userData.remarks || '';
+    }
+
+    // Handle emergency contact
+    if (body.emergencyContact) {
+      // Store in remarks or studentProfile if needed
+    }
+
     // Map student-specific fields to studentProfile
+    // Support both nested studentProfile and flat structure
+    const studentProfileData = body.studentProfile || {};
+    
     userData.studentProfile = {
-      classId: body.classId || null,
-      section: body.section || '',
-      rollNumber: body.rollNumber || '',
-      admissionDate: body.enrollmentDate || body.admissionDate || new Date(),
-      academicYear: body.academicInfo?.academicYear || body.academicYear || new Date().getFullYear().toString(),
-      previousSchool: body.academicInfo ? {
-        name: body.academicInfo.previousSchool || '',
-        lastClass: body.academicInfo.previousClass || '',
-      } : {},
-      guardianType: body.guardianType || 'parent',
-      father: body.parentInfo ? {
-        name: body.parentInfo.fatherName || '',
-        occupation: body.parentInfo.fatherOccupation || '',
-        phone: body.parentInfo.fatherPhone || '',
-        email: body.parentInfo.fatherEmail || '',
-        cnic: body.parentInfo.fatherCnic || '',
-      } : {},
-      mother: body.parentInfo ? {
-        name: body.parentInfo.motherName || '',
-        occupation: body.parentInfo.motherOccupation || '',
-        phone: body.parentInfo.motherPhone || '',
-        email: body.parentInfo.motherEmail || '',
-        cnic: body.parentInfo.motherCnic || '',
-      } : {},
-      guardian: body.guardianInfo ? {
-        name: body.guardianInfo.name || '',
-        relation: body.guardianInfo.relationship || '',
-        phone: body.guardianInfo.phone || '',
-        email: body.guardianInfo.email || '',
-        cnic: body.guardianInfo.cnic || '',
-      } : {},
-      documents: body.documents || [],
+      classId: studentProfileData.classId || body.classId || null,
+      departmentId: studentProfileData.departmentId || body.departmentId || null,
+      section: studentProfileData.section || body.section || '',
+      rollNumber: studentProfileData.rollNumber || body.rollNumber || '',
+      admissionDate: studentProfileData.admissionDate || body.admissionDate || body.enrollmentDate || new Date(),
+      academicYear: studentProfileData.academicYear || body.academicYear || new Date().getFullYear().toString(),
+      
+      previousSchool: studentProfileData.previousSchool || {
+        name: body.academicInfo?.previousSchool || body.previousSchool?.name || '',
+        lastClass: body.academicInfo?.previousClass || body.previousSchool?.lastClass || '',
+        marks: body.previousSchool?.marks || 0,
+        leavingDate: body.previousSchool?.leavingDate || null,
+      },
+      
+      guardianType: studentProfileData.guardianType || body.guardianType || 'parent',
+      
+      father: studentProfileData.father || {
+        name: body.parentInfo?.fatherName || body.father?.name || '',
+        occupation: body.parentInfo?.fatherOccupation || body.father?.occupation || '',
+        phone: body.parentInfo?.fatherPhone || body.father?.phone || '',
+        email: body.parentInfo?.fatherEmail || body.father?.email || '',
+        cnic: body.parentInfo?.fatherCnic || body.father?.cnic || '',
+        income: body.father?.income || 0,
+      },
+      
+      mother: studentProfileData.mother || {
+        name: body.parentInfo?.motherName || body.mother?.name || '',
+        occupation: body.parentInfo?.motherOccupation || body.mother?.occupation || '',
+        phone: body.parentInfo?.motherPhone || body.mother?.phone || '',
+        email: body.parentInfo?.motherEmail || body.mother?.email || '',
+        cnic: body.parentInfo?.motherCnic || body.mother?.cnic || '',
+      },
+      
+      guardian: studentProfileData.guardian || {
+        name: body.guardianInfo?.name || body.guardian?.name || '',
+        relation: body.guardianInfo?.relationship || body.guardian?.relation || '',
+        phone: body.guardianInfo?.phone || body.guardian?.phone || '',
+        email: body.guardianInfo?.email || body.guardian?.email || '',
+        cnic: body.guardianInfo?.cnic || body.guardian?.cnic || '',
+      },
+      
+      feeDiscount: studentProfileData.feeDiscount || body.feeDiscount || {
+        type: 'fixed',
+        amount: 0,
+        reason: '',
+      },
+      
+      transportFee: studentProfileData.transportFee || body.transportFee || {
+        enabled: false,
+        routeId: null,
+        amount: 0,
+      },
+      
+      documents: studentProfileData.documents || body.documents || [],
     };
 
     // Validate class belongs to this branch if classId provided
