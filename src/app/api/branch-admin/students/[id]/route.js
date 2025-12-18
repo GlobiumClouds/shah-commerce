@@ -1,3 +1,4 @@
+//api/branch-admin/students/[id]/route.js
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
@@ -81,6 +82,8 @@ async function updateStudent(request, authenticatedUser, userDoc, { params }) {
     // Prevent changing branchId and role
     delete updates.branchId;
     delete updates.role;
+    delete updates.isEditMode;
+    delete updates.studentId;
 
     // Handle profile photo updates
     if (updates.profilePhoto && typeof updates.profilePhoto === 'object') {
@@ -92,67 +95,100 @@ async function updateStudent(request, authenticatedUser, userDoc, { params }) {
       delete updates.profilePhoto;
     }
 
-    // Handle studentProfile updates
-    if (updates.classId || updates.academicInfo || updates.guardianType || updates.parentInfo || updates.guardianInfo || updates.documents) {
-      student.studentProfile = student.studentProfile || {};
+    // Initialize studentProfile if it doesn't exist
+    student.studentProfile = student.studentProfile || {};
+
+    // Handle studentProfile updates (support both nested and flat)
+    if (updates.studentProfile && typeof updates.studentProfile === 'object') {
+      // Direct studentProfile object from form
+      const sp = updates.studentProfile;
       
-      if (updates.classId) {
-        student.studentProfile.classId = updates.classId;
-        delete updates.classId;
+      if (sp.classId !== undefined) student.studentProfile.classId = sp.classId;
+      if (sp.departmentId !== undefined) student.studentProfile.departmentId = sp.departmentId;
+      if (sp.section !== undefined) student.studentProfile.section = sp.section;
+      if (sp.rollNumber !== undefined) student.studentProfile.rollNumber = sp.rollNumber;
+      if (sp.admissionDate !== undefined) student.studentProfile.admissionDate = sp.admissionDate;
+      if (sp.academicYear !== undefined) student.studentProfile.academicYear = sp.academicYear;
+      if (sp.guardianType !== undefined) student.studentProfile.guardianType = sp.guardianType;
+      
+      // Preserve and merge previousSchool
+      if (sp.previousSchool) {
+        student.studentProfile.previousSchool = {
+          ...(student.studentProfile.previousSchool || {}),
+          ...sp.previousSchool,
+        };
       }
-      if (updates.guardianType) {
-        student.studentProfile.guardianType = updates.guardianType;
-        delete updates.guardianType;
+      
+      // Preserve and merge father
+      if (sp.father) {
+        student.studentProfile.father = {
+          ...(student.studentProfile.father || {}),
+          ...sp.father,
+        };
       }
-      if (updates.academicInfo) {
-        if (updates.academicInfo.academicYear) {
-          student.studentProfile.academicYear = updates.academicInfo.academicYear;
-        }
-        if (updates.academicInfo.previousSchool) {
-          student.studentProfile.previousSchool = student.studentProfile.previousSchool || {};
-          student.studentProfile.previousSchool.name = updates.academicInfo.previousSchool;
-        }
-        delete updates.academicInfo;
+      
+      // Preserve and merge mother
+      if (sp.mother) {
+        student.studentProfile.mother = {
+          ...(student.studentProfile.mother || {}),
+          ...sp.mother,
+        };
       }
-      if (updates.parentInfo) {
-        student.studentProfile.father = student.studentProfile.father || {};
-        student.studentProfile.mother = student.studentProfile.mother || {};
-        Object.assign(student.studentProfile.father, {
-          name: updates.parentInfo.fatherName,
-          occupation: updates.parentInfo.fatherOccupation,
-          phone: updates.parentInfo.fatherPhone,
-          email: updates.parentInfo.fatherEmail,
-          cnic: updates.parentInfo.fatherCnic,
-        });
-        Object.assign(student.studentProfile.mother, {
-          name: updates.parentInfo.motherName,
-          occupation: updates.parentInfo.motherOccupation,
-          phone: updates.parentInfo.motherPhone,
-          email: updates.parentInfo.motherEmail,
-          cnic: updates.parentInfo.motherCnic,
-        });
-        delete updates.parentInfo;
+      
+      // Preserve and merge guardian
+      if (sp.guardian) {
+        student.studentProfile.guardian = {
+          ...(student.studentProfile.guardian || {}),
+          ...sp.guardian,
+        };
       }
-      if (updates.guardianInfo) {
-        student.studentProfile.guardian = student.studentProfile.guardian || {};
-        Object.assign(student.studentProfile.guardian, {
-          name: updates.guardianInfo.name,
-          relation: updates.guardianInfo.relationship,
-          phone: updates.guardianInfo.phone,
-          email: updates.guardianInfo.email,
-          cnic: updates.guardianInfo.cnic,
-        });
-        delete updates.guardianInfo;
+      
+      // Preserve and merge feeDiscount
+      if (sp.feeDiscount) {
+        student.studentProfile.feeDiscount = {
+          ...(student.studentProfile.feeDiscount || {}),
+          ...sp.feeDiscount,
+        };
       }
-      if (updates.documents) {
-        student.studentProfile.documents = updates.documents;
-        delete updates.documents;
+      
+      // Preserve and merge transportFee
+      if (sp.transportFee) {
+        student.studentProfile.transportFee = {
+          ...(student.studentProfile.transportFee || {}),
+          ...sp.transportFee,
+        };
       }
+      
+      if (sp.documents !== undefined) student.studentProfile.documents = sp.documents;
+      
+      delete updates.studentProfile;
     }
 
-    // Update other fields
+    // Handle flat structure (for backward compatibility)
+    if (updates.classId !== undefined) {
+      student.studentProfile.classId = updates.classId;
+      delete updates.classId;
+    }
+    if (updates.guardianType !== undefined) {
+      student.studentProfile.guardianType = updates.guardianType;
+      delete updates.guardianType;
+    }
+    if (updates.section !== undefined) {
+      student.studentProfile.section = updates.section;
+      delete updates.section;
+    }
+    if (updates.rollNumber !== undefined) {
+      student.studentProfile.rollNumber = updates.rollNumber;
+      delete updates.rollNumber;
+    }
+    if (updates.documents !== undefined) {
+      student.studentProfile.documents = updates.documents;
+      delete updates.documents;
+    }
+
+    // Update top-level user fields
     Object.keys(updates).forEach((key) => {
-      if (updates[key] !== undefined) {
+      if (updates[key] !== undefined && !key.startsWith('pending')) {
         student[key] = updates[key];
       }
     });
