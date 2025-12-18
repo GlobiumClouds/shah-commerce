@@ -13,7 +13,9 @@ import ButtonLoader from '@/components/ui/button-loader';
 import BloodGroupSelect from '@/components/ui/blood-group';
 import GenderSelect from '@/components/ui/gender-select';
 import ClassSelect from '@/components/ui/class-select';
-import { Plus, Edit, Trash2, Search, User, Mail, Phone, Eye, FileText, Upload, X, Calendar, MapPin } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, User, Mail, Phone, Eye, FileText, Upload, X, Calendar, MapPin, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -39,6 +41,7 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentStudent, setCurrentStudent] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -51,6 +54,16 @@ export default function StudentsPage() {
   const [uploading, setUploading] = useState(false);
   const [pendingProfileFile, setPendingProfileFile] = useState(null);
   const [pendingDocuments, setPendingDocuments] = useState([]);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [downloadFormat, setDownloadFormat] = useState('pdf');
+  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [cardStatus, setCardStatus] = useState({
+    issueDate: '',
+    expireDate: '',
+    status: 'active',
+    printCount: 0,
+  });
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -375,6 +388,209 @@ export default function StudentsPage() {
     }
   };
 
+  const handleIndividualDownload = (student) => {
+    setSelectedStudent(student);
+    // Set default card status - in real app, this would come from API
+    setCardStatus({
+      issueDate: new Date().toISOString().split('T')[0],
+      expireDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 year from now
+      status: 'active',
+      printCount: 0,
+    });
+    setIsCardModalOpen(true);
+  };
+
+  const handleCardDownload = async () => {
+    if (!selectedStudent) return;
+
+    // Use A6 format (148mm x 105mm landscape) for better compatibility
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a6'
+    });
+
+    const cardWidth = 148; // A6 width in landscape
+    const cardHeight = 105; // A6 height in landscape
+
+    const margin = 8;
+    let yPosition = margin;
+
+    // White background for better printing
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, cardWidth, cardHeight, 'F');
+
+    // Header with school logo placeholder - darker for printing
+    doc.setFillColor(0, 51, 102); // Darker blue header for print
+    doc.rect(0, 0, cardWidth, 15, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12); // Increased font size
+    doc.setFont('helvetica', 'bold');
+    doc.text('EASE ACADEMY', cardWidth / 2, 8, { align: 'center' });
+    doc.setFontSize(8); // Increased font size
+    doc.text('Student Identity Card', cardWidth / 2, 13, { align: 'center' });
+
+    yPosition = 18;
+
+    // Student Photo
+    const photoWidth = 20;
+    const photoHeight = 25;
+    doc.setDrawColor(0, 0, 0);
+    doc.setFillColor(255, 255, 255);
+    doc.rect(margin, yPosition, photoWidth, photoHeight, 'FD');
+
+    if (selectedStudent.profilePhoto?.url) {
+      try {
+        // Load image and convert to base64
+        const response = await fetch(selectedStudent.profilePhoto.url);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onload = function() {
+          const base64 = reader.result;
+          doc.addImage(base64, 'JPEG', margin + 1, yPosition + 1, photoWidth - 2, photoHeight - 2);
+          // Continue with PDF generation after image is added
+          continuePDFGeneration();
+        };
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.error('Error loading image:', error);
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(6);
+        doc.text('Photo', margin + photoWidth / 2, yPosition + photoHeight / 2, { align: 'center' });
+        continuePDFGeneration();
+      }
+    } else {
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(6);
+      doc.text('Photo', margin + photoWidth / 2, yPosition + photoHeight / 2, { align: 'center' });
+      continuePDFGeneration();
+    }
+
+    function continuePDFGeneration() {
+      // Student Info
+      doc.setFontSize(10); // Increased font size
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 51, 102); // Darker blue for printing
+      doc.text(String('Student Information'), margin + photoWidth + 5, yPosition + 4);
+
+      doc.setFontSize(8); // Increased font size
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      doc.text(String(`Name: ${selectedStudent.firstName} ${selectedStudent.lastName}`), margin + photoWidth + 5, yPosition + 10);
+      doc.text(String(`ID: ${selectedStudent.admissionNumber}`), margin + photoWidth + 5, yPosition + 16);
+      doc.text(String(`Class: ${selectedStudent.classId?.name || 'N/A'}`), margin + photoWidth + 5, yPosition + 22);
+      doc.text(String(`Gender: ${selectedStudent.gender}`), margin + photoWidth + 5, yPosition + 28);
+
+      yPosition += photoHeight + 5;
+
+      // Contact Info
+      doc.setFontSize(7); // Increased font size
+      doc.text(String(`Email: ${selectedStudent.email}`), margin, yPosition);
+      doc.text(String(`Phone: ${selectedStudent.phone || 'N/A'}`), margin + 50, yPosition);
+      yPosition += 6;
+      doc.text(String(`DOB: ${selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString() : 'N/A'}`), margin, yPosition);
+      doc.text(String(`Blood: ${selectedStudent.bloodGroup || 'N/A'}`), margin + 50, yPosition);
+      yPosition += 7;
+
+      // Parent Info
+      if (selectedStudent.parentInfo) {
+        doc.setFontSize(8); // Increased font size
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 51, 102); // Darker blue for printing
+        doc.text(String('Emergency Contact'), margin, yPosition);
+        yPosition += 5;
+
+        doc.setFontSize(7); // Increased font size
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.text(String(`Father: ${selectedStudent.parentInfo.fatherName || 'N/A'}`), margin, yPosition);
+        doc.text(String(`Phone: ${selectedStudent.parentInfo.fatherPhone || 'N/A'}`), margin + 50, yPosition);
+        yPosition += 5;
+        doc.text(String(`Mother: ${selectedStudent.parentInfo.motherName || 'N/A'}`), margin, yPosition);
+        doc.text(String(`Phone: ${selectedStudent.parentInfo.motherPhone || 'N/A'}`), margin + 50, yPosition);
+        yPosition += 6;
+      }
+
+      // Address
+      if (selectedStudent.address) {
+        doc.setFontSize(8);
+        doc.setFont('times', 'bold');
+        doc.setTextColor(0, 51, 102);
+        doc.text(String('Address'), margin, yPosition);
+        yPosition += 5;
+
+        doc.setFontSize(6);
+        doc.setFont('times', 'normal');
+        doc.setTextColor(0, 0, 0);
+        const address = `${selectedStudent.address.street || ''} ${selectedStudent.address.city || ''}`.trim();
+        doc.text(String(address || 'N/A'), margin, yPosition);
+        yPosition += 4;
+      }
+
+      // Validity
+      doc.setFontSize(8);
+      doc.setFont('times', 'bold');
+      doc.setTextColor(0, 51, 102);
+      doc.text(String('Valid: ' + cardStatus.issueDate + ' to ' + cardStatus.expireDate), margin, yPosition);
+
+      // Barcode placeholder
+      const barcodeY = cardHeight - 15;
+      doc.setFillColor(0, 0, 0);
+      doc.setLineWidth(0.5);
+      doc.rect(margin, barcodeY, 50, 8, 'FD');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(6);
+      doc.setFont('times', 'normal');
+      doc.text(String(selectedStudent.admissionNumber), margin + 25, barcodeY + 5, { align: 'center' });
+
+      // Footer
+      doc.setFillColor(0, 51, 102);
+      doc.setLineWidth(0.5);
+      doc.rect(0, cardHeight - 8, cardWidth, 8, 'FD');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(6);
+      doc.setFont('times', 'normal');
+      doc.text(String('Property of Ease Academy'), cardWidth / 2, cardHeight - 4, { align: 'center' });
+
+      doc.save(`${selectedStudent.firstName}_${selectedStudent.lastName}_card.pdf`);
+      setIsCardModalOpen(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (downloadFormat === 'pdf') {
+      const doc = new jsPDF();
+      doc.text('Students Data', 20, 20);
+
+      let yPosition = 40;
+      students.forEach((student, index) => {
+        doc.text(`${index + 1}. ${student.firstName} ${student.lastName} - ${student.email}`, 20, yPosition);
+        yPosition += 10;
+      });
+
+      doc.save('students.pdf');
+    } else if (downloadFormat === 'xlsx') {
+      const worksheet = XLSX.utils.json_to_sheet(students.map(student => ({
+        'Admission Number': student.admissionNumber,
+        'First Name': student.firstName,
+        'Last Name': student.lastName,
+        'Email': student.email,
+        'Phone': student.phone,
+        'Class': student.classId?.name || 'Not Assigned',
+        'Status': student.status,
+        'Gender': student.gender,
+        'Date of Birth': student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : '',
+        'Enrollment Date': student.enrollmentDate ? new Date(student.enrollmentDate).toLocaleDateString() : '',
+      })));
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
+      XLSX.writeFile(workbook, 'students.xlsx');
+    }
+
+    setIsDownloadModalOpen(false);
+  };
+
   const handleAddNew = () => {
     setCurrentStudent(null);
     setFormData({
@@ -469,10 +685,12 @@ export default function StudentsPage() {
         <CardHeader className="border-b">
           <div className="flex items-center justify-between">
             <CardTitle>Students Management</CardTitle>
-            <Button onClick={handleAddNew}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Student
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleAddNew}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Student
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -579,6 +797,9 @@ export default function StudentsPage() {
                         </Button>
                         <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(student)}>
                           <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon-sm" onClick={() => handleIndividualDownload(student)} title="Download Card">
+                          <Download className="w-4 h-4" />
                         </Button>
                         <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(student._id)}>
                           <Trash2 className="w-4 h-4 text-red-600" />
@@ -1271,7 +1492,7 @@ export default function StudentsPage() {
         }
       >
         {currentStudent && (
-          <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+          <div className="spnpm install xlsx0vh] overflow-y-auto">
             <div className="flex items-center gap-4">
               {currentStudent.profilePhoto?.url ? (
                 <img
@@ -1366,6 +1587,249 @@ export default function StudentsPage() {
           </div>
         )}
       </Modal>
+
+      {/* Download Modal */}
+      <Modal
+        open={isDownloadModalOpen}
+        onClose={() => setIsDownloadModalOpen(false)}
+        title="Download Students Data"
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsDownloadModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleDownload}>
+              <Download className="w-4 h-4 mr-2" />
+              Download
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Select Format</label>
+            <Dropdown
+              value={downloadFormat}
+              onChange={(e) => setDownloadFormat(e.target.value)}
+              options={[
+                { value: 'pdf', label: 'PDF' },
+                { value: 'xlsx', label: 'Excel (XLSX)' },
+              ]}
+            />
+          </div>
+          <div className="text-sm text-gray-600">
+            <p>This will download all students data in the selected format.</p>
+            <p>Current filters will be applied to the download.</p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Card Modal */}
+      <Modal
+        open={isCardModalOpen}
+        onClose={() => setIsCardModalOpen(false)}
+        title="Student Card Preview"
+        size="lg"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsCardModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCardDownload}>
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </Button>
+          </div>
+        }
+      >
+        {selectedStudent && (
+          <div className="space-y-6">
+            {/* Card Status */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-semibold mb-3 text-gray-800">Card Status</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Issue Date</label>
+                  <p className="font-semibold">{cardStatus.issueDate}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Expire Date</label>
+                  <p className="font-semibold">{cardStatus.expireDate}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Status</label>
+                  <p className="font-semibold capitalize">{cardStatus.status}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Print Count</label>
+                  <p className="font-semibold">{cardStatus.printCount}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Card Preview */}
+            <div className="border-2 border-gray-300 rounded-lg p-4 bg-white">
+              <h3 className="font-semibold mb-4 text-center text-gray-800">Card Preview</h3>
+              <div className="max-w-md mx-auto bg-white shadow-2xl rounded-lg overflow-hidden border-4 border-blue-600">
+                {/* School Header */}
+                <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white relative">
+                  <div className="absolute inset-0 bg-black opacity-10"></div>
+                  <div className="relative p-4 text-center">
+                    {/* School Logo Placeholder */}
+                    <div className="w-12 h-12 bg-white rounded-full mx-auto mb-2 flex items-center justify-center shadow-lg">
+                      <span className="text-blue-600 font-bold text-lg">EA</span>
+                    </div>
+                    <h4 className="font-bold text-xl mb-1">EASE ACADEMY</h4>
+                    <p className="text-sm opacity-90">Excellence in Education</p>
+                    <p className="text-xs mt-1 font-semibold">STUDENT IDENTITY CARD</p>
+                  </div>
+                  {/* Decorative Border */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500"></div>
+                </div>
+
+                <div className="bg-white p-4">
+                  {/* Photo Section */}
+                  <div className="flex gap-4 mb-4">
+                    <div className="relative">
+                      <div className="w-20 h-24 border-4 border-blue-200 rounded-lg overflow-hidden shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+                        {selectedStudent.profilePhoto?.url ? (
+                          <img
+                            src={selectedStudent.profilePhoto.url}
+                            alt="Student Photo"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                            <User className="w-10 h-10 text-gray-500" />
+                          </div>
+                        )}
+                      </div>
+                      {/* Photo Corner Cut */}
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 transform rotate-45"></div>
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        <h5 className="font-bold text-blue-800 text-sm mb-2 flex items-center gap-2">
+                          <User className="w-4 h-4" />
+                          STUDENT DETAILS
+                        </h5>
+                        <div className="space-y-1 text-xs">
+                          <p><span className="font-semibold text-blue-700">Name:</span> {selectedStudent.firstName} {selectedStudent.lastName}</p>
+                          <p><span className="font-semibold text-blue-700">ID:</span> {selectedStudent.admissionNumber}</p>
+                          <p><span className="font-semibold text-blue-700">Class:</span> {selectedStudent.classId?.name || 'Not Assigned'}</p>
+                          <p><span className="font-semibold text-blue-700">Gender:</span> {selectedStudent.gender}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact Information */}
+                  <div className="bg-gray-50 p-3 rounded-lg mb-4 border border-gray-200">
+                    <h6 className="font-bold text-gray-800 text-xs mb-2 flex items-center gap-1">
+                      <Mail className="w-3 h-3" />
+                      CONTACT INFORMATION
+                    </h6>
+                    <div className="grid grid-cols-1 gap-1 text-xs">
+                      <p><span className="font-semibold text-gray-700">Email:</span> {selectedStudent.email}</p>
+                      <p><span className="font-semibold text-gray-700">Phone:</span> {selectedStudent.phone || 'N/A'}</p>
+                      <p><span className="font-semibold text-gray-700">DOB:</span> {selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
+                      <p><span className="font-semibold text-gray-700">Blood Group:</span> {selectedStudent.bloodGroup || 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  {/* Parent Information */}
+                  {selectedStudent.parentInfo && (
+                    <div className="bg-green-50 p-3 rounded-lg mb-4 border border-green-200">
+                      <h6 className="font-bold text-green-800 text-xs mb-2 flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        EMERGENCY CONTACT
+                      </h6>
+                      <div className="grid grid-cols-1 gap-1 text-xs">
+                        <p><span className="font-semibold text-green-700">Father:</span> {selectedStudent.parentInfo.fatherName || 'N/A'}</p>
+                        <p><span className="font-semibold text-green-700">Phone:</span> {selectedStudent.parentInfo.fatherPhone || 'N/A'}</p>
+                        <p><span className="font-semibold text-green-700">Mother:</span> {selectedStudent.parentInfo.motherName || 'N/A'}</p>
+                        <p><span className="font-semibold text-green-700">Phone:</span> {selectedStudent.parentInfo.motherPhone || 'N/A'}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Address */}
+                  {selectedStudent.address && (
+                    <div className="bg-purple-50 p-3 rounded-lg mb-4 border border-purple-200">
+                      <h6 className="font-bold text-purple-800 text-xs mb-2 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        ADDRESS
+                      </h6>
+                      <p className="text-xs text-purple-700">
+                        {selectedStudent.address.street && `${selectedStudent.address.street}, `}
+                        {selectedStudent.address.city && `${selectedStudent.address.city}, `}
+                        {selectedStudent.address.state && `${selectedStudent.address.state} `}
+                        {selectedStudent.address.postalCode}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Card Validity */}
+                  <div className="bg-red-50 p-3 rounded-lg mb-4 border border-red-200">
+                    <h6 className="font-bold text-red-800 text-xs mb-2">CARD VALIDITY</h6>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-white p-2 rounded border">
+                        <p className="font-semibold text-red-700">Issue Date</p>
+                        <p className="font-bold">{cardStatus.issueDate}</p>
+                      </div>
+                      <div className="bg-white p-2 rounded border">
+                        <p className="font-semibold text-red-700">Expiry Date</p>
+                        <p className="font-bold">{cardStatus.expireDate}</p>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                        cardStatus.status === 'active'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {cardStatus.status.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Barcode Placeholder */}
+                  <div className="text-center mb-4">
+                    <div className="inline-block bg-black p-2 rounded">
+                      <div className="w-32 h-8 bg-white flex items-end justify-center space-x-px">
+                        {Array.from({length: 20}, (_, i) => (
+                          <div key={i} className={`w-1 ${i % 3 === 0 ? 'h-6' : i % 2 === 0 ? 'h-4' : 'h-8'} bg-black`}></div>
+                        ))}
+                      </div>
+                      <p className="text-white text-xs mt-1">{selectedStudent.admissionNumber}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-3 text-center relative">
+                  <div className="absolute inset-0 bg-black opacity-10"></div>
+                  <div className="relative">
+                    <p className="text-xs font-semibold mb-1">EASE ACADEMY</p>
+                    <p className="text-xs opacity-90">This card is the property of Ease Academy</p>
+                    <p className="text-xs opacity-90">If found, please return to the school office</p>
+                    <div className="mt-2 flex justify-center space-x-4 text-xs">
+                      <span>📞 +92-XXX-XXXXXXX</span>
+                      <span>📧 info@easeacademy.edu.pk</span>
+                    </div>
+                  </div>
+                  {/* Decorative Border */}
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
+
+
