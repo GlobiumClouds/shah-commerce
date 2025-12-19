@@ -1446,7 +1446,7 @@ export default function StudentsPage() {
                     <TableCell>{student.studentProfile?.classId?.name || 'Not Assigned'}</TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <div>{student.studentProfile?.father?.name || student.studentProfile?.guardian?.name || '-'}</div>
+                        <div>{student.parentInfo?.fatherName || student.guardianInfo?.name || '-'}</div>
                         {(student.parentInfo?.fatherPhone || student.guardianInfo?.phone) && (
                           <div className="flex items-center gap-1 text-gray-500">
                             <Phone className="w-3 h-3" />
