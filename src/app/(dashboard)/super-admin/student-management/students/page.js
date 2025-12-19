@@ -443,7 +443,6 @@ const SuperAdminStudentsPage = () => {
   };
 
   const fetchClasses = async () => {
-<<<<<<< HEAD
     try {
       const params = { limit: 200 };
       if (branchFilter) params.branchId = branchFilter;
@@ -474,31 +473,6 @@ const SuperAdminStudentsPage = () => {
 
   const handleFormSubmit = async (submissionData) => {
     try {
-=======
-    try {
-      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST, { limit: 100 });
-      if (response.success) {
-        setClasses(response.data.classes || []);
-      }
-    } catch (error) {
-      console.error('Error fetching classes:', error);
-    }
-  };
-
-  const fetchDepartments = async () => {
-    try {
-      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.DEPARTMENTS.LIST, { limit: 100 });
-      if (response.success) {
-        setDepartments(response.data.departments || []);
-      }
-    } catch (error) {
-      console.error('Error fetching departments:', error);
-    }
-  };
-
-  const handleFormSubmit = async (submissionData) => {
-    try {
->>>>>>> dad881fee9bcf39e744059d09658884c6db922b2
       setSubmitting(true);
       
       let response;
