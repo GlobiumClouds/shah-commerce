@@ -12,7 +12,11 @@ export const GET = withAuth(async (request, user, userDoc, { params }) => {
   try {
     await connectDB();
     const { id } = await params;
-    const voucher = await FeeVoucher.findById(id).populate('studentId', 'name email rollNumber').populate('templateId', 'name code').lean();
+    const voucher = await FeeVoucher.findById(id)
+      .populate('studentId', 'fullName firstName lastName email studentProfile.rollNumber studentProfile.classId studentProfile.section')
+      .populate('templateId', 'name code category amount lateFee discount')
+      .populate('classId', 'name code')
+      .lean();
     if (!voucher) return NextResponse.json({ success: false, message: 'Voucher not found' }, { status: 404 });
     return NextResponse.json({ success: true, data: voucher });
   } catch (error) {

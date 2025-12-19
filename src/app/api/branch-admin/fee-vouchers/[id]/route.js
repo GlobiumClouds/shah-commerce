@@ -17,10 +17,10 @@ export const GET = withAuth(async (request, user, userDoc, context) => {
       _id: params.id,
       branchId: user.branchId,
     })
-        .populate('studentId', 'name email rollNumber')
-        .populate('templateId', 'name code category amount lateFee discount')
-        .populate('classId', 'name code')
-        .lean();
+      .populate('studentId', 'fullName firstName lastName email studentProfile.rollNumber studentProfile.classId studentProfile.section')
+      .populate('templateId', 'name code category amount lateFee discount')
+      .populate('classId', 'name code')
+      .lean();
 
     if (!voucher) {
       return NextResponse.json(
