@@ -5,6 +5,7 @@ import User from '@/backend/models/User';
 import Counter from '@/backend/models/Counter';
 import { withAuth, requireRole } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
+import Class from '@/backend/models/Class';
 
 // GET /api/branch-admin/fee-vouchers - Get all vouchers
 export const GET = withAuth(async (request, user, userDoc) => {
