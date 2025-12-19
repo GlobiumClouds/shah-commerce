@@ -22,13 +22,13 @@
 //   const [classes, setClasses] = useState([]);
 //   const [departments, setDepartments] = useState([]);
 //   const [loading, setLoading] = useState(true);
-  
+
 //   // Modals
 //   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
 //   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 //   const [editingStudent, setEditingStudent] = useState(null);
 //   const [viewingStudent, setViewingStudent] = useState(null);
-  
+
 //   const [submitting, setSubmitting] = useState(false);
 //   const [search, setSearch] = useState('');
 //   const [classFilter, setClassFilter] = useState('');
@@ -105,9 +105,9 @@
 //   const handleFormSubmit = async (submissionData) => {
 //     try {
 //       setSubmitting(true);
-      
+
 //       let response;
-      
+
 //       if (submissionData.isEditMode) {
 //         // Update student
 //         response = await apiClient.put(
@@ -137,19 +137,19 @@
 //       if (response.success) {
 //         // Handle file uploads if any
 //         const studentId = response.data._id || submissionData.studentId;
-        
+
 //         // Upload profile photo if exists
 //         if (submissionData.pendingProfileFile && studentId) {
 //           const profileFormData = new FormData();
 //           profileFormData.append('file', submissionData.pendingProfileFile);
 //           profileFormData.append('fileType', 'profile');
 //           profileFormData.append('userId', studentId);
-          
+
 //           await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, profileFormData, {
 //             headers: { 'Content-Type': 'multipart/form-data' },
 //           });
 //         }
-        
+
 //         // Upload documents if any
 //         if (submissionData.pendingDocuments.length > 0 && studentId) {
 //           for (const doc of submissionData.pendingDocuments) {
@@ -158,13 +158,13 @@
 //             docFormData.append('fileType', 'student_document');
 //             docFormData.append('documentType', doc.type);
 //             docFormData.append('userId', studentId);
-            
+
 //             await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, docFormData, {
 //               headers: { 'Content-Type': 'multipart/form-data' },
 //             });
 //           }
 //         }
-        
+
 //         // Refresh data and close modal
 //         fetchStudents();
 //         setIsFormModalOpen(false);
@@ -190,13 +190,13 @@
 
 //   const handleDelete = async () => {
 //     if (!deleteModal.student) return;
-    
+
 //     try {
 //       setSubmitting(true);
 //       const response = await apiClient.delete(
 //         API_ENDPOINTS.BRANCH_ADMIN.STUDENTS.DELETE.replace(':id', deleteModal.student._id)
 //       );
-      
+
 //       if (response.success) {
 //         fetchStudents();
 //         setDeleteModal({ open: false, student: null });
@@ -435,7 +435,7 @@
 //                     } else {
 //                       pageNum = pagination.page - 2 + i;
 //                     }
-                    
+
 //                     return (
 //                       <Button
 //                         key={pageNum}
@@ -2354,13 +2354,24 @@ export default function StudentsPage() {
               <div className="flex justify-center gap-4">
                 {/* Front Side */}
                 <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden relative shadow-lg" style={{ width: '204px', height: '340px' }}>
+                  {/* Left border line */}
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-600 via-green-500 to-blue-600 z-10"></div>
+
                   {/* Header with curved accents */}
                   <div className="relative bg-white">
                     <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-r from-blue-600 to-green-600 rounded-b-full"></div>
                     <div className="relative p-1 text-center pt-3">
-                      {/* Institute Logo */}
-                      <div className="w-6 h-6 bg-white rounded-full mx-auto mb-1 flex items-center justify-center border border-blue-200">
-                        <span className="text-blue-600 font-bold text-xs">EA</span>
+                      {/* Institute Logo - Larger Size */}
+                      <div className="w-16 h-16 bg-white rounded-full mx-auto mb-1 flex items-center justify-center border-2 border-blue-300 shadow-sm">
+                        <img
+                          src="/easeacademy_logo.jpg"
+                          alt="Ease Academy Logo"
+                          className="w-full h-full object-contain rounded-full p-1"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%233b82f6'/%3E%3Ctext x='50' y='50' font-family='Arial, sans-serif' font-size='40' font-weight='bold' fill='white' text-anchor='middle' dy='.3em'%3EEA%3C/text%3E%3C/svg%3E";
+                          }}
+                        />
                       </div>
                       {/* Program Title */}
                       <div className="bg-blue-50 px-1 py-0.5 rounded mb-1 border border-blue-200">
@@ -2437,11 +2448,26 @@ export default function StudentsPage() {
                 </div>
 
                 {/* Back Side */}
-                <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden relative shadow-lg" style={{ width: '204px', height: '324px' }}>
+                <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden relative shadow-lg" style={{ width: '204px', height: '340px' }}>
+                  {/* Right border line */}
+                  <div className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-600 via-green-500 to-blue-600 z-10"></div>
+
                   {/* Header with curved accents */}
                   <div className="relative bg-white">
                     <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-r from-blue-600 to-green-600 rounded-b-full"></div>
                     <div className="relative p-1 text-center pt-3">
+                      {/* School Logo - Larger Size */}
+                      <div className="w-14 h-14 bg-white rounded-full mx-auto mb-1 flex items-center justify-center border-2 border-blue-300">
+                        <img
+                          src="/easeacademy_logo.jpg"
+                          alt="Ease Academy Logo"
+                          className="w-full h-full object-contain rounded-full p-0.5"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%233b82f6'/%3E%3Ctext x='50' y='50' font-family='Arial, sans-serif' font-size='35' font-weight='bold' fill='white' text-anchor='middle' dy='.3em'%3EEA%3C/text%3E%3C/svg%3E";
+                          }}
+                        />
+                      </div>
                       <p className="text-xs font-bold text-blue-800">EASE ACADEMY</p>
                       <p className="text-[10px] text-blue-600">Student ID Card</p>
                     </div>
@@ -2485,25 +2511,6 @@ export default function StudentsPage() {
                           <li>Valid for academic year only</li>
                         </ul>
                       </div>
-
-                      {/* Emergency Contact - Bottom Section */}
-                      {/* <div className="bg-red-50 p-2 rounded border border-red-200">
-                        <p className="text-[10px] font-bold text-red-800 mb-1">Emergency Contact</p>
-                        <div className="text-[9px] text-gray-700 space-y-1">
-                          <div className="flex items-center gap-1">
-                            <span className="font-semibold">School Office:</span>
-                            <div className="flex-1 border-b border-dashed border-gray-400 min-h-[12px]">
-                              <span className="px-1">+92-XXX-XXXXXXX</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="font-semibold">Principal:</span>
-                            <div className="flex-1 border-b border-dashed border-gray-400 min-h-[12px]">
-                              <span className="px-1">+92-XXX-XXXXXXX</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div> */}
                     </div>
 
                     {/* Signature Area */}
@@ -2520,11 +2527,13 @@ export default function StudentsPage() {
                 </div>
               </div>
             </div>
+
           </div>
         )}
       </Modal>
     </div>
   );
 }
+
 
 
