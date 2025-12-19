@@ -1,7 +1,7 @@
 import React from 'react';
 import Dropdown from './dropdown';
 
-export default function BranchSelect({ id, name, value, onChange, branches = [], placeholder = 'Select Branch', className = '' }) {
+export default function BranchSelect({ id, name, value, onChange, branches = [], placeholder = 'Select Branch', className = '', ...props }) {
   const options = [{ label: placeholder, value: '' }, ...branches.map(b => ({ label: `${b.name}${b.address?.city ? ' - ' + b.address.city : ''}`, value: b._id }))];
   return (
     <Dropdown
@@ -12,6 +12,7 @@ export default function BranchSelect({ id, name, value, onChange, branches = [],
       options={options}
       placeholder={placeholder}
       className={className}
+      {...props}
     />
   );
 }

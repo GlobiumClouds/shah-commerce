@@ -41,22 +41,44 @@ async function scanAttendance(request, authenticatedUser, userDoc) {
     const date = body.date ? new Date(body.date) : new Date();
     const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-    // find or create attendance for this branch/class/date
-    let attendance = await Attendance.findOne({
-      branchId,
-      classId,
-      date: day,
-    });
+    // Build query for attendance respecting attendanceType/subject/event
+    const query = { branchId, classId, date: day };
+    const requestedType = body.attendanceType || 'daily';
+    if (requestedType === 'event') {
+      if (!body.eventId) {
+        return NextResponse.json({ success: false, message: 'eventId is required for event attendance' }, { status: 400 });
+      }
+      query.attendanceType = 'event';
+      query.eventId = body.eventId;
+    } else if (requestedType === 'subject') {
+      if (!body.subjectId) {
+        return NextResponse.json({ success: false, message: 'subjectId is required for subject attendance' }, { status: 400 });
+      }
+      query.attendanceType = 'subject';
+      query.subjectId = body.subjectId;
+    } else {
+      query.attendanceType = 'daily';
+    }
 
+    // Find or create (atomic upsert)
+    let attendance = await Attendance.findOne(query);
     if (!attendance) {
-      attendance = new Attendance({
-        branchId,
-        classId,
-        date: day,
-        attendanceType: body.attendanceType || 'daily',
-        records: [],
-        markedBy: authenticatedUser.userId,
-      });
+      attendance = await Attendance.findOneAndUpdate(
+        query,
+        {
+          $setOnInsert: {
+            branchId,
+            classId,
+            date: day,
+            attendanceType: query.attendanceType,
+            subjectId: query.subjectId || undefined,
+            eventId: query.eventId || undefined,
+            records: [],
+            markedBy: authenticatedUser.userId,
+          },
+        },
+        { new: true, upsert: true }
+      );
     }
 
     const studentId = student._id.toString();

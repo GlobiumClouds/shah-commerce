@@ -1,17 +1,17 @@
 // ease-academy/src/app/api/super-admin/classes/route.js
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/database';
 import Class from '@/backend/models/Class';
 import User from '@/backend/models/User';
 import Subject from '@/backend/models/Subject';
 import { withAuth } from '@/backend/middleware/auth';
 import Branch from '@/backend/models/Branch';
 import Grade from '@/backend/models/Grade';
+import connectDB from '@/lib/database';
 
 // GET - List all classes
 async function getClasses(request, authenticatedUser) {
   try {
-    await dbConnect();
+    await connectDB();
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
@@ -84,7 +84,7 @@ async function getClasses(request, authenticatedUser) {
 // POST - Create new class
 async function createClass(request, authenticatedUser, userDoc) {
   try {
-    await dbConnect();
+    await connectDB();
 
     const body = await request.json();
     const { name, code, grade, branchId, academicYear, sections, description, status } = body;

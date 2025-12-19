@@ -541,12 +541,24 @@ const userSchema = new mongoose.Schema(
     // ==================== METADATA ====================
     status: {
       type: String,
-      enum: ['active', 'inactive', 'graduated', 'transferred', 'expelled', 'on_leave', 'terminated', 'resigned'],
+      enum: ['pending', 'rejected', 'active', 'inactive', 'graduated', 'transferred', 'expelled', 'on_leave', 'terminated', 'resigned'],
       default: 'active',
     },
     remarks: {
       type: String,
       trim: true,
+    },
+    // Rejection fields for pending approvals
+    rejectionReason: {
+      type: String,
+      trim: true,
+    },
+    rejectedAt: {
+      type: Date,
+    },
+    rejectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
