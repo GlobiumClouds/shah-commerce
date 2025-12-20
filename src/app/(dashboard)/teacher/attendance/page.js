@@ -1,573 +1,272 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import Input from '@/components/ui/input';
-import Dropdown from '@/components/ui/dropdown';
-import Modal from '@/components/ui/modal';
-import FullPageLoader from '@/components/ui/full-page-loader';
-import ButtonLoader from '@/components/ui/button-loader';
-import { Plus, Edit, Trash2, Search, Calendar, Users, CheckCircle2, XCircle, Clock, Eye } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import apiClient from '@/lib/api-client';
-import { API_ENDPOINTS } from '@/constants/api-endpoints';
-
-const ATTENDANCE_STATUS = [
-  { value: 'present', label: 'Present' },
-  { value: 'absent', label: 'Absent' },
-  { value: 'late', label: 'Late' },
-  { value: 'half_day', label: 'Half Day' },
-  { value: 'excused', label: 'Excused' },
-];
-
-const ATTENDANCE_TYPE = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'subject', label: 'Subject-wise' },
-  { value: 'event', label: 'Event' },
-];
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  ClipboardCheck,
+  Calendar,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Users,
+} from "lucide-react";
+import DashboardSkeleton from "@/components/teacher/DashboardSkeleton";
 
 export default function TeacherAttendancePage() {
-  const { user } = useAuth();
-  const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [students, setStudents] = useState([]);
+  const [attendanceData, setAttendanceData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [currentRecord, setCurrentRecord] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [classFilter, setClassFilter] = useState('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
-  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
-
-  const [formData, setFormData] = useState({
-    classId: '',
-    date: new Date().toISOString().split('T')[0],
-    attendanceType: 'daily',
-    notes: '',
-    records: [],
-  });
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
 
   useEffect(() => {
-    fetchAttendanceRecords();
-    fetchClasses();
-  }, [classFilter, fromDate, toDate, pagination.page]);
+    loadAttendanceData();
+  }, []);
 
-  useEffect(() => {
-    if (formData.classId) {
-      fetchStudentsByClass(formData.classId);
-    }
-  }, [formData.classId]);
-
-  const fetchAttendanceRecords = async () => {
+  const loadAttendanceData = async () => {
     try {
       setLoading(true);
-      const params = {
-        page: pagination.page,
-        limit: pagination.limit,
-      };
-      if (classFilter) params.classId = classFilter;
-      if (fromDate) params.fromDate = fromDate;
-      if (toDate) params.toDate = toDate;
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
-      const response = await apiClient.get(API_ENDPOINTS.TEACHER.ATTENDANCE.LIST, params);
-      if (response.success) {
-        setAttendanceRecords(response.data.attendance);
-        setPagination(response.data.pagination);
-      }
+      const mockData = {
+        classes: [
+          {
+            _id: "1",
+            name: "Mathematics 101",
+            code: "MATH101",
+            studentCount: 30,
+          },
+          { _id: "2", name: "Physics 201", code: "PHY201", studentCount: 25 },
+          {
+            _id: "3",
+            name: "Chemistry 301",
+            code: "CHEM301",
+            studentCount: 28,
+          },
+        ],
+        todayStats: {
+          totalClasses: 3,
+          completedClasses: 2,
+          pendingClasses: 1,
+          totalStudents: 83,
+          presentStudents: 75,
+          absentStudents: 6,
+          lateStudents: 2,
+          attendanceRate: 90,
+        },
+        recentAttendance: [
+          {
+            _id: "1",
+            className: "Mathematics 101",
+            date: new Date().toISOString(),
+            present: 28,
+            absent: 2,
+            late: 0,
+            total: 30,
+            rate: 93,
+          },
+          {
+            _id: "2",
+            className: "Physics 201",
+            date: new Date().toISOString(),
+            present: 23,
+            absent: 1,
+            late: 1,
+            total: 25,
+            rate: 92,
+          },
+          {
+            _id: "3",
+            className: "Chemistry 301",
+            date: new Date(Date.now() - 86400000).toISOString(),
+            present: 26,
+            absent: 2,
+            late: 0,
+            total: 28,
+            rate: 93,
+          },
+        ],
+      };
+
+      setAttendanceData(mockData);
     } catch (error) {
-      console.error('Error fetching attendance:', error);
+      console.error("Error loading attendance:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchClasses = async () => {
-    try {
-      const response = await apiClient.get(API_ENDPOINTS.TEACHER.CLASSES, { limit: 100 });
-      if (response.success) {
-        setClasses(response.data.classes);
-      }
-    } catch (error) {
-      console.error('Error fetching classes:', error);
-    }
-  };
-
-  const fetchStudentsByClass = async (classId) => {
-    try {
-      const response = await apiClient.get(API_ENDPOINTS.TEACHER.STUDENTS_BY_CLASS.replace(':classId', classId), {
-        limit: 200,
-        status: 'active',
-      });
-      if (response.success) {
-        setStudents(response.data.students);
-        // Initialize attendance records for all students
-        const records = response.data.students.map((student) => ({
-          studentId: student._id,
-          status: 'present',
-          remarks: '',
-          checkInTime: '',
-          checkOutTime: '',
-        }));
-        setFormData((prev) => ({ ...prev, records }));
-      }
-    } catch (error) {
-      console.error('Error fetching students:', error);
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleStudentStatusChange = (studentId, field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      records: prev.records.map((record) =>
-        record.studentId === studentId ? { ...record, [field]: value } : record
-      ),
-    }));
-  };
-
-  const markAllPresent = () => {
-    setFormData((prev) => ({
-      ...prev,
-      records: prev.records.map((record) => ({ ...record, status: 'present' })),
-    }));
-  };
-
-  const markAllAbsent = () => {
-    setFormData((prev) => ({
-      ...prev,
-      records: prev.records.map((record) => ({ ...record, status: 'absent' })),
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-
-    try {
-      const response = await apiClient.post(API_ENDPOINTS.TEACHER.ATTENDANCE.CREATE, formData);
-      if (response.success) {
-        alert('Attendance marked successfully!');
-        setIsModalOpen(false);
-        fetchAttendanceRecords();
-      }
-    } catch (error) {
-      alert(error.message || 'Failed to mark attendance');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleView = (record) => {
-    setCurrentRecord(record);
-    setIsViewModalOpen(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this attendance record?')) return;
-
-    try {
-      const response = await apiClient.delete(API_ENDPOINTS.TEACHER.ATTENDANCE.DELETE.replace(':id', id));
-      if (response.success) {
-        alert('Attendance deleted successfully!');
-        fetchAttendanceRecords();
-      }
-    } catch (error) {
-      alert(error.message || 'Failed to delete attendance');
-    }
-  };
-
-  const handleMarkAttendance = () => {
-    setFormData({
-      classId: '',
-      date: new Date().toISOString().split('T')[0],
-      attendanceType: 'daily',
-      notes: '',
-      records: [],
-    });
-    setStudents([]);
-    setIsModalOpen(true);
-  };
-
-  if (loading && attendanceRecords.length === 0) {
-    return <FullPageLoader message="Loading attendance records..." />;
+  if (loading) {
+    return <DashboardSkeleton />;
   }
 
+  const { classes, todayStats, recentAttendance } = attendanceData;
+
   return (
-    <div className="p-6">
-      <Card>
-        <CardHeader className="border-b">
-          <div className="flex items-center justify-between">
-            <CardTitle>Attendance Management</CardTitle>
-            <Button onClick={handleMarkAttendance}>
-              <Plus className="w-4 h-4 mr-2" />
-              Mark Attendance
-            </Button>
-          </div>
-        </CardHeader>
+    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Attendance Management</h1>
+          <p className="text-muted-foreground mt-1">
+            Mark and track student attendance
+          </p>
+        </div>
+        <Badge variant="outline" className="text-lg px-4 py-2">
+          {todayStats.attendanceRate}% Today
+        </Badge>
+      </div>
 
-        <CardContent>
-          {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Dropdown
-              placeholder="Filter by class"
-              value={classFilter}
-              onChange={(e) => setClassFilter(e.target.value)}
-              options={[
-                { value: '', label: 'All Classes' },
-                ...classes.map((c) => ({ value: c._id, label: `${c.name} - ${c.code}` })),
-              ]}
-            />
-            <Input
+      {/* Today's Stats */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="p-6 bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20">
+          <div className="flex items-center gap-3 mb-2">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+            <span className="text-sm text-muted-foreground">Present</span>
+          </div>
+          <p className="text-3xl font-bold text-green-600">
+            {todayStats.presentStudents}
+          </p>
+        </Card>
+
+        <Card className="p-6 bg-gradient-to-br from-red-500/10 to-red-500/5 border-red-500/20">
+          <div className="flex items-center gap-3 mb-2">
+            <XCircle className="w-8 h-8 text-red-600" />
+            <span className="text-sm text-muted-foreground">Absent</span>
+          </div>
+          <p className="text-3xl font-bold text-red-600">
+            {todayStats.absentStudents}
+          </p>
+        </Card>
+
+        <Card className="p-6 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border-yellow-500/20">
+          <div className="flex items-center gap-3 mb-2">
+            <Clock className="w-8 h-8 text-yellow-600" />
+            <span className="text-sm text-muted-foreground">Late</span>
+          </div>
+          <p className="text-3xl font-bold text-yellow-600">
+            {todayStats.lateStudents}
+          </p>
+        </Card>
+
+        <Card className="p-6 bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
+          <div className="flex items-center gap-3 mb-2">
+            <Users className="w-8 h-8 text-blue-600" />
+            <span className="text-sm text-muted-foreground">Total</span>
+          </div>
+          <p className="text-3xl font-bold text-blue-600">
+            {todayStats.totalStudents}
+          </p>
+        </Card>
+      </div>
+
+      {/* Mark Attendance Section */}
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold mb-4">Mark Attendance</h2>
+        <div className="grid gap-4 md:grid-cols-2 mb-6">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Select Class
+            </label>
+            <select
+              value={selectedClass || ""}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Choose a class...</option>
+              {classes.map((cls) => (
+                <option key={cls._id} value={cls._id}>
+                  {cls.name} ({cls.code}) - {cls.studentCount} students
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Select Date
+            </label>
+            <input
               type="date"
-              placeholder="From Date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
-            <Input type="date" placeholder="To Date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
+        </div>
 
-          {/* Table */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Class</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Total Students</TableHead>
-                <TableHead>Present</TableHead>
-                <TableHead>Absent</TableHead>
-                <TableHead>Attendance %</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {attendanceRecords.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center text-gray-500">
-                    No attendance records found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                attendanceRecords.map((record) => (
-                  <TableRow key={record._id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(record.date).toLocaleDateString()}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">{record.classId?.name || 'N/A'}</TableCell>
-                    <TableCell>
-                      <span className="capitalize text-sm">{record.attendanceType}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        {record.statistics?.totalStudents || 0}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-green-600">
-                        <CheckCircle2 className="w-4 h-4" />
-                        {record.statistics?.presentCount || 0}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-red-600">
-                        <XCircle className="w-4 h-4" />
-                        {record.statistics?.absentCount || 0}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-semibold">{record.statistics?.attendancePercentage || 0}%</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon-sm" onClick={() => handleView(record)} title="View Details">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(record._id)}>
-                          <Trash2 className="w-4 h-4 text-red-600" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-
-          {/* Pagination */}
-          <div className="flex justify-between items-center mt-4">
-            <div className="text-sm text-gray-600">
-              Showing {attendanceRecords.length} of {pagination.total} records
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
-                disabled={pagination.page === 1}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
-                disabled={pagination.page >= pagination.pages}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        </CardContent>
+        <Button disabled={!selectedClass} className="w-full md:w-auto">
+          <ClipboardCheck className="w-4 h-4 mr-2" />
+          Start Marking Attendance
+        </Button>
       </Card>
 
-      {/* Mark Attendance Modal */}
-      <Modal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Mark Attendance"
-        footer={
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={submitting || students.length === 0}>
-              {submitting ? <ButtonLoader /> : 'Submit'}
-            </Button>
-          </div>
-        }
-      >
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Class *</label>
-              <Dropdown
-                name="classId"
-                value={formData.classId}
-                onChange={handleInputChange}
-                options={[
-                  { value: '', label: 'Select Class' },
-                  ...classes.map((c) => ({ value: c._id, label: `${c.name} - ${c.code}` })),
-                ]}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Date *</label>
-              <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded-lg"
-                required
-              />
-            </div>
-          </div>
+      {/* Recent Attendance */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Recent Attendance Records</h2>
+          <Badge variant="outline">{recentAttendance.length} Records</Badge>
+        </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Attendance Type</label>
-              <Dropdown
-                name="attendanceType"
-                value={formData.attendanceType}
-                onChange={handleInputChange}
-                options={ATTENDANCE_TYPE}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Notes</label>
-              <input
-                type="text"
-                name="notes"
-                value={formData.notes}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded-lg"
-                placeholder="Optional notes..."
-              />
-            </div>
-          </div>
+        <div className="space-y-3">
+          {recentAttendance.map((record, index) => (
+            <motion.div
+              key={record._id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium">{record.className}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {new Date(record.date).toLocaleDateString()}
+                    </Badge>
+                  </div>
 
-          {students.length > 0 && (
-            <>
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-semibold">Student Attendance ({students.length})</h3>
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={markAllPresent}>
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                      All Present
-                    </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={markAllAbsent}>
-                      <XCircle className="w-3 h-3 mr-1" />
-                      All Absent
-                    </Button>
+                  <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <span className="text-green-600 font-medium">
+                        {record.present}
+                      </span>
+                      <span className="text-muted-foreground">Present</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <XCircle className="w-4 h-4 text-red-600" />
+                      <span className="text-red-600 font-medium">
+                        {record.absent}
+                      </span>
+                      <span className="text-muted-foreground">Absent</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4 text-yellow-600" />
+                      <span className="text-yellow-600 font-medium">
+                        {record.late}
+                      </span>
+                      <span className="text-muted-foreground">Late</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="max-h-96 overflow-y-auto border rounded-lg">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 sticky top-0">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-sm font-medium">Student</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium">Status</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {students.map((student, index) => {
-                        const record = formData.records.find((r) => r.studentId === student._id);
-                        return (
-                          <tr key={student._id} className="border-b">
-                            <td className="px-4 py-3">
-                              <div className="font-medium">
-                                {student.firstName} {student.lastName}
-                              </div>
-                              <div className="text-sm text-gray-500">{student.admissionNumber}</div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <select
-                                value={record?.status || 'present'}
-                                onChange={(e) => handleStudentStatusChange(student._id, 'status', e.target.value)}
-                                className="px-3 py-1 border rounded text-sm"
-                              >
-                                {ATTENDANCE_STATUS.map((status) => (
-                                  <option key={status.value} value={status.value}>
-                                    {status.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="px-4 py-3">
-                              <input
-                                type="text"
-                                value={record?.remarks || ''}
-                                onChange={(e) => handleStudentStatusChange(student._id, 'remarks', e.target.value)}
-                                className="w-full px-2 py-1 border rounded text-sm"
-                                placeholder="Optional..."
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">
+                    {record.rate}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">Rate</p>
                 </div>
               </div>
-
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <div className="text-sm">
-                  <strong>Summary:</strong> {formData.records.filter((r) => r.status === 'present').length} Present,{' '}
-                  {formData.records.filter((r) => r.status === 'absent').length} Absent,{' '}
-                  {formData.records.filter((r) => r.status === 'late').length} Late
-                </div>
-              </div>
-            </>
-          )}
-
-          {formData.classId && students.length === 0 && (
-            <div className="text-center text-gray-500 py-4">No students found in this class</div>
-          )}
-        </form>
-      </Modal>
-
-      {/* View Modal */}
-      <Modal
-        open={isViewModalOpen}
-        onClose={() => setIsViewModalOpen(false)}
-        title="Attendance Details"
-        footer={
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>
-              Close
-            </Button>
-          </div>
-        }
-      >
-        {currentRecord && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Date</label>
-                <p className="font-semibold">{new Date(currentRecord.date).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Class</label>
-                <p className="font-semibold">{currentRecord.classId?.name}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Total</label>
-                <p className="text-lg font-bold">{currentRecord.statistics?.totalStudents || 0}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Present</label>
-                <p className="text-lg font-bold text-green-600">{currentRecord.statistics?.presentCount || 0}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Absent</label>
-                <p className="text-lg font-bold text-red-600">{currentRecord.statistics?.absentCount || 0}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Percentage</label>
-                <p className="text-lg font-bold text-blue-600">{currentRecord.statistics?.attendancePercentage || 0}%</p>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-500 mb-2 block">Student Records</label>
-              <div className="max-h-64 overflow-y-auto border rounded-lg">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="px-3 py-2 text-left">Student</th>
-                      <th className="px-3 py-2 text-left">Status</th>
-                      <th className="px-3 py-2 text-left">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentRecord.records?.map((rec) => (
-                      <tr key={rec._id} className="border-b">
-                        <td className="px-3 py-2">
-                          {rec.studentId?.firstName} {rec.studentId?.lastName}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`px-2 py-1 rounded text-xs ${
-                              rec.status === 'present'
-                                ? 'bg-green-100 text-green-700'
-                                : rec.status === 'absent'
-                                ? 'bg-red-100 text-red-700'
-                                : rec.status === 'late'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-gray-100 text-gray-700'
-                            }`}
-                          >
-                            {rec.status}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-gray-600">{rec.remarks || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
+            </motion.div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

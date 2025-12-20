@@ -58,7 +58,7 @@ export function AuthProvider({ children }) {
     const dashboards = {
       super_admin: '/super-admin',
       branch_admin: '/branch-admin',
-      teacher: '/teacher',
+      // teacher: '/teacher',
       parent: '/parent',
       student: '/student',
     };
@@ -408,3 +408,4 @@ export function withAuth(Component, options = {}) {
 }
 
 export default useAuth;
+
