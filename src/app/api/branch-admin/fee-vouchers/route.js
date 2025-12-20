@@ -53,9 +53,10 @@ export const GET = withAuth(async (request, user, userDoc) => {
 
     const [vouchers, total] = await Promise.all([
       FeeVoucher.find(query)
-        .populate('studentId', 'fullName firstName lastName email studentProfile.rollNumber')
+        .populate('studentId', 'fullName firstName lastName email studentProfile.registrationNumber studentProfile.rollNumber')
         .populate('templateId', 'name code category')
         .populate('classId', 'name code')
+        .populate('branchId', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
