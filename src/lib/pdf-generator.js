@@ -154,6 +154,6 @@ export const generateFeeVoucherPDF = (voucher) => {
 
   doc.text('EASE Academy - Fee Management System', 105, pageHeight - 10, { align: 'center' });
 
-  // Save the PDF
-  doc.save(`Fee_Voucher_${voucher.voucherNumber}.pdf`);
+  // Return PDF as buffer for download
+  return doc.output('arraybuffer');
 };

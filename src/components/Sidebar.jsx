@@ -113,12 +113,12 @@ const ROLE_MENUS = {
       category: 'Attendance Management',
       isCollapsible: true,
       items: [
-        { name: 'Student Attendance', path: '/super-admin/attendance-management/student', icon: GraduationCap },
-        { name: 'Teacher Attendance', path: '/super-admin/attendance-management/teacher', icon: LayoutDashboardIcon },
-        { name: 'Manual Entry', path: '/super-admin/attendance-management/manual-entry', icon: Keyboard },
-        { name: 'QR Code Scanner', path: '/super-admin/attendance-management/qr-scanner', icon: QrCode },
+        // { name: 'Student Attendance', path: '/super-admin/attendance-management/student', icon: GraduationCap },
+        // { name: 'Teacher Attendance', path: '/super-admin/attendance-management/teacher', icon: LayoutDashboardIcon },
+        // { name: 'Manual Entry', path: '/super-admin/attendance-management/manual-entry', icon: Keyboard },
+        // { name: 'QR Code Scanner', path: '/super-admin/attendance-management/qr-scanner', icon: QrCode },
         { name: 'Attendance QR Code', path: '/super-admin/attendance', icon: QrCode },
-        { name: 'Staff Attendance', path: '/super-admin/attendance-management/staff', icon: UserCheck },
+        // { name: 'Staff Attendance', path: '/super-admin/attendance-management/staff', icon: UserCheck },
       ],
     },
     {
