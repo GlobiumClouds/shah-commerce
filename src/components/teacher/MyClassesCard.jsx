@@ -32,7 +32,7 @@ export default function MyClassesCard({ classes = [] }) {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">My Classes</h2>
+        <h2 className="text-xl font-semibold">Upcoming Classes</h2>
         <Badge variant="outline">{classes.length} Total</Badge>
       </div>
 
