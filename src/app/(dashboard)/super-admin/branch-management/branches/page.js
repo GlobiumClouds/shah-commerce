@@ -22,6 +22,7 @@ import apiClient from '@/lib/api-client';
 import Modal from '@/components/ui/modal';
 import Input from '@/components/ui/input';
 import Dropdown from '@/components/ui/dropdown';
+import { Button } from '@/components/ui/button';
 
 export default function BranchesPage() {
   const [branches, setBranches] = useState([]);
@@ -203,75 +204,74 @@ export default function BranchesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Branch Management</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex-1 pt-8">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Branch Management</h1>
           <p className="text-sm text-gray-600 mt-1">Manage all school branches and locations</p>
         </div>
-        <button
+        <Button
           onClick={handleAddNew}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <Plus className="w-4 h-4" />
           Add Branch
-        </button>
+        </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="bg-white p-4 md:p-6 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Branches</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{branches.length}</p>
+              <p className="text-xs md:text-sm text-gray-600">Total Branches</p>
+              <p className="text-xl md:text-2xl font-bold text-gray-900 mt-1">{branches.length}</p>
             </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Building2 className="w-6 h-6 text-blue-600" />
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Building2 className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="bg-white p-4 md:p-6 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Students</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{totalStudents}</p>
+              <p className="text-xs md:text-sm text-gray-600">Total Students</p>
+              <p className="text-xl md:text-2xl font-bold text-gray-900 mt-1">{totalStudents}</p>
             </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <GraduationCap className="w-6 h-6 text-green-600" />
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <GraduationCap className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="bg-white p-4 md:p-6 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Teachers</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{totalTeachers}</p>
+              <p className="text-xs md:text-sm text-gray-600">Total Teachers</p>
+              <p className="text-xl md:text-2xl font-bold text-gray-900 mt-1">{totalTeachers}</p>
             </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <UserCheck className="w-6 h-6 text-purple-600" />
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <UserCheck className="w-5 h-5 md:w-6 md:h-6 text-purple-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="bg-white p-4 md:p-6 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Staff</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{totalStaff}</p>
+              <p className="text-xs md:text-sm text-gray-600">Total Staff</p>
+              <p className="text-xl md:text-2xl font-bold text-gray-900 mt-1">{totalStaff}</p>
             </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-orange-600" />
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Users className="w-5 h-5 md:w-6 md:h-6 text-orange-600" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Filters */}
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
+      <div className="bg-white p-4 rounded-lg border border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="min-w-0">
             <Input
@@ -311,11 +311,10 @@ export default function BranchesPage() {
                     <p className="text-blue-100 text-sm">Code: {branch.code}</p>
                   </div>
                   <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      branch.status === 'active'
+                    className={`px-2 py-1 text-xs font-medium rounded-full ${branch.status === 'active'
                         ? 'bg-green-100 text-green-700'
                         : 'bg-gray-100 text-gray-700'
-                    }`}
+                      }`}
                   >
                     {branch.status}
                   </span>
@@ -363,14 +362,14 @@ export default function BranchesPage() {
                 </div>
 
                 <div className="pt-3 border-t border-gray-200 flex items-center gap-2">
-                  <button
+                  <Button
                     onClick={() => handleEdit(branch)}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
                   >
                     <Edit className="w-4 h-4" />
                     Edit
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => {
                       setBranchToDelete(branch);
                       setShowDeleteModal(true);
@@ -379,7 +378,7 @@ export default function BranchesPage() {
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -396,24 +395,23 @@ export default function BranchesPage() {
           size="xl"
           footer={(
             <div className="flex items-center justify-end gap-3">
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowModal(false)}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 form="branch-form"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 {editingBranch ? 'Update Branch' : 'Create Branch'}
-              </button>
+              </Button>
             </div>
           )}
         >
-          <form id="branch-form" onSubmit={handleFormSubmit} className="p-6 space-y-4">
+          <form id="branch-form" onSubmit={handleFormSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
