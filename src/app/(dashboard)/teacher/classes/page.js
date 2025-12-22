@@ -1,16 +1,40 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Users, TrendingUp, Clock, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Modal from "@/components/ui/modal";
+import Tabs, { TabPanel } from "@/components/ui/tabs";
+import {
+  BookOpen,
+  Users,
+  TrendingUp,
+  Clock,
+  Search,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Calendar,
+  MapPin,
+  ChevronRight,
+  ArrowLeft,
+  Mail,
+  Phone,
+  GraduationCap,
+  Activity,
+  BarChart3,
+} from "lucide-react";
 import DashboardSkeleton from "@/components/teacher/DashboardSkeleton";
 
 export default function TeacherClassesPage() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
     loadClasses();
@@ -19,92 +43,12 @@ export default function TeacherClassesPage() {
   const loadClasses = async () => {
     try {
       setLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      // Import centralized mock data
+      const { mockClasses: classes } = await import('@/data/teacher');
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
-      const mockClasses = [
-        {
-          _id: "1",
-          name: "Mathematics 101",
-          code: "MATH101",
-          subject: "Mathematics",
-          grade: "10th",
-          section: "A",
-          studentCount: 30,
-          attendanceRate: 95,
-          schedule: [
-            { day: "Monday", startTime: "09:00", endTime: "10:30" },
-            { day: "Wednesday", startTime: "14:00", endTime: "15:30" },
-          ],
-          room: "A-101",
-          semester: "Spring 2025",
-        },
-        {
-          _id: "2",
-          name: "Physics 201",
-          code: "PHY201",
-          subject: "Physics",
-          grade: "11th",
-          section: "B",
-          studentCount: 25,
-          attendanceRate: 88,
-          schedule: [
-            { day: "Tuesday", startTime: "10:00", endTime: "11:30" },
-            { day: "Thursday", startTime: "13:00", endTime: "14:30" },
-          ],
-          room: "B-205",
-          semester: "Spring 2025",
-        },
-        {
-          _id: "3",
-          name: "Chemistry 301",
-          code: "CHEM301",
-          subject: "Chemistry",
-          grade: "12th",
-          section: "A",
-          studentCount: 28,
-          attendanceRate: 91,
-          schedule: [
-            {
-              day: new Date().toLocaleDateString("en-US", { weekday: "long" }),
-              startTime: "09:00",
-              endTime: "10:30",
-            },
-          ],
-          room: "C-102",
-          semester: "Spring 2025",
-        },
-        {
-          _id: "4",
-          name: "Biology 401",
-          code: "BIO401",
-          subject: "Biology",
-          grade: "12th",
-          section: "B",
-          studentCount: 22,
-          attendanceRate: 93,
-          schedule: [{ day: "Friday", startTime: "11:00", endTime: "12:30" }],
-          room: "D-303",
-          semester: "Spring 2025",
-        },
-        {
-          _id: "5",
-          name: "English Literature 501",
-          code: "ENG501",
-          subject: "English",
-          grade: "11th",
-          section: "A",
-          studentCount: 35,
-          attendanceRate: 89,
-          schedule: [
-            { day: "Monday", startTime: "11:00", endTime: "12:30" },
-            { day: "Thursday", startTime: "09:00", endTime: "10:30" },
-          ],
-          room: "E-201",
-          semester: "Spring 2025",
-        },
-      ];
+      setClasses(classes);
 
-      setClasses(mockClasses);
     } catch (error) {
       console.error("Error loading classes:", error);
     } finally {
@@ -119,137 +63,174 @@ export default function TeacherClassesPage() {
       cls.subject.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleOpenModal = (classItem) => {
+    setSelectedClass(classItem);
+    setSelectedStudent(null);
+    setActiveTab("overview");
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Active":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case "Closed":
+        return "bg-gray-50 text-gray-600 border-gray-200";
+      case "Draft":
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      default:
+        return "bg-gray-50 text-gray-600";
+    }
+  };
+
+  const getPerformanceColor = (performance) => {
+    if (performance === "Excellent") return "text-green-600 bg-green-50";
+    if (performance === "Very Good") return "text-blue-600 bg-blue-50";
+    if (performance === "Good") return "text-indigo-600 bg-indigo-50";
+    return "text-amber-600 bg-amber-50";
+  };
+
   if (loading) {
     return <DashboardSkeleton />;
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b">
         <div>
-          <h1 className="text-3xl font-bold">My Classes</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage and view all your classes
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            My Classes
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Manage your assigned classes and track student progress
           </p>
         </div>
-        <Badge variant="outline" className="text-lg px-4 py-2">
-          {classes.length} Total Classes
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Badge
+            variant="outline"
+            className="px-3 py-1.5 font-medium border-primary/30 bg-primary/5"
+          >
+            {classes.length} Active Classes
+          </Badge>
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+      {/* Search Bar */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
         <input
           type="text"
-          placeholder="Search classes by name, code, or subject..."
+          placeholder="Search by name, code, or subject..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm transition-all"
         />
       </div>
 
       {/* Classes Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {filteredClasses.map((classItem, index) => {
-          const isLive = classItem.schedule.some(
-            (s) =>
-              s.day ===
-              new Date().toLocaleDateString("en-US", { weekday: "long" })
-          );
+          const now = new Date();
+          const currentDay = now.toLocaleDateString("en-US", {
+            weekday: "long",
+          });
+          const currentTime = now.getHours() * 60 + now.getMinutes();
+
+          const isLive = classItem.schedule.some((s) => {
+            if (s.day !== currentDay) return false;
+            const [startH, startM] = s.startTime.split(":").map(Number);
+            const [endH, endM] = s.endTime.split(":").map(Number);
+            const startMins = startH * 60 + startM;
+            const endMins = endH * 60 + endM;
+            return currentTime >= startMins && currentTime <= endMins;
+          });
 
           return (
             <motion.div
               key={classItem._id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+              transition={{ delay: index * 0.05 }}
+              className="group"
             >
-              <Card className="p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group relative overflow-hidden">
+              <Card
+                onClick={() => handleOpenModal(classItem)}
+                className={`p-5 h-full hover:shadow-lg hover:border-primary/40 transition-all cursor-pointer border relative overflow-hidden ${
+                  isLive ? "border-primary/60 shadow-md" : "border-border"
+                }`}
+              >
                 {/* Live Indicator */}
                 {isLive && (
-                  <div className="absolute top-4 right-4">
-                    <Badge className="bg-red-500 text-white animate-pulse">
-                      <span className="relative flex h-2 w-2 mr-1">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                      </span>
-                      LIVE
-                    </Badge>
-                  </div>
+                  <div className="absolute top-0 right-0 bg-gradient-to-l from-red-500/10 to-transparent w-full h-full pointer-events-none" />
                 )}
 
-                {/* Class Header */}
-                <div className="mb-4">
-                  <div className="flex items-start gap-3 mb-2">
-                    <div className="p-3 bg-primary/10 rounded-lg">
-                      <BookOpen className="w-6 h-6 text-primary" />
+                <div className="relative z-10">
+                  {isLive && (
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                      </span>
+                      <span className="text-[10px] font-semibold text-red-600 uppercase tracking-wider">
+                        Live Class
+                      </span>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg group-hover:text-primary transition-colors">
+                  )}
+
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="p-2.5 bg-primary/10 rounded-lg shrink-0 group-hover:bg-primary/15 transition-colors">
+                      <BookOpen className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-base leading-tight truncate group-hover:text-primary transition-colors">
                         {classItem.name}
                       </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {classItem.code} • {classItem.grade} - Section{" "}
-                        {classItem.section}
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {classItem.code} • {classItem.grade}
                       </p>
                     </div>
                   </div>
-                </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        Students
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-muted/40 p-3 rounded-lg">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
+                          Students
+                        </p>
+                      </div>
+                      <p className="text-lg font-semibold">
+                        {classItem.studentCount}
+                      </p>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Activity className="w-3.5 h-3.5 text-green-600" />
+                        <p className="text-[10px] text-green-700 font-medium uppercase tracking-wide">
+                          Attendance
+                        </p>
+                      </div>
+                      <p className="text-lg font-semibold text-green-700">
+                        {classItem.attendanceRate}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-border/50 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium">
+                        {classItem.room}
                       </span>
                     </div>
-                    <p className="text-2xl font-bold">
-                      {classItem.studentCount}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <TrendingUp className="w-4 h-4 text-green-600" />
-                      <span className="text-xs text-muted-foreground">
-                        Attendance
-                      </span>
-                    </div>
-                    <p className="text-2xl font-bold text-green-600">
-                      {classItem.attendanceRate}%
-                    </p>
-                  </div>
-                </div>
-
-                {/* Schedule */}
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Schedule:</p>
-                  {classItem.schedule.map((sch, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-2 text-sm text-muted-foreground"
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] font-medium px-2 py-0.5"
                     >
-                      <Clock className="w-3 h-3" />
-                      <span>
-                        {sch.day}: {sch.startTime} - {sch.endTime}
-                      </span>
-                    </div>
-                  ))}
+                      {classItem.subject}
+                    </Badge>
+                  </div>
                 </div>
-
-                {/* Footer */}
-                <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Room: {classItem.room}
-                  </span>
-                  <Badge variant="outline">{classItem.subject}</Badge>
-                </div>
-
-                {/* Hover Effect */}
-                <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-primary to-primary/60 w-0 group-hover:w-full transition-all duration-300" />
               </Card>
             </motion.div>
           );
@@ -258,14 +239,524 @@ export default function TeacherClassesPage() {
 
       {/* Empty State */}
       {filteredClasses.length === 0 && (
-        <div className="text-center py-12">
-          <BookOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-          <p className="text-muted-foreground font-medium">No classes found</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Try adjusting your search
+        <div className="text-center py-16 border-2 border-dashed rounded-xl">
+          <BookOpen className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
+          <p className="text-muted-foreground font-medium">
+            No classes found matching your search
           </p>
         </div>
+      )}
+
+      {/* Class Detail Modal */}
+      {selectedClass && (
+        <Modal
+          open={!!selectedClass}
+          onClose={() => setSelectedClass(null)}
+          title={
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-primary/10 rounded-xl flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">{selectedClass.name}</h3>
+                <p className="text-xs text-muted-foreground font-normal">
+                  {selectedClass.code} • {selectedClass.section}
+                </p>
+              </div>
+            </div>
+          }
+          size="lg"
+          footer={
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>{selectedClass.semester}</span>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedClass(null)}
+                >
+                  Close
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    (window.location.href = `/teacher/classes/${selectedClass._id}`)
+                  }
+                >
+                  Open Full View
+                </Button>
+              </div>
+            </div>
+          }
+        >
+          <div className="flex flex-col h-full -mt-4">
+            <Tabs
+              tabs={[
+                {
+                  id: "overview",
+                  label: "Overview",
+                  icon: <BarChart3 className="w-4 h-4" />,
+                },
+                {
+                  id: "assignments",
+                  label: "Assignments",
+                  icon: <FileText className="w-4 h-4" />,
+                  badge: selectedClass.assignments?.length,
+                },
+                {
+                  id: "students",
+                  label: "Students",
+                  icon: <Users className="w-4 h-4" />,
+                  badge: selectedClass.studentCount,
+                },
+              ]}
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              className="mb-5 border-b"
+            />
+
+            <div className="min-h-[450px] max-h-[600px] overflow-y-auto">
+              <AnimatePresence mode="wait">
+                {selectedStudent ? (
+                  <motion.div
+                    key="student-detail"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="space-y-6 pb-6"
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedStudent(null)}
+                      className="mb-2 hover:bg-muted"
+                    >
+                      <ArrowLeft className="mr-2 w-4 h-4" /> Back to Student
+                      List
+                    </Button>
+
+                    <div className="grid md:grid-cols-3 gap-6">
+                      <div className="md:col-span-1">
+                        <div className="border rounded-xl p-6 bg-gradient-to-br from-primary/5 to-transparent text-center space-y-4">
+                          <div className="w-20 h-20 rounded-full bg-primary mx-auto flex items-center justify-center text-white text-2xl font-semibold shadow-lg">
+                            {selectedStudent.avatar}
+                          </div>
+                          <div>
+                            <h4 className="text-xl font-semibold">
+                              {selectedStudent.name}
+                            </h4>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Roll No: {selectedStudent.roll}
+                            </p>
+                            <Badge
+                              className={`mt-3 ${getPerformanceColor(
+                                selectedStudent.performance
+                              )} border-0`}
+                            >
+                              {selectedStudent.performance}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="md:col-span-2 space-y-5">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-4 border rounded-lg bg-background hover:shadow-sm transition-shadow">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Activity className="w-4 h-4 text-green-600" />
+                              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                Attendance
+                              </p>
+                            </div>
+                            <p className="text-2xl font-semibold text-green-600">
+                              {selectedStudent.attendance}
+                            </p>
+                          </div>
+                          <div className="p-4 border rounded-lg bg-background hover:shadow-sm transition-shadow">
+                            <div className="flex items-center gap-2 mb-2">
+                              <GraduationCap className="w-4 h-4 text-primary" />
+                              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                Grade
+                              </p>
+                            </div>
+                            <p className="text-2xl font-semibold text-primary">
+                              {selectedStudent.grade}
+                            </p>
+                          </div>
+                          <div className="p-4 border rounded-lg bg-background hover:shadow-sm transition-shadow">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                Behavior
+                              </p>
+                            </div>
+                            <p className="text-sm font-medium text-blue-600">
+                              {selectedStudent.behavior}
+                            </p>
+                          </div>
+                          <div className="p-4 border rounded-lg bg-background hover:shadow-sm transition-shadow">
+                            <div className="flex items-center gap-2 mb-2">
+                              <TrendingUp className="w-4 h-4 text-amber-600" />
+                              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                Performance
+                              </p>
+                            </div>
+                            <p className="text-sm font-medium text-amber-600">
+                              {selectedStudent.performance}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <h5 className="font-semibold text-sm flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-primary" />
+                            Contact Information
+                          </h5>
+                          <div className="border rounded-lg divide-y bg-muted/20">
+                            <div className="flex justify-between p-3 hover:bg-background transition-colors">
+                              <span className="text-sm text-muted-foreground">
+                                Email
+                              </span>
+                              <span className="text-sm font-medium">
+                                {selectedStudent.email}
+                              </span>
+                            </div>
+                            <div className="flex justify-between p-3 hover:bg-background transition-colors">
+                              <span className="text-sm text-muted-foreground">
+                                Phone
+                              </span>
+                              <span className="text-sm font-medium">
+                                {selectedStudent.phone}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="tabs-content"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="pb-4"
+                  >
+                    <TabPanel value="overview" activeTab={activeTab}>
+                      <div className="space-y-6">
+                        <div className="grid sm:grid-cols-3 gap-4">
+                          <Card className="p-5 border bg-gradient-to-br from-primary/5 to-transparent hover:shadow-md transition-shadow">
+                            <div className="flex items-center justify-between mb-3">
+                              <Users className="w-5 h-5 text-primary" />
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-medium"
+                              >
+                                Total
+                              </Badge>
+                            </div>
+                            <p className="text-2xl font-semibold">
+                              {selectedClass.studentCount}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">
+                              Students
+                            </p>
+                          </Card>
+                          <Card className="p-5 border bg-gradient-to-br from-green-500/5 to-transparent hover:shadow-md transition-shadow">
+                            <div className="flex items-center justify-between mb-3">
+                              <Activity className="w-5 h-5 text-green-600" />
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-medium border-green-200 text-green-700"
+                              >
+                                Active
+                              </Badge>
+                            </div>
+                            <p className="text-2xl font-semibold text-green-700">
+                              {selectedClass.attendanceRate}%
+                            </p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">
+                              Attendance
+                            </p>
+                          </Card>
+                          <Card className="p-5 border bg-gradient-to-br from-amber-500/5 to-transparent hover:shadow-md transition-shadow">
+                            <div className="flex items-center justify-between mb-3">
+                              <FileText className="w-5 h-5 text-amber-600" />
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] font-medium border-amber-200 text-amber-700"
+                              >
+                                Pending
+                              </Badge>
+                            </div>
+                            <p className="text-2xl font-semibold text-amber-700">
+                              {selectedClass.assignments?.filter(
+                                (a) => a.status === "Active"
+                              ).length || 0}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-1">
+                              Assignments
+                            </p>
+                          </Card>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div className="border rounded-lg p-4 bg-muted/20">
+                              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                <BookOpen className="w-4 h-4 text-primary" />
+                                Course Description
+                              </h4>
+                              <p className="text-sm text-muted-foreground leading-relaxed">
+                                {selectedClass.description}
+                              </p>
+                            </div>
+
+                            <div className="border rounded-lg p-4 bg-primary/5 border-primary/20">
+                              <h4 className="font-semibold text-sm mb-3 text-primary">
+                                Current Progress
+                              </h4>
+                              <div className="space-y-3">
+                                <div className="flex items-start gap-2">
+                                  <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                                  <div>
+                                    <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">
+                                      Completed
+                                    </p>
+                                    <p className="text-sm font-medium">
+                                      {selectedClass.lastTopic}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <AlertCircle className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                                  <div>
+                                    <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">
+                                      Next Topic
+                                    </p>
+                                    <p className="text-sm font-medium">
+                                      {selectedClass.nextTopic}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="border rounded-lg p-4">
+                              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-primary" />
+                                Class Schedule
+                              </h4>
+                              <div className="space-y-2">
+                                {selectedClass.schedule.map((sch, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex justify-between items-center p-2.5 bg-muted/40 rounded-lg hover:bg-muted/60 transition-colors"
+                                  >
+                                    <span className="text-sm font-medium">
+                                      {sch.day}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground font-medium">
+                                      {sch.startTime} - {sch.endTime}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="border rounded-lg p-4 bg-muted/20">
+                              <h4 className="font-semibold text-sm mb-2">
+                                Class Information
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between py-1">
+                                  <span className="text-muted-foreground">
+                                    Room
+                                  </span>
+                                  <span className="font-medium">
+                                    {selectedClass.room}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                  <span className="text-muted-foreground">
+                                    Section
+                                  </span>
+                                  <span className="font-medium">
+                                    {selectedClass.section}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between py-1">
+                                  <span className="text-muted-foreground">
+                                    Subject
+                                  </span>
+                                  <span className="font-medium">
+                                    {selectedClass.subject}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </TabPanel>
+
+                    <TabPanel value="assignments" activeTab={activeTab}>
+                      <div className="space-y-3">
+                        {selectedClass.assignments?.length > 0 ? (
+                          <div className="space-y-3">
+                            {selectedClass.assignments.map((assignment) => (
+                              <Card
+                                key={assignment.id}
+                                className="p-4 border hover:shadow-md hover:border-primary/40 transition-all group cursor-pointer"
+                              >
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex items-start gap-3 flex-1">
+                                    <div className="p-2.5 bg-primary/10 rounded-lg shrink-0 group-hover:bg-primary/15 transition-colors">
+                                      <FileText className="w-5 h-5 text-primary" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <h5 className="font-semibold text-sm mb-1 group-hover:text-primary transition-colors">
+                                        {assignment.title}
+                                      </h5>
+                                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                        <div className="flex items-center gap-1">
+                                          <Clock className="w-3 h-3" />
+                                          <span>Due: {assignment.dueDate}</span>
+                                        </div>
+                                        <span>•</span>
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[9px] font-medium px-1.5 py-0"
+                                        >
+                                          {assignment.type}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-4 shrink-0">
+                                    <div className="text-right">
+                                      <p className="text-lg font-semibold">
+                                        {assignment.submissions}
+                                        <span className="text-sm text-muted-foreground font-normal">
+                                          /{assignment.total}
+                                        </span>
+                                      </p>
+                                      <p className="text-[10px] text-muted-foreground uppercase font-medium tracking-wider">
+                                        Submitted
+                                      </p>
+                                    </div>
+                                    <Badge
+                                      className={`${getStatusColor(
+                                        assignment.status
+                                      )} border text-[10px] font-medium px-2 py-1`}
+                                    >
+                                      {assignment.status}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                            <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+                            <p className="text-sm text-muted-foreground">
+                              No assignments created for this class yet.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </TabPanel>
+
+                    <TabPanel value="students" activeTab={activeTab}>
+                      <div className="border rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-muted/50 border-b">
+                                <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                  Student
+                                </th>
+                                <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                  Roll No
+                                </th>
+                                <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                  Attendance
+                                </th>
+                                <th className="px-4 py-3 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                  Performance
+                                </th>
+                                <th className="px-4 py-3"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                              {selectedClass.students?.map((student) => (
+                                <tr
+                                  key={student.id}
+                                  onClick={() => setSelectedStudent(student)}
+                                  className="hover:bg-muted/30 transition-colors cursor-pointer group"
+                                >
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-white text-xs font-semibold shrink-0">
+                                        {student.avatar}
+                                      </div>
+                                      <span className="font-medium group-hover:text-primary transition-colors">
+                                        {student.name}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-center text-muted-foreground font-medium">
+                                    {student.roll}
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className="font-semibold text-green-600">
+                                      {student.attendance}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <Badge
+                                      className={`${getPerformanceColor(
+                                        student.performance
+                                      )} border-0 text-[10px] font-medium`}
+                                    >
+                                      {student.performance}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary transition-colors" />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        {(!selectedClass.students ||
+                          selectedClass.students.length === 0) && (
+                          <div className="p-10 text-center text-sm text-muted-foreground">
+                            <Users className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+                            No student records found for this class.
+                          </div>
+                        )}
+                      </div>
+                    </TabPanel>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
 }
+
+
+
+
+
+
