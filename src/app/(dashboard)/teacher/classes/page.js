@@ -34,6 +34,7 @@ export default function TeacherClassesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
@@ -44,11 +45,10 @@ export default function TeacherClassesPage() {
     try {
       setLoading(true);
       // Import centralized mock data
-      const { mockClasses: classes } = await import('@/data/teacher');
+      const { mockClasses: classes } = await import("@/data/teacher");
       await new Promise((resolve) => setTimeout(resolve, 600));
 
       setClasses(classes);
-
     } catch (error) {
       console.error("Error loading classes:", error);
     } finally {
@@ -66,6 +66,7 @@ export default function TeacherClassesPage() {
   const handleOpenModal = (classItem) => {
     setSelectedClass(classItem);
     setSelectedStudent(null);
+    setSelectedAssignment(null);
     setActiveTab("overview");
   };
 
@@ -437,6 +438,141 @@ export default function TeacherClassesPage() {
                       </div>
                     </div>
                   </motion.div>
+                ) : selectedAssignment ? (
+                  <motion.div
+                    key="assignment-detail"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="space-y-6 pb-6"
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedAssignment(null)}
+                      className="mb-2 hover:bg-muted"
+                    >
+                      <ArrowLeft className="mr-2 w-4 h-4" /> Back to Assignment
+                      List
+                    </Button>
+
+                    <div className="grid md:grid-cols-3 gap-6">
+                      <div className="md:col-span-1">
+                        <div className="border rounded-xl p-6 bg-gradient-to-br from-amber-500/5 to-transparent space-y-4">
+                          <div className="w-20 h-20 rounded-full bg-amber-500/10 mx-auto flex items-center justify-center shadow-lg">
+                            <FileText className="w-10 h-10 text-amber-600" />
+                          </div>
+                          <div className="text-center">
+                            <h4 className="text-xl font-semibold">
+                              {selectedAssignment.title}
+                            </h4>
+                            <Badge
+                              className={`mt-3 ${getStatusColor(
+                                selectedAssignment.status
+                              )} border text-[10px] font-medium px-2 py-1`}
+                            >
+                              {selectedAssignment.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="md:col-span-2 space-y-5">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-4 border rounded-lg bg-background hover:shadow-sm transition-shadow">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CheckCircle2 className="w-4 h-4 text-green-600" />
+                              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                Submissions
+                              </p>
+                            </div>
+                            <p className="text-2xl font-semibold text-green-600">
+                              {selectedAssignment.submissions}/
+                              {selectedAssignment.total}
+                            </p>
+                          </div>
+                          <div className="p-4 border rounded-lg bg-background hover:shadow-sm transition-shadow">
+                            <div className="flex items-center gap-2 mb-2">
+                              <TrendingUp className="w-4 h-4 text-primary" />
+                              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                Max Points
+                              </p>
+                            </div>
+                            <p className="text-2xl font-semibold text-primary">
+                              {selectedAssignment.maxPoints}
+                            </p>
+                          </div>
+                          <div className="p-4 border rounded-lg bg-background hover:shadow-sm transition-shadow">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Clock className="w-4 h-4 text-amber-600" />
+                              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                Due Date
+                              </p>
+                            </div>
+                            <p className="text-sm font-medium text-amber-600">
+                              {selectedAssignment.dueDate}
+                            </p>
+                          </div>
+                          <div className="p-4 border rounded-lg bg-background hover:shadow-sm transition-shadow">
+                            <div className="flex items-center gap-2 mb-2">
+                              <FileText className="w-4 h-4 text-blue-600" />
+                              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                Type
+                              </p>
+                            </div>
+                            <p className="text-sm font-medium text-blue-600">
+                              {selectedAssignment.type}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <h5 className="font-semibold text-sm flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-primary" />
+                            Assignment Details
+                          </h5>
+                          <div className="border rounded-lg p-4 bg-muted/20">
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {selectedAssignment.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="border rounded-lg p-4 bg-primary/5 border-primary/20">
+                          <h5 className="font-semibold text-sm mb-3 text-primary">
+                            Submission Progress
+                          </h5>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">
+                                Completion Rate
+                              </span>
+                              <span className="text-sm font-semibold text-primary">
+                                {Math.round(
+                                  (selectedAssignment.submissions /
+                                    selectedAssignment.total) *
+                                    100
+                                )}
+                                %
+                              </span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2.5">
+                              <div
+                                className="bg-primary h-2.5 rounded-full transition-all"
+                                style={{
+                                  width: `${
+                                    (selectedAssignment.submissions /
+                                      selectedAssignment.total) *
+                                    100
+                                  }%`,
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
                 ) : (
                   <motion.div
                     key="tabs-content"
@@ -611,6 +747,9 @@ export default function TeacherClassesPage() {
                             {selectedClass.assignments.map((assignment) => (
                               <Card
                                 key={assignment.id}
+                                onClick={() =>
+                                  setSelectedAssignment(assignment)
+                                }
                                 className="p-4 border hover:shadow-md hover:border-primary/40 transition-all group cursor-pointer"
                               >
                                 <div className="flex items-start justify-between gap-4">
@@ -754,9 +893,3 @@ export default function TeacherClassesPage() {
     </div>
   );
 }
-
-
-
-
-
-
