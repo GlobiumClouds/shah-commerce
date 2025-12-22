@@ -465,29 +465,32 @@ export default function Sidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
 
-  if (!user) {
-    return null;
-  }
-
-  const userRole = user.role || "student";
+  const userRole = user?.role || "student";
   const menuGroups = ROLE_MENUS[userRole] || ROLE_MENUS.student;
 
   useEffect(() => {
     // Auto-expand sections that contain the current path
-    menuGroups.forEach((group) => {
-      if (
-        group.items.some(
-          (item) =>
-            pathname === item.path || pathname.startsWith(item.path + "/")
-        )
-      ) {
-        setExpandedSections((prev) => ({
-          ...prev,
-          [group.category]: true,
-        }));
-      }
-    });
-  }, [pathname, menuGroups]);
+    if (user) {
+      menuGroups.forEach((group) => {
+        if (
+          group.items.some(
+            (item) =>
+              pathname === item.path || pathname.startsWith(item.path + "/")
+          )
+        ) {
+          setExpandedSections((prev) => ({
+            ...prev,
+            [group.category]: true,
+          }));
+        }
+      });
+    }
+  }, [pathname, menuGroups, user]);
+
+  // Early return AFTER all hooks
+  if (!user) {
+    return null;
+  }
 
   const handleLogout = async () => {
     await logout();
