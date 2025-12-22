@@ -80,7 +80,7 @@ const ROLE_MENUS = {
       isCollapsible: true,
       items: [
         { name: 'All Students', path: '/super-admin/student-management/students', icon: Users },
-        { name: 'Admissions', path: '/super-admin/student-management/admissions', icon: UserPlus },
+        // { name: 'Admissions', path: '/super-admin/student-management/admissions', icon: UserPlus },
       ],
     },
     {
@@ -110,7 +110,7 @@ const ROLE_MENUS = {
     //   ],
     // },
     {
-      category: 'Attendance Management',
+      category: 'Attendance',
       isCollapsible: true,
       items: [
         // { name: 'Student Attendance', path: '/super-admin/attendance-management/student', icon: GraduationCap },
@@ -201,7 +201,7 @@ const ROLE_MENUS = {
     {
       category: 'Finance Management',
       items: [
-        { name: 'Fees', path: '/branch-admin/fees', icon: DollarSign },
+        // { name: 'Fees', path: '/branch-admin/fees', icon: DollarSign },
         { name: 'Fee Voucher', path: '/branch-admin/fee-vouchers', icon: Receipt },
         { name: 'Fee Templates', path: '/branch-admin/fee-templates', icon: Receipt },
         { name: 'Expenses', path: '/branch-admin/expenses', icon: Wallet },
