@@ -109,6 +109,7 @@ export const API_ENDPOINTS = {
       GET: '/api/super-admin/students/:id',
       UPDATE: '/api/super-admin/students/:id',
       DELETE: '/api/super-admin/students/:id',
+      SEARCH: '/api/super-admin/students/search',
     },
 
     // Classes Management
@@ -118,6 +119,24 @@ export const API_ENDPOINTS = {
       GET: '/api/super-admin/classes/:id',
       UPDATE: '/api/super-admin/classes/:id',
       DELETE: '/api/super-admin/classes/:id',
+    },
+
+    // Fee Templates
+    FEE_TEMPLATES: {
+      CREATE: '/api/super-admin/fee-templates',
+      LIST: '/api/super-admin/fee-templates',
+      GET: '/api/super-admin/fee-templates/:id',
+      UPDATE: '/api/super-admin/fee-templates/:id',
+      DELETE: '/api/super-admin/fee-templates/:id',
+    },
+
+    // Fee Vouchers
+    FEE_VOUCHERS: {
+      CREATE: '/api/super-admin/fee-vouchers',
+      LIST: '/api/super-admin/fee-vouchers',
+      GET: '/api/super-admin/fee-vouchers/:id',
+      UPDATE: '/api/super-admin/fee-vouchers/:id',
+      DELETE: '/api/super-admin/fee-vouchers/:id',
     },
 
     // Subjects Management
@@ -152,11 +171,11 @@ export const API_ENDPOINTS = {
 
     // Grades (alias to school endpoints)
     GRADES: {
-      LIST: '/api/school/grades',
-      CREATE: '/api/school/grades',
-      GET: '/api/school/grades/:id',
-      UPDATE: '/api/school/grades/:id',
-      DELETE: '/api/school/grades/:id',
+      LIST: '/api/super-admin/school/grades',
+      CREATE: '/api/super-admin/school/grades',
+      GET: '/api/super-admin/school/grades/:id',
+      UPDATE: '/api/super-admin/school/grades/:id',
+      DELETE: '/api/super-admin/school/grades/:id',
     },
 
     // Departments Management
@@ -243,6 +262,7 @@ export const API_ENDPOINTS = {
       PROMOTE: '/api/branch-admin/students/:id/promote',
       BULK_UPLOAD: '/api/branch-admin/students/bulk-upload',
       EXPORT: '/api/branch-admin/students/export',
+      SEARCH: '/api/branch-admin/students/search',
     },
     
     // Classes Management
@@ -337,6 +357,15 @@ export const API_ENDPOINTS = {
       GET: '/api/branch-admin/fee-templates/:id',
       UPDATE: '/api/branch-admin/fee-templates/:id',
       DELETE: '/api/branch-admin/fee-templates/:id',
+    },
+    
+    // Fee Vouchers
+    FEE_VOUCHERS: {
+      CREATE: '/api/branch-admin/fee-vouchers',
+      LIST: '/api/branch-admin/fee-vouchers',
+      GET: '/api/branch-admin/fee-vouchers/:id',
+      UPDATE: '/api/branch-admin/fee-vouchers/:id',
+      DELETE: '/api/branch-admin/fee-vouchers/:id',
     },
     
     // Expenses Management
