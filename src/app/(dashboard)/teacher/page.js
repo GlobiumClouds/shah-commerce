@@ -28,21 +28,19 @@ export default function TeacherDashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Load dashboard data immediately (for testing with mock data)
-    // Comment out user check for now
+    // Check authentication and role
     if (!authLoading) {
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      if (user.role !== "teacher") {
+        router.push("/login");
+        return;
+      }
       fetchDashboardData();
     }
-
-    // UNCOMMENT THIS WHEN BACKEND IS READY:
-    // if (!authLoading && user) {
-    //   if (user.role !== 'teacher') {
-    //     router.push('/login');
-    //     return;
-    //   }
-    //   fetchDashboardData();
-    // }
-  }, [authLoading]);
+  }, [authLoading, user, router]);
 
   const fetchDashboardData = async () => {
     try {
@@ -378,6 +376,16 @@ export default function TeacherDashboard() {
 
       {/* Stats Grid */}
       <DashboardStats stats={stats} />
+
+      {/* Check-In/Out & Attendance History */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <CheckInOutCard
+          teacherAttendance={teacherAttendance}
+          onCheckIn={handleCheckIn}
+          onCheckOut={handleCheckOut}
+        />
+        <AttendanceHistoryCard attendanceHistory={attendanceHistory} />
+      </div>
 
       {/* Classes and Exams */}
       <div className="grid gap-6 md:grid-cols-2">

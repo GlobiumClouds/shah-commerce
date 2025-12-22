@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
+import ClassSelect from "@/components/ui/class-select";
 import {
   ClipboardCheck,
   Calendar,
@@ -292,19 +293,15 @@ export default function TeacherAttendancePage() {
             <label className="block text-sm font-medium mb-2">
               Select Class
             </label>
-            <select
+            <ClassSelect
+              id="class-select"
+              name="class"
               value={selectedClass || ""}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">Choose a class...</option>
-              {classes.map((cls) => (
-                <option key={cls._id} value={cls._id}>
-                  {cls.name} ({cls.code}) • {cls.subject} • {cls.grade} -{" "}
-                  {cls.studentCount} students
-                </option>
-              ))}
-            </select>
+              classes={classes}
+              placeholder="Choose a class..."
+              className="w-full"
+            />
           </div>
 
           <div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,10 +26,12 @@ import {
   GraduationCap,
   Activity,
   BarChart3,
+  MessageSquare,
 } from "lucide-react";
 import DashboardSkeleton from "@/components/teacher/DashboardSkeleton";
 
 export default function TeacherClassesPage() {
+  const router = useRouter();
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -68,6 +71,13 @@ export default function TeacherClassesPage() {
     setSelectedStudent(null);
     setSelectedAssignment(null);
     setActiveTab("overview");
+  };
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    // Reset detail views when switching tabs
+    setSelectedStudent(null);
+    setSelectedAssignment(null);
   };
 
   const getStatusColor = (status) => {
@@ -281,14 +291,6 @@ export default function TeacherClassesPage() {
                 >
                   Close
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={() =>
-                    (window.location.href = `/teacher/classes/${selectedClass._id}`)
-                  }
-                >
-                  Open Full View
-                </Button>
               </div>
             </div>
           }
@@ -315,7 +317,7 @@ export default function TeacherClassesPage() {
                 },
               ]}
               activeTab={activeTab}
-              onChange={setActiveTab}
+              onChange={handleTabChange}
               className="mb-5 border-b"
             />
 
@@ -332,7 +334,10 @@ export default function TeacherClassesPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSelectedStudent(null)}
+                      onClick={() => {
+                        setSelectedStudent(null);
+                        setActiveTab("students");
+                      }}
                       className="mb-2 hover:bg-muted"
                     >
                       <ArrowLeft className="mr-2 w-4 h-4" /> Back to Student
@@ -419,7 +424,7 @@ export default function TeacherClassesPage() {
                           <div className="border rounded-lg divide-y bg-muted/20">
                             <div className="flex justify-between p-3 hover:bg-background transition-colors">
                               <span className="text-sm text-muted-foreground">
-                                Email
+                                Student Email
                               </span>
                               <span className="text-sm font-medium">
                                 {selectedStudent.email}
@@ -427,13 +432,73 @@ export default function TeacherClassesPage() {
                             </div>
                             <div className="flex justify-between p-3 hover:bg-background transition-colors">
                               <span className="text-sm text-muted-foreground">
-                                Phone
+                                Student Phone
                               </span>
                               <span className="text-sm font-medium">
                                 {selectedStudent.phone}
                               </span>
                             </div>
+                            {selectedStudent.parentName && (
+                              <div className="flex justify-between p-3 hover:bg-background transition-colors bg-primary/5">
+                                <span className="text-sm text-muted-foreground">
+                                  Parent Name
+                                </span>
+                                <span className="text-sm font-medium text-primary">
+                                  {selectedStudent.parentName}
+                                </span>
+                              </div>
+                            )}
+                            {selectedStudent.parentPhone && (
+                              <div className="flex justify-between p-3 hover:bg-background transition-colors bg-primary/5">
+                                <span className="text-sm text-muted-foreground">
+                                  Parent Phone
+                                </span>
+                                <span className="text-sm font-medium text-primary">
+                                  {selectedStudent.parentPhone}
+                                </span>
+                              </div>
+                            )}
                           </div>
+                        </div>
+
+                        {/* Send Message to Parent */}
+                        <div className="space-y-3">
+                          <h5 className="font-semibold text-sm flex items-center gap-2">
+                            <MessageSquare className="w-4 h-4 text-primary" />
+                            Parent Communication
+                          </h5>
+                          <div className="border rounded-lg p-4 bg-gradient-to-br from-green-50 to-transparent border-green-200">
+                            <div className="flex items-start gap-3 mb-3">
+                              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                                <Phone className="w-5 h-5 text-green-600" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-green-900">
+                                  {selectedStudent.parentName || "Parent"}
+                                </p>
+                                <p className="text-xs text-green-700">
+                                  {selectedStudent.parentPhone ||
+                                    selectedStudent.phone}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              onClick={() => {
+                                // Navigate to Parent Contact page
+                                router.push("/teacher/parent-contact");
+                              }}
+                              className="w-full bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              <MessageSquare className="w-4 h-4 mr-2" />
+                              Contact Parent
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                            <strong className="text-blue-900">💡 Tip:</strong>{" "}
+                            Use this to quickly communicate with parents about
+                            student behavior, attendance issues, academic
+                            performance, or any other concerns.
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -449,7 +514,10 @@ export default function TeacherClassesPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSelectedAssignment(null)}
+                      onClick={() => {
+                        setSelectedAssignment(null);
+                        setActiveTab("assignments");
+                      }}
                       className="mb-2 hover:bg-muted"
                     >
                       <ArrowLeft className="mr-2 w-4 h-4" /> Back to Assignment
