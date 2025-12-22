@@ -85,15 +85,15 @@ export default function ActivityFeed({ activities }) {
   return (
     <Card className="col-span-1 lg:col-span-1">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
-          <Button variant="ghost" size="sm" className="text-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <CardTitle className="text-base md:text-lg font-semibold">Recent Activity</CardTitle>
+          <Button variant="ghost" size="sm" className="text-xs md:text-sm w-full sm:w-auto">
             View All
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4 max-h-[600px] overflow-y-auto">
+        <div className="space-y-3 md:space-y-4 max-h-[400px] md:max-h-[600px] overflow-y-auto">
           {activityList.map((activity) => {
             const Icon = activityIcons[activity.type] || activityIcons.default;
             const colorClass = activityColors[activity.type] || activityColors.default;
@@ -101,10 +101,10 @@ export default function ActivityFeed({ activities }) {
             return (
               <div
                 key={activity.id}
-                className="flex items-start space-x-3 pb-4 border-b last:border-b-0"
+                className="flex items-start space-x-2 md:space-x-3 pb-3 md:pb-4 border-b last:border-b-0"
               >
-                <div className={`p-2 rounded-lg ${colorClass}`}>
-                  <Icon className="h-4 w-4" />
+                <div className={`p-1.5 md:p-2 rounded-lg ${colorClass} flex-shrink-0`}>
+                  <Icon className="h-3 w-3 md:h-4 md:w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">
@@ -114,12 +114,12 @@ export default function ActivityFeed({ activities }) {
                   <p className="text-sm text-gray-600 mt-1">
                     Target: <span className="font-medium">{activity.target}</span>
                   </p>
-                  <div className="flex items-center mt-2 space-x-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center mt-2 gap-2 sm:gap-3">
                     <span className="inline-flex items-center text-xs text-gray-500">
                       <Clock className="h-3 w-3 mr-1" />
                       {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
                     </span>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                    <span className="text-xs text-gray-500 bg-gray-100 px-1.5 md:px-2 py-0.5 md:py-1 rounded w-fit">
                       {activity.branch}
                     </span>
                   </div>

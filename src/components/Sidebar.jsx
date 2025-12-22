@@ -352,7 +352,10 @@ export default function Sidebar() {
   const sidebarClasses = cn(
     'bg-white border-r border-gray-200 h-screen overflow-y-auto transition-all duration-300 flex flex-col',
     isOpen ? 'w-64' : 'w-20',
-    'fixed md:sticky top-0 z-40 md:z-0'
+    'fixed md:sticky top-0 z-40 md:z-0',
+    // Mobile specific styles - ensure proper positioning
+    'md:translate-x-0',
+    isMobileOpen ? 'translate-x-0' : '-translate-x-full'
   );
 
   // Check if current page is inside this section

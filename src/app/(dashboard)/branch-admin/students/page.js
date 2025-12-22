@@ -568,6 +568,9 @@ export default function StudentsPage() {
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Current branch ID from user context
+  const currentBranchId = user?.branchId?._id;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -947,7 +950,7 @@ export default function StudentsPage() {
     setIsCardModalOpen(true);
   };
 
-  const generatePDF = async (doc, selectedStudent, cardStatus) => {
+  const generatePDF = async (doc, selectedStudent, cardStatus, qrCodeUrl) => {
     const cardWidth = 105;
     const cardHeight = 148;
     const margin = 8;

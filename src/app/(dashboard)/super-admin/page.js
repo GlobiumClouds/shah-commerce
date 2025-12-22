@@ -97,22 +97,23 @@ export default function SuperAdminDashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex-1 pt-8">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">
             Super Admin Dashboard
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Welcome back! Here's what's happening across all branches 
+          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1">
+            Welcome back! Here's what's happening across all branches
           </p>
         </div>
-        <Button onClick={loadDashboardData}>
-          Refresh Data
-        </Button>
+        <div className="flex-shrink-0">
+          <Button onClick={loadDashboardData} className="w-full sm:w-auto">
+            Refresh Data
+          </Button>
+        </div>
       </div>
-
 
       {/* Row 1: Header Statistics - 6 Widgets */}
       <HeaderStats stats={headerStats} />
@@ -121,13 +122,13 @@ export default function SuperAdminDashboard() {
       <PerformanceMetrics metrics={performanceMetrics} />
 
       {/* Row 3: Analytics Charts - 2 Panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
         <RevenueAnalytics data={dashboardData?.revenueAnalytics} />
         <StudentAnalytics data={dashboardData?.studentAnalytics} />
       </div>
 
       {/* Row 4: Activity & Alerts - 2 Panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
         <ActivityFeed activities={dashboardData?.recentActivities} />
         <SystemAlerts alerts={dashboardData?.systemAlerts} />
       </div>

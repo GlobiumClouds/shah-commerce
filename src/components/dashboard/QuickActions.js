@@ -55,20 +55,20 @@ export default function QuickActions() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
+        <CardTitle className="text-base md:text-lg font-semibold">Quick Actions</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
           {actions.map((action) => {
             const Icon = action.icon;
             return (
               <Button
                 key={action.id}
                 onClick={action.action}
-                className={`${action.color} text-white flex flex-col items-center justify-center h-24 space-y-2`}
+                className={`${action.color} text-white flex flex-col items-center justify-center h-20 md:h-24 space-y-1 md:space-y-2 px-2`}
               >
-                <Icon className="h-6 w-6" />
-                <span className="text-xs font-medium text-center">{action.label}</span>
+                <Icon className="h-4 w-4 md:h-6 md:w-6" />
+                <span className="text-xs font-medium text-center leading-tight">{action.label}</span>
               </Button>
             );
           })}
