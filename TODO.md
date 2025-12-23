@@ -1,0 +1,6 @@
+- [x] Clean up commented-out sections in ROLE_MENUS
+- [x] Update CollapsibleSection to use smooth transitions for dropdowns
+- [x] Reduce padding, icon sizes, and text sizes for minimal UI
+- [x] Adjust header and footer for minimal design
+- [x] Test for no page stretching on dropdown clicks
+- [x] Remove dropdown from Academic Structure in sidebar and combine levels, grades, streams into one page with tabs
