@@ -424,6 +424,8 @@ const SuperAdminStudentsPage = () => {
         setStudents(response.data.users || response.data.students || []);
         setPagination(response.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 });
       }
+      console.log('Fetched All Students Record', response.data);
+      
     } catch (error) {
       console.error('Error fetching students:', error);
     } finally {
