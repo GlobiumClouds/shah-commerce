@@ -32,21 +32,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import FullPageLoader  from '@/components/ui/full-page-loader';
 import ButtonLoader from '@/components/ui/button-loader';
-import FullPageLoader from '@/components/ui/full-page-loader';
 
-export default function SuperAdminPayrollPage() {
+export default function BranchAdminPayrollPage() {
   const { user } = useAuth();
   const [payrolls, setPayrolls] = useState([]);
   const [teachers, setTeachers] = useState([]);
-  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [downloading, setDownloading] = useState({});
   const [markingPaid, setMarkingPaid] = useState({});
   
   // Filters
-  const [selectedBranch, setSelectedBranch] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -68,13 +66,12 @@ export default function SuperAdminPayrollPage() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedBranch, selectedMonth, selectedYear, selectedStatus]);
+  }, [selectedMonth, selectedYear, selectedStatus]);
 
   const fetchData = async () => {
     await Promise.all([
       fetchPayrolls(),
       fetchTeachers(),
-      fetchBranches(),
       fetchStats(),
     ]);
   };
@@ -85,7 +82,6 @@ export default function SuperAdminPayrollPage() {
       const params = {
         month: selectedMonth,
         year: selectedYear,
-        ...(selectedBranch !== 'all' && { branchId: selectedBranch }),
         ...(selectedStatus !== 'all' && { status: selectedStatus }),
         limit: 100,
       };
@@ -108,7 +104,6 @@ export default function SuperAdminPayrollPage() {
         role: 'teacher',
         status: 'active',
         limit: 200,
-        ...(selectedBranch !== 'all' && { branchId: selectedBranch }),
       };
       
       const response = await apiClient.get('/api/users', params);
@@ -120,23 +115,11 @@ export default function SuperAdminPayrollPage() {
     }
   };
 
-  const fetchBranches = async () => {
-    try {
-      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST, { limit: 100 });
-      if (response.success) {
-        setBranches(response.data.branches);
-      }
-    } catch (error) {
-      console.error('Fetch branches error:', error);
-    }
-  };
-
   const fetchStats = async () => {
     try {
       const params = {
         month: selectedMonth,
         year: selectedYear,
-        ...(selectedBranch !== 'all' && { branchId: selectedBranch }),
       };
       
       const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.PAYROLL.REPORTS.SUMMARY, params);
@@ -170,7 +153,7 @@ export default function SuperAdminPayrollPage() {
       
       const payload = {
         teacherIds: selectedTeachers,
-        branchId: selectedBranch,
+        branchId: user.branchId, // Branch admin's branch
         month: parseInt(selectedMonth),
         year: parseInt(selectedYear),
         deductionType,
@@ -308,7 +291,6 @@ export default function SuperAdminPayrollPage() {
     return <FullPageLoader />;
   }
 
-
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
@@ -319,7 +301,7 @@ export default function SuperAdminPayrollPage() {
             Payroll Management
           </h1>
           <p className="text-muted-foreground mt-1">
-            Process monthly salaries and manage payments
+            Process monthly salaries for your branch teachers
           </p>
         </div>
         <Button
@@ -392,23 +374,7 @@ export default function SuperAdminPayrollPage() {
           <h2 className="text-lg font-semibold">Filters</h2>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="text-sm font-medium mb-2 block">Branch</label>
-            <Dropdown
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              options={[
-                { value: 'all', label: 'All Branches' },
-                ...branches.map(branch => ({
-                  value: branch._id,
-                  label: branch.name
-                }))
-              ]}
-              placeholder="Select Branch"
-            />
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-sm font-medium mb-2 block">Month</label>
             <Dropdown
@@ -466,7 +432,6 @@ export default function SuperAdminPayrollPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Teacher</TableHead>
-                <TableHead>Branch</TableHead>
                 <TableHead>Basic Salary</TableHead>
                 <TableHead>Gross Salary</TableHead>
                 <TableHead>Deductions</TableHead>
@@ -478,7 +443,7 @@ export default function SuperAdminPayrollPage() {
             <TableBody>
               {payrolls.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12">
+                  <TableCell colSpan={7} className="text-center py-12">
                     <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
                     <p className="text-muted-foreground">No payroll records found</p>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -499,7 +464,6 @@ export default function SuperAdminPayrollPage() {
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell>{payroll.branchId?.name}</TableCell>
                     <TableCell>PKR {payroll.basicSalary.toLocaleString()}</TableCell>
                     <TableCell>PKR {payroll.grossSalary.toLocaleString()}</TableCell>
                     <TableCell className="text-red-600">
@@ -519,7 +483,7 @@ export default function SuperAdminPayrollPage() {
                           className="gap-1"
                         >
                           {downloading[payroll._id] ? (
-                            <ButtonLoader />
+                            <Button />
                           ) : (
                             <>
                               <Download className="w-4 h-4" />
@@ -675,7 +639,7 @@ export default function SuperAdminPayrollPage() {
                   {teachers.length === 0 ? (
                     <div className="p-8 text-center text-muted-foreground">
                       <Users className="w-12 h-12 mx-auto mb-2" />
-                      <p>No active teachers found</p>
+                      <p>No active teachers found in your branch</p>
                     </div>
                   ) : (
                     <div className="divide-y">

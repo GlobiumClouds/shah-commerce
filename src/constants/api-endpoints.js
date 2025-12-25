@@ -93,6 +93,43 @@ export const API_ENDPOINTS = {
       PROCESS: '/api/super-admin/salaries/:id/process',
     },
 
+    // Payroll Management
+    PAYROLL: {
+      PROCESS: '/api/payroll/process',
+      LIST: '/api/payroll/list',
+      GET: (id) => `/api/payroll/${id}`,
+      SLIP: (id) => `/api/payroll/slip/${id}`,
+      MARK_PAID: (id) => `/api/payroll/${id}/mark-paid`,
+      REPORTS: {
+        SUMMARY: '/api/payroll/reports/summary',
+      },
+    },
+
+    // Employee Attendance Management
+    EMPLOYEE_ATTENDANCE: {
+      CHECK_IN: '/api/employee-attendance/check-in',
+      CHECK_OUT: '/api/employee-attendance/check-out',
+      MARK: '/api/employee-attendance/mark',
+      LIST: '/api/employee-attendance/list',
+      SUMMARY: '/api/employee-attendance/summary',
+      TODAY: '/api/employee-attendance/today',
+      REPORTS: '/api/employee-attendance/reports',
+    },
+
+    // Users Management (Super Admin)
+    USERS: {
+      LIST: '/api/super-admin/users',
+      GET: '/api/super-admin/users/:id',
+      CREATE: '/api/super-admin/users',
+      UPDATE: '/api/super-admin/users/:id',
+      DELETE: '/api/super-admin/users/:id',
+    },
+
+    // Employees Management (Teachers & Staff only)
+    EMPLOYEES: {
+      LIST: '/api/super-admin/employees',
+    },
+
     // Teachers Management
     TEACHERS: {
       CREATE: '/api/super-admin/teachers',
@@ -218,6 +255,9 @@ export const API_ENDPOINTS = {
       EXPORT: '/api/super-admin/users/export',
     },
 
+    // Employees Management
+    EMPLOYEES: '/api/super-admin/employees',
+
     // Parent Approval Management
     PENDING_PARENTS: '/api/super-admin/pending-parents',
     PARENTS: '/api/super-admin/parents',
@@ -229,6 +269,21 @@ export const API_ENDPOINTS = {
   // Branch Admin Endpoints
   BRANCH_ADMIN: {
     DASHBOARD: '/api/branch-admin/dashboard',
+
+    // Users Management (Branch Admin - restricted to their branch)
+    USERS: {
+      LIST: '/api/branch-admin/users',
+      GET: '/api/branch-admin/users/:id',
+      CREATE: '/api/branch-admin/users',
+      UPDATE: '/api/branch-admin/users/:id',
+      DELETE: '/api/branch-admin/users/:id',
+    },
+
+    // Employees Management (Teachers & Staff only from their branch)
+    EMPLOYEES: {
+      LIST: '/api/branch-admin/employees',
+    },
+
     // Timetables Management for branch admin (branch-limited)
     TIMETABLES: {
       CREATE: '/api/branch-admin/timetables',
@@ -407,6 +462,9 @@ export const API_ENDPOINTS = {
       EXPENSES: '/api/branch-admin/finance/expenses',
       SUMMARY: '/api/branch-admin/finance/summary',
     },
+
+    // Employees Management
+    EMPLOYEES: '/api/branch-admin/employees',
 
     // Parent Approval Management
     PENDING_PARENTS: '/api/branch-admin/pending-parents',
