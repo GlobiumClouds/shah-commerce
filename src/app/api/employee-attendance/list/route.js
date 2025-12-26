@@ -9,11 +9,11 @@ import connectDB from '@/lib/database';
  * Get employee attendance records with filters
  * Access: All authenticated users (see own), Admins (see all)
  */
-async function listAttendanceHandler(req) {
+async function listAttendanceHandler(request, user, userDoc) {
   try {
     await connectDB();
 
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const branchId = searchParams.get('branchId');
     const status = searchParams.get('status');
@@ -24,7 +24,7 @@ async function listAttendanceHandler(req) {
     const limit = parseInt(searchParams.get('limit')) || 50;
     const page = parseInt(searchParams.get('page')) || 1;
 
-    const currentUser = req.user;
+    const currentUser = user;
 
     // Build query
     let query = {};

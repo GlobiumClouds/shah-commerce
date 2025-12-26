@@ -8,11 +8,11 @@ import connectDB from '@/lib/database';
  * Get today's attendance status for current user
  * Access: All authenticated users
  */
-async function todayAttendanceHandler(req) {
+async function todayAttendanceHandler(request, user, userDoc) {
   try {
     await connectDB();
 
-    const currentUser = req.user;
+    const currentUser = user;
 
     // Get today's date range
     const today = new Date();

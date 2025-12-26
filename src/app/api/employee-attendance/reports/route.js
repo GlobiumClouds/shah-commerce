@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import EmployeeAttendance from '@/backend/models/EmployeeAttendance';
-import { withAuth } from '@/backend/middleware/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 
 /**
@@ -8,17 +8,17 @@ import connectDB from '@/lib/database';
  * Get attendance reports and analytics
  * Access: Super Admin, Branch Admin
  */
-async function reportsHandler(req) {
+async function reportsHandler(request, user, userDoc) {
   try {
     await connectDB();
 
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const branchId = searchParams.get('branchId');
     const month = parseInt(searchParams.get('month'));
     const year = parseInt(searchParams.get('year'));
     const reportType = searchParams.get('type') || 'summary'; // summary, detailed, comparison
 
-    const currentUser = req.user;
+    const currentUser = user;
 
     // Validation
     if (!month || !year) {
@@ -179,4 +179,4 @@ async function reportsHandler(req) {
   }
 }
 
-export const GET = withAuth(reportsHandler, ['super_admin', 'branch_admin']);
+export const GET = withAuth(reportsHandler, [requireRole(['super_admin', 'branch_admin'])]);

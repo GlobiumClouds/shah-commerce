@@ -174,6 +174,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       ...userData,
       passwordHash: defaultPassword, // Will be hashed by pre-save middleware
       emailVerified: true, // Auto-verify for admin-created accounts
+      status: role === 'parent' ? 'pending' : 'active', // Parents start as pending
       createdBy: userDoc._id,
       updatedBy: userDoc._id,
     });

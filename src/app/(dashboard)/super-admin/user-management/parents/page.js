@@ -91,7 +91,9 @@ export default function ParentsPage() {
 
       if (response?.success) {
         toast.success('Parent approved successfully');
-        setAllParents(allParents.map(p => p._id === parentId ? { ...p, status: 'approved' } : p));
+        setAllParents(prev => prev.map(p => 
+          p._id === parentId ? { ...p, approved: true } : p
+        ));
         setPendingParents(pendingParents.filter(p => p._id !== parentId));
         setSelectedParents(selectedParents.filter(id => id !== parentId));
         setSelectedParent(null); // Close modal
@@ -139,7 +141,7 @@ export default function ParentsPage() {
 
       if (successCount > 0) {
         toast.success(`${successCount} parent(s) approved successfully`);
-        setAllParents(allParents.map(p => selectedParents.includes(p._id) ? { ...p, status: 'approved' } : p));
+        setAllParents(prev => prev.map(p => selectedParents.includes(p._id) ? { ...p, approved: true } : p));
         setPendingParents(pendingParents.filter(p => !selectedParents.includes(p._id)));
         setSelectedParents([]);
         
@@ -274,9 +276,9 @@ export default function ParentsPage() {
         Pending
       </Badge>;
     }
-    return <Badge variant={parent.status === 'approved' ? 'default' : 'secondary'} className="inline-flex items-center text-xs">
-      {parent.status === 'approved' ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />}
-      {parent.status === 'approved' ? 'Approved' : 'Pending'}
+    return <Badge variant={parent.approved ? 'default' : 'secondary'} className="inline-flex items-center text-xs">
+      {parent.approved ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />}
+      {parent.approved ? 'Approved' : 'Pending'}
     </Badge>;
   };
 

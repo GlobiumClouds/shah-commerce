@@ -86,7 +86,7 @@ export default function BranchAdminPayrollPage() {
         limit: 100,
       };
       
-      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.PAYROLL.LIST, params);
+      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.PAYROLL.LIST, params);
       if (response.success) {
         setPayrolls(response.data);
       }
@@ -122,7 +122,7 @@ export default function BranchAdminPayrollPage() {
         year: selectedYear,
       };
       
-      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.PAYROLL.REPORTS.SUMMARY, params);
+      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.PAYROLL.REPORTS.SUMMARY, params);
       if (response.success) {
         setStats({
           totalPayroll: response.data.summary.totalPayrolls || 0,
@@ -161,7 +161,7 @@ export default function BranchAdminPayrollPage() {
         remarks,
       };
 
-      const response = await apiClient.post(API_ENDPOINTS.SUPER_ADMIN.PAYROLL.PROCESS, payload);
+      const response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.PAYROLL.PROCESS, payload);
       
       if (response.success) {
         const { results } = response.data;
@@ -197,9 +197,9 @@ export default function BranchAdminPayrollPage() {
     try {
       setDownloading(prev => ({ ...prev, [payrollId]: true }));
       
-      const response = await fetch(API_ENDPOINTS.SUPER_ADMIN.PAYROLL.SLIP(payrollId), {
+      const response = await fetch(API_ENDPOINTS.BRANCH_ADMIN.PAYROLL.SLIP(payrollId), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
       });
 
@@ -230,7 +230,7 @@ export default function BranchAdminPayrollPage() {
     try {
       setMarkingPaid(prev => ({ ...prev, [payrollId]: true }));
       
-      const response = await apiClient.put(API_ENDPOINTS.SUPER_ADMIN.PAYROLL.MARK_PAID(payrollId), {
+      const response = await apiClient.put(API_ENDPOINTS.BRANCH_ADMIN.PAYROLL.MARK_PAID(payrollId), {
         paymentMethod: 'bank_transfer',
         paymentDate: new Date().toISOString(),
       });

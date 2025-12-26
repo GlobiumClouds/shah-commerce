@@ -96,7 +96,13 @@ export default function SuperAdminPayrollPage() {
       }
     } catch (error) {
       console.error('Fetch payrolls error:', error);
-      toast.error('Failed to fetch payroll records');
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url
+      });
+      toast.error(error.response?.data?.error || error.message || 'Failed to fetch payroll records');
     } finally {
       setLoading(false);
     }
@@ -151,6 +157,12 @@ export default function SuperAdminPayrollPage() {
       }
     } catch (error) {
       console.error('Fetch stats error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url
+      });
     }
   };
 
@@ -214,11 +226,7 @@ export default function SuperAdminPayrollPage() {
     try {
       setDownloading(prev => ({ ...prev, [payrollId]: true }));
       
-      const response = await fetch(API_ENDPOINTS.SUPER_ADMIN.PAYROLL.SLIP(payrollId), {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.PAYROLL.SLIP(payrollId),);
 
       if (!response.ok) {
         throw new Error('Failed to download salary slip');

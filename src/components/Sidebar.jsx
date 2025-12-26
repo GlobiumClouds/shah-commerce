@@ -134,6 +134,11 @@ const ROLE_MENUS = {
       isCollapsible: true,
       items: [
         {
+          name: "Fee Categories",
+          path: "/super-admin/fee-management/categories",
+          icon: DollarSign,
+        },
+        {
           name: "Fee Templates",
           path: "/super-admin/fee-management/templates",
           icon: Receipt,
@@ -242,6 +247,11 @@ const ROLE_MENUS = {
           name: "Fee Voucher",
           path: "/branch-admin/fee-vouchers",
           icon: Receipt,
+        },
+        {
+          name: "Fee Categories",
+          path: "/branch-admin/fee-categories",
+          icon: DollarSign,
         },
         {
           name: "Fee Templates",

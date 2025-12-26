@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import EmployeeAttendance from '@/backend/models/EmployeeAttendance';
 import User from '@/backend/models/User';
-import { withAuth } from '@/backend/middleware/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 
 /**
@@ -9,7 +9,7 @@ import connectDB from '@/lib/database';
  * Mark employee attendance (for admins)
  * Access: Super Admin, Branch Admin
  */
-async function markAttendanceHandler(req) {
+async function markAttendanceHandler(request, user, userDoc) {
   try {
     await connectDB();
 
@@ -24,9 +24,9 @@ async function markAttendanceHandler(req) {
       checkOutTime,
       checkInLocation,
       checkOutLocation,
-    } = await req.json();
+    } = await request.json();
 
-    const currentUser = req.user;
+    const currentUser = user;
 
     // Validation
     if (!userId || !date || !status) {
@@ -37,8 +37,8 @@ async function markAttendanceHandler(req) {
     }
 
     // Verify user exists
-    const user = await User.findById(userId);
-    if (!user) {
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
       return NextResponse.json(
         { success: false, error: 'User not found' },
         { status: 404 }
@@ -46,7 +46,7 @@ async function markAttendanceHandler(req) {
     }
 
     // Branch admin can only mark attendance for their branch
-    if (currentUser.role === 'branch_admin' && user.branchId.toString() !== currentUser.branchId.toString()) {
+    if (currentUser.role === 'branch_admin' && targetUser.branchId.toString() !== currentUser.branchId.toString()) {
       return NextResponse.json(
         { success: false, error: 'You can only mark attendance for users in your branch' },
         { status: 403 }
@@ -146,4 +146,4 @@ async function markAttendanceHandler(req) {
   }
 }
 
-export const POST = withAuth(markAttendanceHandler, ['super_admin', 'branch_admin']);
+export const POST = withAuth(markAttendanceHandler, [requireRole(['super_admin', 'branch_admin'])]);
