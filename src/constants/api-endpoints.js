@@ -517,68 +517,75 @@ export const API_ENDPOINTS = {
 
   // Teacher Endpoints
   TEACHER: {
-    DASHBOARD: '/teacher/dashboard',
-    
+    DASHBOARD: '/api/teacher/dashboard',
+
+    // My Classes (app route: src/app/api/teacher/my-classes)
+    MY_CLASSES: {
+      LIST: '/api/teacher/my-classes',
+      GET: '/api/teacher/my-classes/:id',
+    },
+
     // Classes
     CLASSES: {
-      LIST: '/teacher/classes',
-      GET: '/teacher/classes/:id',
-      STUDENTS: '/teacher/classes/:id/students',
-      TIMETABLE: '/teacher/classes/:id/timetable',
+      LIST: '/api/teacher/classes',
+      GET: '/api/teacher/classes/:id',
+      STUDENTS: '/api/teacher/classes/:id/students',
+      TIMETABLE: '/api/teacher/classes/:id/timetable',
     },
-    
+
     // Students
     STUDENTS: {
-      LIST: '/teacher/students',
-      GET: '/teacher/students/:id',
-      PERFORMANCE: '/teacher/students/:id/performance',
+      LIST: '/api/teacher/students',
+      GET: '/api/teacher/students/:id',
+      DETAILS: '/api/teacher/student/details',
+      PERFORMANCE: '/api/student/details/:id/performance',
     },
-    
+
     // Attendance
     ATTENDANCE: {
-      MARK: '/teacher/attendance/mark',
-      VIEW: '/teacher/attendance/view',
-      HISTORY: '/teacher/attendance/history',
-      REPORT: '/teacher/attendance/report',
-      BULK_MARK: '/teacher/attendance/bulk-mark',
+      MARK: '/api/teacher/attendance/mark',
+      VIEW: '/api/teacher/attendance/view',
+      HISTORY: '/api/teacher/attendance/history',
+      REPORT: '/api/teacher/attendance/report',
+      BULK_MARK: '/api/teacher/attendance/bulk-mark',
     },
-    
+
     // Assignments
     ASSIGNMENTS: {
-      CREATE: '/teacher/assignments',
-      LIST: '/teacher/assignments',
-      GET: '/teacher/assignments/:id',
-      UPDATE: '/teacher/assignments/:id',
-      DELETE: '/teacher/assignments/:id',
-      SUBMISSIONS: '/teacher/assignments/:id/submissions',
-      GRADE: '/teacher/assignments/:id/grade',
+      CREATE: '/api/teacher/assignments',
+      LIST: '/api/teacher/assignments',
+      GET: '/api/teacher/assignments/:id',
+      UPDATE: '/api/teacher/assignments/:id',
+      DELETE: '/api/teacher/assignments/:id',
+      SUBMISSIONS: '/api/teacher/assignments/:id/submissions',
+      GRADE: '/api/teacher/assignments/:id/grade',
     },
-    
+
     // Exams
     EXAMS: {
-      CREATE: '/teacher/exams',
-      LIST: '/teacher/exams',
-      GET: '/teacher/exams/:id',
-      UPDATE: '/teacher/exams/:id',
-      DELETE: '/teacher/exams/:id',
-      SCHEDULE: '/teacher/exams/:id/schedule',
+      CREATE: '/api/teacher/exams',
+      LIST: '/api/teacher/exams',
+      GET: '/api/teacher/exams/:id',
+      UPDATE: '/api/teacher/exams/:id',
+      DELETE: '/api/teacher/exams/:id',
+      SCHEDULE: '/api/teacher/exams/:id/schedule',
     },
-    
+
     // Grades
     GRADES: {
-      CREATE: '/teacher/grades',
-      LIST: '/teacher/grades',
-      UPDATE: '/teacher/grades/:id',
-      BULK_UPLOAD: '/teacher/grades/bulk-upload',
-      PUBLISH: '/teacher/grades/publish',
+      CREATE: '/api/teacher/grades',
+      LIST: '/api/teacher/grades',
+      UPDATE: '/api/teacher/grades/:id',
+      BULK_UPLOAD: '/api/teacher/grades/bulk-upload',
+      PUBLISH: '/api/teacher/grades/publish',
     },
-    
+
     // Leave Management
     LEAVE: {
-      APPLY: '/teacher/leave/apply',
-      LIST: '/teacher/leave',
-      CANCEL: '/teacher/leave/:id/cancel',
-      HISTORY: '/teacher/leave/history',
+      APPLY: '/api/teacher/leave/apply',
+      LIST: '/api/teacher/leave',
+      CANCEL: '/api/teacher/leave/:id/cancel',
+      HISTORY: '/api/teacher/leave/history',
     },
   },
 
