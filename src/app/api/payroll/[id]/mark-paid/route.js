@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Payroll from '@/backend/models/Payroll';
 import Notification from '@/backend/models/Notification';
-import { withAuth } from '@/backend/middleware/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 
 /**
@@ -9,14 +9,14 @@ import connectDB from '@/lib/database';
  * Mark payroll as paid
  * Access: Super Admin, Branch Admin
  */
-async function markPaidHandler(req, { params }) {
+async function markPaidHandler(request, user, userDoc, context) {
   try {
     await connectDB();
 
-    const { id } = await params;
-    const { paymentMethod, transactionReference, paymentDate, remarks } = await req.json();
+    const { id } = context.params;
+    const { paymentMethod, transactionReference, paymentDate, remarks } = await request.json();
 
-    const currentUser = req.user;
+    const currentUser = user;
 
     // Get payroll record
     const payroll = await Payroll.findById(id).populate('teacherId', 'firstName lastName email');
@@ -87,4 +87,4 @@ function getMonthName(month) {
   return months[month - 1];
 }
 
-export const PUT = withAuth(markPaidHandler, ['super_admin', 'branch_admin']);
+export const PUT = withAuth(markPaidHandler, [requireRole(['super_admin', 'branch_admin'])]);

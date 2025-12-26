@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Payroll from '@/backend/models/Payroll';
 import User from '@/backend/models/User';
-import { withAuth } from '@/backend/middleware/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 
 /**
@@ -9,16 +9,16 @@ import connectDB from '@/lib/database';
  * Get payroll summary and statistics
  * Access: Super Admin, Branch Admin
  */
-async function getReportsHandler(req) {
+async function getReportsHandler(request, user, userDoc) {
   try {
     await connectDB();
 
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
     const year = searchParams.get('year');
     const branchId = searchParams.get('branchId');
 
-    const currentUser = req.user;
+    const currentUser = user;
 
     // Build query
     let query = {};
@@ -133,4 +133,4 @@ async function getReportsHandler(req) {
   }
 }
 
-export const GET = withAuth(getReportsHandler, ['super_admin', 'branch_admin']);
+export const GET = withAuth(getReportsHandler, [requireRole(['super_admin', 'branch_admin'])]);

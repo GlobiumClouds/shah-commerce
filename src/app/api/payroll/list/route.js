@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import Payroll from '@/backend/models/Payroll';
 import User from '@/backend/models/User';
 import Branch from '@/backend/models/Branch';
-import { withAuth } from '@/backend/middleware/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 
 /**
@@ -10,11 +10,11 @@ import connectDB from '@/lib/database';
  * Get payroll records with filters
  * Access: Super Admin, Branch Admin
  */
-async function getPayrollHandler(req) {
+async function getPayrollHandler(request, user, userDoc) {
   try {
     await connectDB();
 
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
     const year = searchParams.get('year');
     const branchId = searchParams.get('branchId');
@@ -23,7 +23,7 @@ async function getPayrollHandler(req) {
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 50;
 
-    const currentUser = req.user;
+    const currentUser = user;
 
     // Build query
     let query = {};
@@ -73,4 +73,4 @@ async function getPayrollHandler(req) {
   }
 }
 
-export const GET = withAuth(getPayrollHandler, ['super_admin', 'branch_admin']);
+export const GET = withAuth(getPayrollHandler, [requireRole(['super_admin', 'branch_admin'])]);

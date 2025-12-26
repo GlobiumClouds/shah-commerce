@@ -167,6 +167,15 @@ export const API_ENDPOINTS = {
       DELETE: '/api/super-admin/fee-templates/:id',
     },
 
+    // Fee Categories
+    FEE_CATEGORIES: {
+      CREATE: '/api/super-admin/fee-categories',
+      LIST: '/api/super-admin/fee-categories',
+      GET: '/api/super-admin/fee-categories/:id',
+      UPDATE: '/api/super-admin/fee-categories/:id',
+      DELETE: '/api/super-admin/fee-categories/:id',
+    },
+
     // Fee Vouchers
     FEE_VOUCHERS: {
       CREATE: '/api/super-admin/fee-vouchers',
@@ -415,6 +424,15 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/branch-admin/fee-templates/:id',
       DELETE: '/api/branch-admin/fee-templates/:id',
     },
+
+    // Fee Categories
+    FEE_CATEGORIES: {
+      CREATE: '/api/branch-admin/fee-categories',
+      LIST: '/api/branch-admin/fee-categories',
+      GET: '/api/branch-admin/fee-categories/:id',
+      UPDATE: '/api/branch-admin/fee-categories/:id',
+      DELETE: '/api/branch-admin/fee-categories/:id',
+    },
     
     // Fee Vouchers
     FEE_VOUCHERS: {
@@ -465,6 +483,29 @@ export const API_ENDPOINTS = {
 
     // Employees Management
     EMPLOYEES: '/api/branch-admin/employees',
+
+    // Payroll Management
+    PAYROLL: {
+      PROCESS: '/api/payroll/process',
+      LIST: '/api/payroll/list',
+      GET: (id) => `/api/payroll/${id}`,
+      SLIP: (id) => `/api/payroll/slip/${id}`,
+      MARK_PAID: (id) => `/api/payroll/${id}/mark-paid`,
+      REPORTS: {
+        SUMMARY: '/api/payroll/reports/summary',
+      },
+    },
+
+    // Employee Attendance Management
+    EMPLOYEE_ATTENDANCE: {
+      CHECK_IN: '/api/employee-attendance/check-in',
+      CHECK_OUT: '/api/employee-attendance/check-out',
+      MARK: '/api/employee-attendance/mark',
+      LIST: '/api/employee-attendance/list',
+      SUMMARY: '/api/employee-attendance/summary',
+      TODAY: '/api/employee-attendance/today',
+      REPORTS: '/api/employee-attendance/reports',
+    },
 
     // Parent Approval Management
     PENDING_PARENTS: '/api/branch-admin/pending-parents',

@@ -10,15 +10,15 @@ import connectDB from '@/lib/database';
  * Mark employee check-in with location
  * Access: All authenticated users
  */
-async function checkInHandler(req) {
+async function checkInHandler(request, user, userDoc) {
   try {
     await connectDB();
 
-    const { latitude, longitude, address, device } = await req.json();
-    const currentUser = req.user;
+    const { latitude, longitude, address, device } = await request.json();
+    const currentUser = user;
 
     // Get user's IP address
-    const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
 
     // Validation
     if (!latitude || !longitude) {

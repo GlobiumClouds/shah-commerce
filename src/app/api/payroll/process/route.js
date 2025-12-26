@@ -15,7 +15,7 @@ import connectDB from '@/lib/database';
  * Process monthly payroll for teachers
  * Access: Super Admin, Branch Admin
  */
-async function processPayrollHandler(req) {
+async function processPayrollHandler(request, user, userDoc) {
   try {
     await connectDB();
     
@@ -27,7 +27,7 @@ async function processPayrollHandler(req) {
       deductionType, // 'percentage' or 'fixed'
       deductionValue, // Amount or percentage
       remarks,
-    } = await req.json();
+    } = await request.json();
 
     // Validation
     if (!month || !year) {
@@ -53,7 +53,7 @@ async function processPayrollHandler(req) {
     }
 
     // Get user from request (set by auth middleware)
-    const currentUser = req.user;
+    const currentUser = user;
 
     // Build teacher query
     let teacherQuery = { role: 'teacher', status: 'active' };
@@ -311,4 +311,4 @@ function getMonthName(month) {
   return months[month - 1];
 }
 
-export const POST = withAuth(processPayrollHandler, ['super_admin', 'branch_admin']);
+export const POST = withAuth(processPayrollHandler, [requireRole(['super_admin', 'branch_admin'])]);

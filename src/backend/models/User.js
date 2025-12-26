@@ -545,7 +545,7 @@ const userSchema = new mongoose.Schema(
     // ==================== METADATA ====================
     status: {
       type: String,
-      enum: ['pending', 'rejected', 'active', 'inactive', 'graduated', 'transferred', 'expelled', 'on_leave', 'terminated', 'resigned'],
+      enum: ['pending', 'approved', 'rejected', 'active', 'inactive', 'graduated', 'transferred', 'expelled', 'on_leave', 'terminated', 'resigned'],
       default: 'active',
     },
     remarks: {

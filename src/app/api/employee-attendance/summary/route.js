@@ -8,16 +8,16 @@ import connectDB from '@/lib/database';
  * Get attendance summary for a user
  * Access: All authenticated users (own), Admins (all users)
  */
-async function summaryHandler(req) {
+async function summaryHandler(request, user, userDoc) {
   try {
     await connectDB();
 
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const month = parseInt(searchParams.get('month'));
     const year = parseInt(searchParams.get('year'));
 
-    const currentUser = req.user;
+    const currentUser = user;
 
     // Validation
     if (!month || !year) {

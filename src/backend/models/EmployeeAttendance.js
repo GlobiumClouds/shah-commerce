@@ -213,6 +213,7 @@ EmployeeAttendanceSchema.virtual('checkInFormatted').get(function () {
   });
 });
 
+
 // Virtual for formatted check-out time
 EmployeeAttendanceSchema.virtual('checkOutFormatted').get(function () {
   if (!this.checkOut?.time) return null;

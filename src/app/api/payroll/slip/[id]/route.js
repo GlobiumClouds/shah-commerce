@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Payroll from '@/backend/models/Payroll';
 import User from '@/backend/models/User';
-import { withAuth } from '@/backend/middleware/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 import { generateSalarySlipPDF } from '@/lib/pdf-generator';
 import connectDB from '@/lib/database';
 
@@ -10,12 +10,12 @@ import connectDB from '@/lib/database';
  * Download salary slip PDF
  * Access: Super Admin, Branch Admin, Teacher (own slip)
  */
-async function downloadSlipHandler(req, { params }) {
+async function downloadSlipHandler(request, user, userDoc, context) {
   try {
     await connectDB();
 
-    const { id } = await params;
-    const currentUser = req.user;
+    const { id } = context.params;
+    const currentUser = user;
 
     // Get payroll record
     const payroll = await Payroll.findById(id)
@@ -64,4 +64,4 @@ async function downloadSlipHandler(req, { params }) {
   }
 }
 
-export const GET = withAuth(downloadSlipHandler, ['super_admin', 'branch_admin', 'teacher']);
+export const GET = withAuth(downloadSlipHandler, [requireRole(['super_admin', 'branch_admin', 'teacher'])]);
