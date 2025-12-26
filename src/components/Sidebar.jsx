@@ -172,6 +172,22 @@ const ROLE_MENUS = {
         },
       ],
     },
+    {
+      category: "Salary Management",
+      isCollapsible: true,
+      items: [
+        {
+          name: "Payroll",
+          path: "/super-admin/salary-management/payroll",
+          icon: Wallet,
+        },
+        {
+          name: "Employee Attendance",
+          path: "/super-admin/salary-management/employee-attendance",
+          icon: UserCheck,
+        },
+      ],
+    },
   ],
 
   branch_admin: [
@@ -233,6 +249,22 @@ const ROLE_MENUS = {
           icon: Receipt,
         },
         { name: "Expenses", path: "/branch-admin/expenses", icon: Wallet },
+      ],
+    },
+    {
+      category: "Salary Management",
+      isCollapsible: true,
+      items: [
+        {
+          name: "Payroll",
+          path: "/branch-admin/salary-management/payroll",
+          icon: Wallet,
+        },
+        {
+          name: "Employee Attendance",
+          path: "/branch-admin/salary-management/employee-attendance",
+          icon: UserCheck,
+        },
       ],
     },
   ],
