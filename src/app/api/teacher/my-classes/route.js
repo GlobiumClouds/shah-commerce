@@ -12,13 +12,13 @@ const getMyClasses = async (req, user, userDoc) => {
   try {
     await connectDB();
     
-    console.log("---------------- API HIT (SECURE) ----------------");
-    console.log("Logged In Teacher:", user.fullName);
+    // console.log("---------------- API HIT (SECURE) ----------------");
+    // console.log("Logged In Teacher:", user.fullName);
 
     // 1. Teacher ID ab direct User Document se milegi (Auth Middleware se)
     const teacherObjectId = userDoc._id;
 
-    console.log("Searching Timetable for Teacher ID:", teacherObjectId);
+    // console.log("Searching Timetable for Teacher ID:", teacherObjectId);
 
     // 2. Query: Active timetables fetch karo jahan ye teacher hai
     const timetables = await Timetable.find({
@@ -30,7 +30,7 @@ const getMyClasses = async (req, user, userDoc) => {
     .populate('periods.subjectId')
     .lean();
 
-    console.log("Timetables Found:", timetables);
+    // console.log("Timetables Found:", timetables);
 
     // 3. Data Formatting with complete schedule info
     const classesMap = new Map();
