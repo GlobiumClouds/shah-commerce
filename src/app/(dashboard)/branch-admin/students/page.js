@@ -15,6 +15,7 @@ import BloodGroupSelect from '@/components/ui/blood-group';
 import GenderSelect from '@/components/ui/gender-select';
 import ClassSelect from '@/components/ui/class-select';
 import StudentFormModal from '@/components/forms/StudentFormModal';
+import StudentViewModal from '@/components/modals/StudentViewModal';
 import { Plus, Edit, Trash2, Search, User, Mail, Phone, Eye, FileText, Upload, X, Calendar, MapPin, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
@@ -24,6 +25,7 @@ import StudentCardPDF from '@/components/StudentCardPDF';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import { toast } from 'sonner';
 
 const STUDENT_STATUS = [
   { value: 'active', label: 'Active' },
@@ -53,6 +55,7 @@ export default function StudentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
+  const [currentStudent, setCurrentStudent] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -60,9 +63,6 @@ export default function StudentsPage() {
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
   const [activeTab, setActiveTab] = useState('personal');
   const formRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
-  const [pendingProfileFile, setPendingProfileFile] = useState(null);
-  const [pendingDocuments, setPendingDocuments] = useState([]);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState('pdf');
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
@@ -74,77 +74,6 @@ export default function StudentsPage() {
     printCount: 0,
   });
   const [qrCodeUrl, setQrCodeUrl] = useState('');
-
-
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    alternatePhone: '',
-    dateOfBirth: '',
-    gender: 'male',
-    bloodGroup: '',
-    nationality: 'Pakistani',
-    religion: '',
-    cnic: '',
-    classId: '',
-    admissionNumber: '',
-    enrollmentDate: new Date().toISOString().split('T')[0],
-    status: 'active',
-    address: {
-      street: '',
-      city: '',
-      state: '',
-      country: 'Pakistan',
-      postalCode: '',
-    },
-    parentInfo: {
-      fatherName: '',
-      fatherOccupation: '',
-      fatherPhone: '',
-      fatherEmail: '',
-      fatherCnic: '',
-      motherName: '',
-      motherOccupation: '',
-      motherPhone: '',
-      motherEmail: '',
-      motherCnic: '',
-    },
-    guardianInfo: {
-      name: '',
-      relationship: '',
-      phone: '',
-      email: '',
-      cnic: '',
-      address: '',
-    },
-    guardianType: 'parent',
-    emergencyContact: {
-      name: '',
-      relationship: '',
-      phone: '',
-    },
-    academicInfo: {
-      previousSchool: '',
-      previousClass: '',
-      tcNumber: '',
-      remarks: '',
-    },
-    medicalInfo: {
-      bloodGroup: '',
-      allergies: '',
-      chronicConditions: '',
-      medications: '',
-      doctorName: '',
-      doctorPhone: '',
-    },
-    profilePhoto: {
-      url: '',
-      publicId: '',
-    },
-    documents: [],
-  });
 
   useEffect(() => {
     fetchClasses();
@@ -219,155 +148,13 @@ export default function StudentsPage() {
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setFormData((prev) => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value,
-        },
-      }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const handleProfileUpload = async (file) => {
-    if (!file) return;
-
-    setPendingProfileFile(file);
-
-    try {
-      setUploading(true);
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
-      uploadFormData.append('folder', 'students/profiles');
-
-      const response = await apiClient.post('/api/upload', uploadFormData);
-
-      if (response.success) {
-        setFormData((prev) => ({
-          ...prev,
-          profilePhoto: {
-            url: response.data.url,
-            publicId: response.data.publicId,
-          },
-        }));
-        alert('Profile photo uploaded successfully!');
-      }
-    } catch (error) {
-      alert('Failed to upload profile photo');
-    } finally {
-      setUploading(false);
-      setPendingProfileFile(null);
-    }
-  };
-
-  const handleDocumentUpload = (file, documentName = '') => {
-    if (!file) return;
-
-    const newDocument = {
-      file,
-      type: documentName || 'other',
-      name: documentName || file.name,
-      customName: documentName,
-      size: file.size,
-      preview: URL.createObjectURL(file),
-    };
-
-    setPendingDocuments(prev => [...prev, newDocument]);
-  };
-
-  const removeDocument = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      documents: prev.documents.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-
-    try {
-      // Prepare data to send (exclude pending files)
-      const dataToSend = {
-        ...formData,
-        pendingProfileFile: undefined,
-        pendingDocuments: undefined,
-      };
-
-      let response;
-      if (isEditMode) {
-        response = await apiClient.put(
-          API_ENDPOINTS.BRANCH_ADMIN.STUDENTS.UPDATE.replace(':id', currentStudent._id),
-          dataToSend
-        );
-      } else {
-        response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.STUDENTS.CREATE, dataToSend);
-      }
-
-      if (response.success) {
-        const studentId = response.data._id || currentStudent._id;
-
-        // Upload profile photo if exists
-        if (pendingProfileFile && studentId) {
-          try {
-            const profileFormData = new FormData();
-            profileFormData.append('file', pendingProfileFile);
-            profileFormData.append('fileType', 'profile');
-            profileFormData.append('userId', studentId);
-
-            await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, profileFormData, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-            });
-          } catch (uploadError) {
-            console.error('Failed to upload profile photo:', uploadError);
-            alert('Student saved but failed to upload profile photo');
-          }
-        }
-
-        // Upload documents if any
-        if (pendingDocuments.length > 0 && studentId) {
-          for (const doc of pendingDocuments) {
-            try {
-              const docFormData = new FormData();
-              docFormData.append('file', doc.file);
-              docFormData.append('fileType', 'student_document');
-              docFormData.append('documentType', doc.type);
-              docFormData.append('userId', studentId);
-
-              await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, docFormData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-              });
-            } catch (uploadError) {
-              console.error('Failed to upload document:', uploadError);
-              alert(`Student saved but failed to upload document: ${doc.name}`);
-            }
-          }
-        }
-
-        alert(isEditMode ? 'Student updated successfully!' : 'Student created successfully!');
-        setIsModalOpen(false);
-        fetchStudents();
-
-        // Reset pending files
-        setPendingProfileFile(null);
-        setPendingDocuments([]);
-      }
-    } catch (error) {
-      alert(error.message || 'Failed to save student');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleEdit = (student) => {
     setEditingStudent(student);
+    setIsModalOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingStudent(null);
     setIsModalOpen(true);
   };
 
@@ -382,11 +169,11 @@ export default function StudentsPage() {
     try {
       const response = await apiClient.delete(API_ENDPOINTS.BRANCH_ADMIN.STUDENTS.DELETE.replace(':id', id));
       if (response.success) {
-        alert('Student deleted successfully!');
+        toast.success('Student deleted successfully!');
         fetchStudents();
       }
     } catch (error) {
-      alert(error.message || 'Failed to delete student');
+      toast.error(error.message || 'Failed to delete student');
     }
   };
 
@@ -419,7 +206,7 @@ export default function StudentsPage() {
       setIsCardModalOpen(false);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      toast.error('Failed to generate PDF. Please try again.');
     }
   };
 
@@ -478,28 +265,20 @@ export default function StudentsPage() {
       }
 
       if (response.success) {
-        alert(editingStudent ? 'Student updated successfully!' : 'Student created successfully!');
+        toast.success(editingStudent ? 'Student updated successfully!' : 'Student created successfully!');
         setIsModalOpen(false);
         setEditingStudent(null);
         fetchStudents();
       } else {
-        alert(response.message || 'Operation failed');
+        toast.error(response.message || 'Operation failed');
       }
     } catch (error) {
       console.error('Error saving student:', error);
-      alert(error.message || 'Operation failed');
+      toast.error(error.message || 'Operation failed');
     } finally {
       setSubmitting(false);
     }
   };
-
-  const tabsData = [
-    { id: 'personal', label: 'Personal Info' },
-    { id: 'parent', label: 'Parent/Guardian' },
-    { id: 'academic', label: 'Academic' },
-    { id: 'medical', label: 'Medical' },
-    { id: 'documents', label: 'Documents' },
-  ];
 
   if (loading && students.length === 0) {
     return <FullPageLoader message="Loading students..." />;

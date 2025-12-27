@@ -20,6 +20,7 @@ import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import StudentFormModal from '@/components/forms/StudentFormModal';
 import StudentViewModal from '@/components/modals/StudentViewModal';
+import { toast } from 'sonner';
 
 const SuperAdminStudentsPage = () => {
   const { user } = useAuth();
@@ -180,16 +181,16 @@ const SuperAdminStudentsPage = () => {
       }
 
       if (response.success) {
-        alert(editingStudent ? 'Student updated successfully!' : 'Student created successfully!');
+        toast.success(editingStudent ? 'Student updated successfully!' : 'Student created successfully!');
         setIsFormModalOpen(false);
         setEditingStudent(null);
         fetchStudents();
       } else {
-        alert(response.message || 'Operation failed');
+        toast.error(response.message || 'Operation failed');
       }
     } catch (error) {
       console.error('Error saving student:', error);
-      alert(error.message || 'Operation failed');
+      toast.error(error.message || 'Operation failed');
     } finally {
       setSubmitting(false);
     }
@@ -270,7 +271,7 @@ const SuperAdminStudentsPage = () => {
       console.log('Export completed successfully');
     } catch (error) {
       console.error('Error exporting to Excel:', error);
-      alert('Failed to export students data. Please try again.');
+      toast.error('Failed to export students data. Please try again.');
     }
   };
 
@@ -323,7 +324,7 @@ const SuperAdminStudentsPage = () => {
       const qrCodeUrl = await generateQRCode(selectedStudent);
 
       if (!qrCodeUrl) {
-        alert('Failed to generate QR code');
+        toast.error('Failed to generate QR code');
         return;
       }
 
@@ -372,7 +373,7 @@ const SuperAdminStudentsPage = () => {
 
     } catch (error) {
       console.error('Error generating card:', error);
-      alert('Failed to generate student card');
+      toast.error('Failed to generate student card');
     } finally {
       setSubmitting(false);
     }
