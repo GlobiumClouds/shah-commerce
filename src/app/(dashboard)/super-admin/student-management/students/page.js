@@ -92,6 +92,7 @@ const SuperAdminStudentsPage = () => {
         role: 'student',
         populate: 'branchId,studentProfile.classId,studentProfile.departmentId'
       };
+      
       if (branchFilter) params.branchId = branchFilter;
       if (classFilter) params.classId = classFilter;
       if (statusFilter) params.status = statusFilter;
