@@ -50,12 +50,46 @@ export default function TeacherClassesPage() {
     try {
       setLoading(true);
       // Use apiClient to fetch data (automatic token handling)
-      const result = await apiClient.get(API_ENDPOINTS.TEACHER.MY_CLASSES.LIST);
+      const [classesResult, assignmentsResult] = await Promise.all([
+        apiClient.get(API_ENDPOINTS.TEACHER.MY_CLASSES.LIST),
+        apiClient.get(API_ENDPOINTS.TEACHER.ASSIGNMENTS.LIST)
+      ]);      
       
-      if (result.success) {
-        setClasses(result.data || []);
+      if (classesResult.success) {
+        const classesData = classesResult.data || [];
+        const assignmentsData = assignmentsResult.success ? (assignmentsResult.data || []) : [];
+        
+        // Merge assignments with classes
+        const classesWithAssignments = classesData.map(classItem => {
+          // Filter assignments for this class and section
+          const classAssignments = assignmentsData.filter(assignment => {
+            const matchClass = String(assignment.classId?._id || assignment.classId) === String(classItem.classId);
+            const matchSection = !assignment.sectionId || assignment.sectionId === classItem.section;
+            return matchClass && matchSection;
+          }).map(assignment => ({
+            id: assignment._id,
+            title: assignment.title,
+            description: assignment.description,
+            dueDate: new Date(assignment.dueDate).toLocaleDateString(),
+            status: assignment.status === 'published' ? 'Active' : assignment.status === 'draft' ? 'Draft' : 'Closed',
+            type: assignment.subjectId?.name || classItem.subjectName || 'Assignment',
+            submissions: assignment.submissionCount || 0,
+            total: classItem.studentCount || 0,
+            maxPoints: assignment.totalMarks || 0,
+            _id: assignment._id,
+            videoUrl: assignment.videoUrl,
+            attachments: assignment.attachments || [],
+          }));
+          
+          return {
+            ...classItem,
+            assignments: classAssignments
+          };
+        });
+        
+        setClasses(classesWithAssignments);
       } else {
-        console.error('Failed to load classes:', result.error);
+        console.error('Failed to load classes:', classesResult.error);
         setClasses([]);
       }
     } catch (error) {
