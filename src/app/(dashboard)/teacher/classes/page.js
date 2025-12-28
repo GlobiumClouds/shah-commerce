@@ -485,6 +485,48 @@ export default function TeacherClassesPage() {
                             Parent & Guardian Details
                           </h5>
                           <div className="space-y-4">
+                            {/* Primary Guardian/Parent Details */}
+                            {selectedStudent.guardian && (
+                              <div className="border rounded-lg p-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30">
+                                <h6 className="font-medium text-sm text-primary mb-3 flex items-center gap-2">
+                                  <Users className="w-4 h-4" />
+                                  {selectedStudent.guardian.relation} Information
+                                </h6>
+                                <div className="grid grid-cols-1 gap-2 text-sm">
+                                  {selectedStudent.guardian.name && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Name:</span>
+                                      <span className="font-medium">{selectedStudent.guardian.name}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.guardian.relation && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Relation:</span>
+                                      <span className="font-medium">{selectedStudent.guardian.relation}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.guardian.phone && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Phone:</span>
+                                      <span className="font-medium">{selectedStudent.guardian.phone}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.guardian.email && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Email:</span>
+                                      <span className="font-medium">{selectedStudent.guardian.email}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.guardian.cnic && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">CNIC:</span>
+                                      <span className="font-medium">{selectedStudent.guardian.cnic}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
                             {/* Father Details */}
                             {selectedStudent.studentProfile?.father?.name && (
                               <div className="border rounded-lg p-4 bg-blue-50/50 border-blue-200">
