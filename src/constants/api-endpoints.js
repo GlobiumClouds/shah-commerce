@@ -593,6 +593,7 @@ export const API_ENDPOINTS = {
     },
   },
 
+
   // Student Endpoints
   STUDENT: {
     DASHBOARD: '/student/dashboard',
@@ -707,6 +708,8 @@ export const API_ENDPOINTS = {
 
   // Parent Portal Endpoints
   PARENT: {
+    SIGNUP: '/api/parent/auth/signup',
+    
     // Get all children of authenticated parent
     CHILDREN: '/api/parent',
 
@@ -743,6 +746,7 @@ export const API_ENDPOINTS = {
       SUBMIT_ASSIGNMENT: '/api/parent/:childId/assignments/submit',
     },
   },
+
 };
 
 // Helper function to build URL with parameters
