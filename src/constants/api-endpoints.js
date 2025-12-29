@@ -593,65 +593,6 @@ export const API_ENDPOINTS = {
     },
   },
 
-  // // Parent Endpoints
-  // PARENT: {
-  //   // Profile
-  //   PROFILE: {
-  //     GET: '/api/parent/profile',
-  //     UPDATE: '/api/parent/profile',
-  //     SETTINGS: '/api/parent/profile/settings',
-  //   },
-
-  //   // Auth
-  //   AUTH: {
-  //     SIGNUP: '/api/parent/auth/signup',
-  //   },
-
-  //   // Announcements
-  //   ANNOUNCEMENTS: '/api/parent/announcements',
-
-  //   // Attendance
-  //   ATTENDANCE: '/api/parent/attendance',
-
-  //   // Children
-  //   CHILDREN: {
-  //     LIST: '/api/parent/children',
-  //     GET: '/api/parent/children/[id]',
-  //     ASSIGNMENTS: '/api/parent/children/assignments',
-  //     NOTES: '/api/parent/children/notes',
-  //     QUIZZES: '/api/parent/children/quizzes',
-  //     ANNOUNCEMENTS: '/api/parent/children/[id]/announcements',
-  //     ATTENDANCE: '/api/parent/children/[id]/attendance',
-  //     MESSAGES: '/api/parent/children/[id]/messages',
-  //   },
-
-  //   // Events
-  //   EVENTS: '/api/parent/events',
-
-  //   // Messages
-  //   MESSAGES: {
-  //     LIST: '/api/parent/messages',
-  //     COMPOSE: '/api/parent/messages/compose',
-  //   },
-
-  //   // Notifications
-  //   NOTIFICATIONS: {
-  //     LIST: '/api/parent/notifications',
-  //     GET: '/api/parent/notifications/[id]',
-  //   },
-
-  //   // Academics
-  //   ACADEMICS: {
-  //     SYLLABUS: '/api/parent/academics/syllabus',
-  //   },
-
-  //   // Privacy
-  //   PRIVACY: '/api/parent/privacy',
-
-  //   // Support
-  //   SUPPORT: '/api/parent/support',
-  // },
-
   // Student Endpoints
   STUDENT: {
     DASHBOARD: '/student/dashboard',
@@ -802,7 +743,6 @@ export const API_ENDPOINTS = {
       SUBMIT_ASSIGNMENT: '/api/parent/:childId/assignments/submit',
     },
   },
-
 };
 
 // Helper function to build URL with parameters
