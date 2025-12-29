@@ -34,6 +34,7 @@ export async function POST(request) {
   try {
     await connectDB();
 
+    
     const body = await request.json();
     const validatedData = parentSignupSchema.parse(body);
 
