@@ -723,6 +723,7 @@ export const API_ENDPOINTS = {
       QUIZZES: '/api/parent/:childId/quizzes',
       SYLLABUS: '/api/parent/:childId/syllabus',
       NOTES: '/api/parent/:childId/notes',
+      TIMETABLE: '/api/parent/:childId/timetable',
 
       // School activities
       EVENTS: '/api/parent/:childId/events',
