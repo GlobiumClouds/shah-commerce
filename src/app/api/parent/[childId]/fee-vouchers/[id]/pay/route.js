@@ -7,7 +7,7 @@ import { uploadToCloudinary } from '@/lib/cloudinary';
 
 const handler = withAuth(async (request, user, userDoc, context) => {
   try {
-    const { childId, id } = context.params || {};
+    const { childId, id } = await context.params || {};
     await connectDB();
 
     // Verify parent owns child

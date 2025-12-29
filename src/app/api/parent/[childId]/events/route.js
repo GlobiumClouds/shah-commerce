@@ -6,7 +6,7 @@ import Event from '@/backend/models/Event';
 
 const handler = withAuth(async (request, user, userDoc, context) => {
   try {
-    const { childId } = context.params || {};
+    const { childId } = await context.params || {};
     await connectDB();
 
     const parent = await User.findById(userDoc._id).lean();

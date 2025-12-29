@@ -5,7 +5,7 @@ import User from '@/backend/models/User';
 
 const handler = withAuth(async (request, user, userDoc, context) => {
   try {
-    const { childId } = context.params || {};
+    const { childId } = await context.params || {};
     await connectDB();
 
     // Check if parent owns this child

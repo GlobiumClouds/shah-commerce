@@ -6,7 +6,7 @@ import FeeVoucher from '@/backend/models/FeeVoucher';
 
 const handler = withAuth(async (request, user, userDoc, context) => {
   try {
-    const { childId } = context.params || {};
+    const { childId } = await context.params || {};
     await connectDB();
 
     // Verify parent owns child
