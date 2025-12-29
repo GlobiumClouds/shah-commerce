@@ -70,14 +70,19 @@ const ExamSchema = new mongoose.Schema(
     }],
     status: {
       type: String,
-      enum: ['scheduled', 'ongoing', 'completed', 'cancelled', 'postponed'],
+      enum: ['scheduled', 'ongoing', 'completed', 'cancelled', 'postponed', 'graded', 'active'],
       default: 'scheduled',
     },
     results: [
       {
         studentId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: 'Student',
+          ref: 'User', // Changed from Student to User as students are Users
+          required: true,
+        },
+        subjectId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Subject',
           required: true,
         },
         marksObtained: {
@@ -96,6 +101,13 @@ const ExamSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
+        attachments: [
+          {
+            name: String,
+            url: String,
+            publicId: String,
+          },
+        ],
       },
     ],
     createdBy: {
