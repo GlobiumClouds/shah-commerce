@@ -746,7 +746,6 @@ export const API_ENDPOINTS = {
       SUBMIT_ASSIGNMENT: '/api/parent/:childId/assignments/submit',
     },
   },
-
 };
 
 // Helper function to build URL with parameters
