@@ -24,6 +24,10 @@ const ExamSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    section: {
+      type: String,
+      trim: true,
+    },
     subjects: [{
       subjectId: {
         type: mongoose.Schema.Types.ObjectId,

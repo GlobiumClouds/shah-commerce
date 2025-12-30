@@ -61,7 +61,7 @@ export const PUT = withAuth(async (request, user, userDoc, context) => {
     }
 
     // Update fields
-    const allowedUpdates = ['title', 'examType', 'subjects', 'status'];
+    const allowedUpdates = ['title', 'examType', 'section', 'subjects', 'status'];
     allowedUpdates.forEach(field => {
       if (body[field] !== undefined) {
         exam[field] = body[field];
