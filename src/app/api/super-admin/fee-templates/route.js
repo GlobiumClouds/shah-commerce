@@ -11,7 +11,6 @@ async function getFeeTemplates(request, authenticatedUser) {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
-    const category = searchParams.get('category') || '';
     const status = searchParams.get('status') || '';
     const branchId = searchParams.get('branchId') || '';
     const page = parseInt(searchParams.get('page')) || 1;
@@ -24,9 +23,9 @@ async function getFeeTemplates(request, authenticatedUser) {
         { name: { $regex: search, $options: 'i' } },
         { code: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
+        { 'items.name': { $regex: search, $options: 'i' } },
       ];
     }
-    if (category) query.category = category;
     if (status) query.status = status;
     if (branchId) query.branchId = branchId;
 
@@ -35,7 +34,6 @@ async function getFeeTemplates(request, authenticatedUser) {
 
     // Get templates with pagination
     const templates = await FeeTemplate.find(query)
-      .populate('category', 'name code color icon')
       .populate('branchId', 'name code city')
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email')
@@ -71,9 +69,8 @@ async function createFeeTemplate(request, authenticatedUser, userDoc) {
     const {
       name,
       code,
-      category,
+      items,
       description,
-      amount,
       frequency,
       applicableTo,
       classes,
@@ -86,9 +83,9 @@ async function createFeeTemplate(request, authenticatedUser, userDoc) {
     } = body;
 
     // Validation
-    if (!name || !code || !category || !amount || !frequency) {
+    if (!name || !code || !items || !Array.isArray(items) || items.length === 0 || !frequency) {
       return NextResponse.json(
-        { success: false, message: 'Name, code, category, amount, and frequency are required' },
+        { success: false, message: 'Name, code, items, and frequency are required' },
         { status: 400 }
       );
     }
@@ -117,9 +114,8 @@ async function createFeeTemplate(request, authenticatedUser, userDoc) {
     const template = await FeeTemplate.create({
       name,
       code: code.toUpperCase(),
-      category,
+      items,
       description,
-      amount,
       frequency,
       applicableTo: applicableTo || 'all',
       classes: classes || [],
@@ -133,7 +129,6 @@ async function createFeeTemplate(request, authenticatedUser, userDoc) {
     });
 
     const populatedTemplate = await FeeTemplate.findById(template._id)
-      .populate('category', 'name code color icon')
       .populate('branchId', 'name code city')
       .populate('createdBy', 'name email');
 
