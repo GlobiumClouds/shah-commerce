@@ -44,6 +44,11 @@ const feeTemplateSchema = new mongoose.Schema(
         },
       },
     }],
+    baseAmount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Base amount cannot be negative'],
+    },
     totalAmount: {
       type: Number,
       default: 0,
@@ -150,8 +155,10 @@ const feeTemplateSchema = new mongoose.Schema(
 
 // Pre-save hook to calculate totalAmount
 feeTemplateSchema.pre('save', function(next) {
+  let sum = this.baseAmount || 0;
+
   if (this.items && this.items.length > 0) {
-    let sum = this.items.reduce((total, item) => {
+    sum += this.items.reduce((total, item) => {
       let itemTotal = item.amount;
       if (item.discount && item.discount.enabled) {
         if (item.discount.type === 'fixed') {
@@ -162,20 +169,18 @@ feeTemplateSchema.pre('save', function(next) {
       }
       return total + Math.max(0, itemTotal);
     }, 0);
-
-    // Apply global discount if enabled
-    if (this.discount && this.discount.enabled) {
-      if (this.discount.type === 'fixed') {
-        sum -= this.discount.amount;
-      } else if (this.discount.type === 'percentage') {
-        sum -= (sum * this.discount.amount) / 100;
-      }
-    }
-
-    this.totalAmount = Math.max(0, sum);
-  } else {
-    this.totalAmount = 0;
   }
+
+  // Apply global discount if enabled
+  if (this.discount && this.discount.enabled) {
+    if (this.discount.type === 'fixed') {
+      sum -= this.discount.amount;
+    } else if (this.discount.type === 'percentage') {
+      sum -= (sum * this.discount.amount) / 100;
+    }
+  }
+
+  this.totalAmount = Math.max(0, sum);
   next();
 });
 

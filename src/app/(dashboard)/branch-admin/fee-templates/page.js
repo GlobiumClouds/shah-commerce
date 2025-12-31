@@ -41,6 +41,7 @@ export default function FeeTemplatesPage() {
   const [formData, setFormData] = useState({
     name: '',
     code: '',
+    baseAmount: 0,
     description: '',
     items: [{ name: '', amount: '', discount: { enabled: false, type: 'fixed', amount: 0 } }],
     frequency: 'monthly',
@@ -124,6 +125,7 @@ export default function FeeTemplatesPage() {
         name: formData.name,
         code: (formData.code || '').toUpperCase(),
         description: formData.description,
+        baseAmount: parseFloat(formData.baseAmount) || 0,
         items: formData.items.map(item => ({
           ...item,
           amount: parseFloat(item.amount) || 0,
@@ -182,6 +184,7 @@ export default function FeeTemplatesPage() {
     setFormData({
       name: template.name || '',
       code: template.code || '',
+      baseAmount: template.baseAmount || 0,
       description: template.description || '',
       items: template.items?.length > 0 ? template.items.map(item => ({
         name: item.name,
@@ -220,6 +223,7 @@ export default function FeeTemplatesPage() {
     setFormData({
       name: template.name + ' (Copy)',
       code: (template.code || '') + '-COPY',
+      baseAmount: template.baseAmount || 0,
       description: template.description || '',
       items: template.items?.length > 0 ? template.items.map(item => ({
         name: item.name,
@@ -244,6 +248,7 @@ export default function FeeTemplatesPage() {
     setFormData({
       name: '',
       code: '',
+      baseAmount: 0,
       description: '',
       items: [{ name: '', amount: '', discount: { enabled: false, type: 'fixed', amount: 0 } }],
       frequency: 'monthly',
@@ -260,7 +265,8 @@ export default function FeeTemplatesPage() {
   };
 
   const calculateTotalAmount = (template) => {
-    return (template.items || []).reduce((sum, item) => {
+    const base = parseFloat(template.baseAmount) || 0;
+    const itemsTotal = (template.items || []).reduce((sum, item) => {
       let amt = parseFloat(item.amount) || 0;
       if (item.discount?.enabled) {
         if (item.discount.type === 'fixed') amt -= parseFloat(item.discount.amount) || 0;
@@ -268,6 +274,7 @@ export default function FeeTemplatesPage() {
       }
       return sum + Math.max(0, amt);
     }, 0);
+    return base + itemsTotal;
   };
 
   if (loading && templates.length === 0) {
@@ -345,6 +352,11 @@ export default function FeeTemplatesPage() {
                     <TableCell className="text-xs text-gray-600">{template.code}</TableCell>
                     <TableCell>
                       <div className="space-y-1">
+                        {template.baseAmount > 0 && (
+                          <div className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                            Base Amount: PKR {template.baseAmount.toLocaleString()}
+                          </div>
+                        )}
                         {template.items?.map((item, idx) => (
                           <div key={idx} className="text-[10px] text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
                             {item.name}: PKR {(item.amount || 0).toLocaleString()}
@@ -647,6 +659,20 @@ export default function FeeTemplatesPage() {
             <p className="text-xs text-gray-500 mt-1">Comma-separated list of sections</p>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Base Template Amount (Fixed)
+            </label>
+            <input
+              type="number"
+              value={formData.baseAmount}
+              onChange={(e) => setFormData({ ...formData, baseAmount: e.target.value })}
+              placeholder="0.00"
+              className="w-full px-3 py-2 border rounded-lg"
+            />
+            <p className="text-[10px] text-gray-500 mt-1 italic">This amount will be added to the total regardless of components.</p>
+          </div>
+
           {/* Fee Items/Components */}
           <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50/50">
             <div className="flex items-center justify-between">
@@ -765,14 +791,7 @@ export default function FeeTemplatesPage() {
               <div className="text-right">
                 <p className="text-[10px] font-bold text-gray-500 uppercase">Total Template Amount</p>
                 <p className="text-lg font-black text-blue-600">
-                  PKR {formData.items.reduce((sum, item) => {
-                    let amt = parseFloat(item.amount) || 0;
-                    if (item.discount?.enabled) {
-                      if (item.discount.type === 'fixed') amt -= parseFloat(item.discount.amount) || 0;
-                      else amt -= (amt * (parseFloat(item.discount.amount) || 0)) / 100;
-                    }
-                    return sum + Math.max(0, amt);
-                  }, 0).toLocaleString()}
+                  PKR {calculateTotalAmount(formData).toLocaleString()}
                 </p>
               </div>
             </div>
