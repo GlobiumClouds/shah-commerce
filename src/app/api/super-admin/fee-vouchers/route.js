@@ -142,7 +142,9 @@ export const POST = withAuth(async (request, user, userDoc) => {
         const voucherNumber = `FV-${year}-${String(month).padStart(2, '0')}-${String(counter.seq).padStart(6, '0')}`;
 
         // Calculate amounts from template items
-        const baseAmount = (template.items || []).reduce((sum, item) => sum + item.amount, 0);
+        const templateBaseAmount = template.baseAmount || 0;
+        const itemsAmount = (template.items || []).reduce((sum, item) => sum + item.amount, 0);
+        const baseAmount = templateBaseAmount + itemsAmount;
         
         // Calculate total discount (item-level + global)
         let totalDiscount = (template.items || []).reduce((sum, item) => {
@@ -176,6 +178,8 @@ export const POST = withAuth(async (request, user, userDoc) => {
           month: parseInt(month), 
           year: parseInt(year), 
           dueDate: new Date(dueDate), 
+          baseAmount: templateBaseAmount,
+          items: template.items || [],
           amount: baseAmount, 
           discountAmount, 
           lateFeeAmount,
