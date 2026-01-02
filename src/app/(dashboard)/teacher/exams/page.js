@@ -239,6 +239,8 @@ export default function TeacherExamsPage() {
             toast.error(`Failed to upload files for ${student.fullName}`);
           }
         }
+
+        
         
         resultsArray.push({
           studentId: student._id,
