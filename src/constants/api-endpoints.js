@@ -37,7 +37,7 @@ export const API_ENDPOINTS = {
       STATS: '/api/super-admin/branches/stats',
       ACTIVATE: '/api/super-admin/branches/:id/activate',
       DEACTIVATE: '/api/super-admin/branches/:id/deactivate',
-      DROPDOWN: '/api/super-admin/branches?type=dropdown', 
+      DROPDOWN: '/api/super-admin/branches?type=dropdown',
     },
 
     // Branch Admin Management

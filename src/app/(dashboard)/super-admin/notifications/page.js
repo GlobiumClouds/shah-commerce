@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
 
 // Notification Types List
 const NOTIFICATION_TYPES = [
@@ -17,50 +18,104 @@ const NOTIFICATION_TYPES = [
 export default function CreateNotification() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [branches, setBranches] = useState([]); // Branches list store karne ke liye
+  const [branches, setBranches] = useState([]);
   const [status, setStatus] = useState({ type: '', message: '' });
 
-  // Form State
   const [formData, setFormData] = useState({
     title: '',
     message: '',
     type: 'announcement',
     targetRole: 'student',
-    targetBranch: 'all', // Default: Sabko bhejo
+    targetBranch: 'all',
   });
+  
+  const getBrowserCookie = (name) => {
+    if (typeof document === 'undefined') return null;
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  };
 
   // 1. Page Load hote hi Branches fetch karo
   useEffect(() => {
     const fetchBranches = async () => {
       try {
-        // Humne jo API banayi thi dropdown ke liye
-        const res = await fetch('/api/branches?type=dropdown');
-        const data = await res.json();
-        if (data.success) {
-          setBranches(data.branches);
+        console.log("🔵 Fetching branches started...");
+
+       
+        let token = getBrowserCookie('token') || getBrowserCookie('accessToken');
+
+        if (!token) {
+          token = localStorage.getItem('token') || localStorage.getItem('accessToken');
         }
+
+        console.log("🔑 Token Found:", token ? "YES (Ready)" : "NO (Missing)");
+
+        if (!token) {
+          console.error("❌ No token found anywhere!");
+          return;
+        }
+
+        // ✅ STEP 2: Token ke sath API call
+        const response = await fetch(API_ENDPOINTS.SUPER_ADMIN.BRANCHES.DROPDOWN, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` // Token bhej diya
+          }
+        });
+
+        console.log("🔵 Response Status:", response.status);
+
+        if (response.status === 401) {
+          console.error("❌ Error: 401 Unauthorized. Token invalid.");
+          alert("Session Expired. Please Login Again.");
+          return;
+        }
+
+        const result = await response.json();
+        console.log("🔵 Full API Data:", result);
+
+        if (result.success) {
+          if (result.data && Array.isArray(result.data.branches)) {
+            setBranches(result.data.branches);
+          }
+          else if (result.branches && Array.isArray(result.branches)) {
+            setBranches(result.branches);
+          }
+          else if (Array.isArray(result.data)) { // Kabhi kabhi direct array bhi aa jata hai
+            setBranches(result.data);
+          }
+        }
+
       } catch (error) {
-        console.error('Failed to fetch branches:', error);
+        console.error('❌ Failed to fetch branches:', error);
       }
     };
+
     fetchBranches();
   }, []);
 
-  // Handle Input Change
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Handle Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setStatus({ type: '', message: '' });
 
     try {
+      // Send karte waqt bhi token ki zaroorat pad sakti hai agar API protected hai
+      const token = getBrowserCookie('token') || localStorage.getItem('token');
+
       const response = await fetch('/api/notification/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(formData),
       });
 
@@ -68,7 +123,6 @@ export default function CreateNotification() {
 
       if (response.ok) {
         setStatus({ type: 'success', message: `✅ Success! ${data.message}` });
-        // Form Reset
         setFormData({
           title: '',
           message: '',
@@ -89,8 +143,6 @@ export default function CreateNotification() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      
-      {/* Page Header */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
           📢 Create Broadcast Notification
@@ -100,26 +152,20 @@ export default function CreateNotification() {
         </p>
       </div>
 
-      {/* Status Message */}
       {status.message && (
-        <div className={`p-4 mb-6 rounded-lg text-sm font-medium animate-fade-in ${
-          status.type === 'success' 
-            ? 'bg-green-50 text-green-700 border border-green-200' 
-            : 'bg-red-50 text-red-700 border border-red-200'
-        }`}>
+        <div className={`p-4 mb-6 rounded-lg text-sm font-medium ${status.type === 'success'
+          ? 'bg-green-50 text-green-700 border border-green-200'
+          : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
           {status.message}
         </div>
       )}
 
-      {/* Main Form */}
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
         <div className="p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* ROW 1: Target Audience & Branch */}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              
-              {/* Target Branch Selector (Most Important for Super Admin) */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   Select Branch <span className="text-red-500">*</span>
@@ -129,30 +175,23 @@ export default function CreateNotification() {
                     name="targetBranch"
                     value={formData.targetBranch}
                     onChange={handleChange}
-                    className="w-full p-3 pl-4 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer appearance-none"
+                    className="w-full p-3 pl-4 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer"
                   >
                     <option value="all" className="font-bold text-blue-600">🌍 All Branches (Global)</option>
                     <option disabled>──────────────</option>
-                    {branches.length > 0 ? (
-                      branches.map((branch) => (
-                        <option key={branch._id} value={branch._id}>
-                          🏢 {branch.name} ({branch.code})
-                        </option>
-                      ))
-                    ) : (
-                      <option disabled>Loading branches...</option>
-                    )}
+                    {branches.length === 0 && <option disabled>Loading...</option>}
+                    {branches.map((branch) => (
+                      <option key={branch._id} value={branch._id}>
+                        🏢 {branch.name} ({branch.code})
+                      </option>
+                    ))}
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                     <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                   </div>
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
-                  Choose 'All Branches' to send to everyone in the system.
-                </p>
               </div>
 
-              {/* Target Role Selector */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
                   Recipient Role <span className="text-red-500">*</span>
@@ -162,7 +201,7 @@ export default function CreateNotification() {
                     name="targetRole"
                     value={formData.targetRole}
                     onChange={handleChange}
-                    className="w-full p-3 pl-4 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer appearance-none"
+                    className="w-full p-3 pl-4 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none"
                   >
                     <option value="student">👨‍🎓 Students</option>
                     <option value="parent">👨‍👩‍👦 Parents</option>
@@ -170,7 +209,7 @@ export default function CreateNotification() {
                     <option value="staff">💼 Staff</option>
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                     <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                   </div>
                 </div>
               </div>
@@ -178,14 +217,9 @@ export default function CreateNotification() {
 
             <hr className="border-gray-100" />
 
-            {/* ROW 2: Type & Title */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              
-              {/* Type */}
               <div className="md:col-span-1">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Notification Type
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Notification Type</label>
                 <select
                   name="type"
                   value={formData.type}
@@ -193,83 +227,42 @@ export default function CreateNotification() {
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 >
                   {NOTIFICATION_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
+                    <option key={type.value} value={type.value}>{type.label}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Title */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-bold text-gray-700 mb-2">
-                  Title / Subject <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Title <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   name="title"
                   required
-                  placeholder="e.g. Winter Vacation Announcement"
                   value={formData.title}
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-400"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
             </div>
 
-            {/* Message Area */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                Message Body <span className="text-red-500">*</span>
-              </label>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Message <span className="text-red-500">*</span></label>
               <textarea
                 name="message"
                 required
                 rows="5"
-                placeholder="Type the full details of the notification here..."
                 value={formData.message}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none placeholder-gray-400"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
               ></textarea>
-              <div className="flex justify-between mt-2 text-xs text-gray-400">
-                 <span>This message will appear in the app and as a push notification.</span>
-                 <span>{formData.message.length} characters</span>
-              </div>
             </div>
 
-            {/* Submit Button */}
-            <div className="pt-4 flex items-center justify-end gap-4">
-              <button
-                type="button"
-                onClick={() => router.back()} // Or reset form
-                className="px-6 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 transition"
-              >
-                Cancel
-              </button>
-              
-              <button
-                type="submit"
-                disabled={loading}
-                className={`flex items-center gap-2 px-8 py-3 text-white text-sm font-bold rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5
-                  ${loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'}
-                `}
-              >
-                {loading ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    🚀 Send Notification
-                  </>
-                )}
+            <div className="pt-4 flex justify-end gap-4">
+              <button type="button" onClick={() => router.back()} className="px-6 py-3 text-sm font-medium text-gray-600 hover:text-gray-800">Cancel</button>
+              <button type="submit" disabled={loading} className={`px-8 py-3 text-white text-sm font-bold rounded-lg shadow-md ${loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                {loading ? 'Sending...' : '🚀 Send Notification'}
               </button>
             </div>
-
           </form>
         </div>
       </div>
