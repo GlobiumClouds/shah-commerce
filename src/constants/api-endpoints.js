@@ -657,8 +657,8 @@ export const API_ENDPOINTS = {
   },
 
    NOTIFICATIONS: {
-    SEND: '/api/notification/send',
-    GET_MY: '/api/notification/web-notifications', 
+    SEND: '/api/notifications/send',
+    GET_MY: '/api/notifications/web-notifications', 
   },
 
   // Common/Shared Endpoints

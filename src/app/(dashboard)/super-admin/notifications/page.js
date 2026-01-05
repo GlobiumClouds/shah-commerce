@@ -107,19 +107,35 @@ export default function CreateNotification() {
     setStatus({ type: '', message: '' });
 
     try {
-      // Send karte waqt bhi token ki zaroorat pad sakti hai agar API protected hai
-      const token = getBrowserCookie('token') || localStorage.getItem('token');
+      // Ensure we use the same robust token lookup as on page load
+      let token = getBrowserCookie('token') || getBrowserCookie('accessToken') || localStorage.getItem('token') || localStorage.getItem('accessToken');
 
-      const response = await fetch(API_ENDPOINTS.NOTIFICATIONS.SEND, {
+      if (!token) {
+        setStatus({ type: 'error', message: '❌ You are not authenticated. Please login again.' });
+        setLoading(false);
+        return;
+      }
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch('/api/notifications/send', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers,
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      console.log('🔵 /api/notifications/send status', response.status);
+
+      let data;
+      try {
+        data = await response.json();
+        console.log('🔵 /api/notifications/send response JSON:', data);
+      } catch (err) {
+        const text = await response.text();
+        console.log('🔵 /api/notifications/send response text:', text);
+        data = { message: text };
+      }
 
       if (response.ok) {
         setStatus({ type: 'success', message: `✅ Success! ${data.message}` });
