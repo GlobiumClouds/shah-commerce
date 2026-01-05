@@ -655,6 +655,11 @@ export const API_ENDPOINTS = {
     },
   },
 
+   NOTIFICATIONS: {
+    SEND: '/api/notification/send',
+    GET_MY: '/api/notification/web-notifications', 
+  },
+
   // Common/Shared Endpoints
   COMMON: {
     // File Upload

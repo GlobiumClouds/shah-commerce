@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { Search, Bell, User, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
+import NotificationBell from '@/components/NotificationBell';
 
 export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -142,14 +143,8 @@ export default function Header() {
           </Button>
 
           {/* Notifications */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative hover:bg-gray-100"
-          >
-            <Bell className="h-5 w-5 text-gray-600" />
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-          </Button>
+          <NotificationBell />
+
 
           {/* Profile Dropdown */}
           <div className="relative" ref={dropdownRef}>

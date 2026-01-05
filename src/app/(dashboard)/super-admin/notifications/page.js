@@ -110,7 +110,7 @@ export default function CreateNotification() {
       // Send karte waqt bhi token ki zaroorat pad sakti hai agar API protected hai
       const token = getBrowserCookie('token') || localStorage.getItem('token');
 
-      const response = await fetch('/api/notification/send', {
+      const response = await fetch(API_ENDPOINTS.NOTIFICATIONS.SEND, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
