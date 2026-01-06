@@ -11,6 +11,7 @@ export const API_ENDPOINTS = {
   // Authentication Endpoints
   AUTH: {
     LOGIN: '/api/auth/login',
+    ME: '/api/auth/me',
     REGISTER: '/api/auth/register',
     LOGOUT: '/api/auth/logout',
     REFRESH: '/api/auth/refresh',
@@ -19,7 +20,6 @@ export const API_ENDPOINTS = {
     VERIFY_EMAIL: '/api/auth/verify-email',
     RESEND_VERIFICATION: '/api/auth/resend-verification',
     CHANGE_PASSWORD: '/api/auth/change-password',
-    ME: '/api/auth/me',
   },
 
   // Super Admin Endpoints
