@@ -1,41 +1,34 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/database';
 import User from '@/backend/models/User';
-import { withAuth } from '@/backend/middleware/auth';
+import connectDB from '@/lib/database';
 
-async function saveToken(request, currentUser, userDoc) {
+export async function POST(req) {
   try {
     await connectDB();
+    const { userId, token } = await req.json();
 
-    const { token } = await request.json();
+    console.log(`📥 Mobile Token Request for User: ${userId}`);
 
-    if (!token) {
-      return NextResponse.json({ success: false, error: "Token is required" }, { status: 400 });
+    if (!userId || !token) {
+        return NextResponse.json({ success: false, message: "Missing Data" }, { status: 400 });
     }
 
-    console.log('💾 Saving push token for user:', currentUser.email);
+    // Token Update Karo
+    const updatedUser = await User.findByIdAndUpdate(
+      userId, 
+      { expoPushToken: token },
+      { new: true } // Return updated doc
+    );
 
-    // Update user's expo push token
-    userDoc.expoPushToken = token;
-    await userDoc.save();
+    if (!updatedUser) {
+        return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+    }
 
-    console.log('✅ Push token saved successfully');
-
-    return NextResponse.json({ 
-      success: true, 
-      message: "Token saved successfully",
-      userId: currentUser.userId
-    });
+    console.log("✅ Token Saved Successfully:", token);
+    return NextResponse.json({ success: true, message: "Token Saved" });
 
   } catch (error) {
-    console.error("Save Token Error:", error);
-    return NextResponse.json({ success: false, error: error.message || "Server Error" }, { status: 500 });
+    console.error("❌ Token Save Error:", error);
+    return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
 }
-
-<<<<<<< HEAD
-
-=======
-// Export with Auth Protection - All authenticated users can save their tokens
-export const POST = withAuth(saveToken);
->>>>>>> ca7a24cc2863b76a8c6680ffe9f29dc23140dc0c

@@ -20,6 +20,7 @@ export const API_ENDPOINTS = {
     VERIFY_EMAIL: '/api/auth/verify-email',
     RESEND_VERIFICATION: '/api/auth/resend-verification',
     CHANGE_PASSWORD: '/api/auth/change-password',
+    SAVE_TOKEN: '/api/auth/save-token',
   },
 
   // Super Admin Endpoints
