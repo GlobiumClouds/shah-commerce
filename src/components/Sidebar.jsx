@@ -123,6 +123,17 @@ const ROLE_MENUS = {
       ],
     },
     {
+      category: "Staff Management",
+      isCollapsible: true,
+      items: [
+        {
+          name: "All Staff",
+          path: "/super-admin/staff",
+          icon: Briefcase,
+        },
+      ],
+    },
+    {
       category: "Fee Management",
       isCollapsible: true,
       items: [
@@ -201,6 +212,7 @@ const ROLE_MENUS = {
       isCollapsible: true,
       items: [
         { name: "Teachers", path: "/branch-admin/teachers", icon: Users },
+        { name: "Staff", path: "/branch-admin/staff", icon: Briefcase },
         { name: "Students", path: "/branch-admin/students", icon: BookOpen },
         { name: "Classes", path: "/branch-admin/classes", icon: School },
         { name: "Timetable", path: "/branch-admin/timetable", icon: Clock },

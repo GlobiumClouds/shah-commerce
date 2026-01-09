@@ -270,6 +270,15 @@ export const API_ENDPOINTS = {
     // Employees Management
     EMPLOYEES: '/api/super-admin/employees',
 
+    // Staff Management
+    STAFF: {
+      CREATE: '/api/super-admin/staff',
+      LIST: '/api/super-admin/staff',
+      GET: '/api/super-admin/staff/:id',
+      UPDATE: '/api/super-admin/staff/:id',
+      DELETE: '/api/super-admin/staff/:id',
+    },
+
     // Parent Approval Management
     PENDING_PARENTS: '/api/super-admin/pending-parents',
     PARENTS: '/api/super-admin/parents',
@@ -294,6 +303,15 @@ export const API_ENDPOINTS = {
     // Employees Management (Teachers & Staff only from their branch)
     EMPLOYEES: {
       LIST: '/api/branch-admin/employees',
+    },
+
+    // Staff Management
+    STAFF: {
+      CREATE: '/api/branch-admin/staff',
+      LIST: '/api/branch-admin/staff',
+      GET: '/api/branch-admin/staff/:id',
+      UPDATE: '/api/branch-admin/staff/:id',
+      DELETE: '/api/branch-admin/staff/:id',
     },
 
     // Timetables Management for branch admin (branch-limited)
