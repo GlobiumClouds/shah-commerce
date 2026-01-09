@@ -19,7 +19,14 @@ import { Button } from '@/components/ui/button';
 import Modal from '@/components/ui/modal';
 import AddStaffModal from '@/components/modals/AddStaffModal';
 import FullPageLoader from '@/components/ui/full-page-loader';
+import Dropdown from '@/components/ui/dropdown';
 import { toast } from 'sonner';
+
+const STATUS_OPTIONS = [
+  { label: 'All Status', value: 'all' },
+  { label: 'Active', value: 'active' },
+  { label: 'Inactive', value: 'inactive' },
+];
 
 export default function SuperAdminStaffPage() {
   const { user } = useAuth();
@@ -174,29 +181,31 @@ export default function SuperAdminStaffPage() {
           </div>
 
           {/* Branch Filter */}
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-          >
-            <option value="all">All Branches</option>
-            {branches.map(branch => (
-              <option key={branch._id} value={branch._id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
+          <div className="w-full">
+            <Dropdown
+              id="branchFilter"
+              name="branchFilter"
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              options={[
+                { label: 'All Branches', value: 'all' },
+                ...branches.map(branch => ({ label: branch.name, value: branch._id }))
+              ]}
+              placeholder="Filter by Branch"
+            />
+          </div>
 
           {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+          <div className="w-full">
+            <Dropdown
+              id="statusFilter"
+              name="statusFilter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              options={STATUS_OPTIONS}
+              placeholder="Filter by Status"
+            />
+          </div>
         </div>
 
         {/* Results count */}

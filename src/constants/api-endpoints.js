@@ -11,7 +11,6 @@ export const API_ENDPOINTS = {
   // Authentication Endpoints
   AUTH: {
     LOGIN: '/api/auth/login',
-    ME: '/api/auth/me',
     REGISTER: '/api/auth/register',
     LOGOUT: '/api/auth/logout',
     REFRESH: '/api/auth/refresh',
@@ -20,6 +19,7 @@ export const API_ENDPOINTS = {
     VERIFY_EMAIL: '/api/auth/verify-email',
     RESEND_VERIFICATION: '/api/auth/resend-verification',
     CHANGE_PASSWORD: '/api/auth/change-password',
+    ME: '/api/auth/me',
   },
 
   // Super Admin Endpoints
@@ -37,7 +37,6 @@ export const API_ENDPOINTS = {
       STATS: '/api/super-admin/branches/stats',
       ACTIVATE: '/api/super-admin/branches/:id/activate',
       DEACTIVATE: '/api/super-admin/branches/:id/deactivate',
-      DROPDOWN: '/api/super-admin/branches?type=dropdown',
     },
 
     // Branch Admin Management
@@ -197,6 +196,14 @@ export const API_ENDPOINTS = {
       DELETE: '/api/super-admin/subjects/:id',
     },
 
+    STAFF: {
+      CREATE: '/api/super-admin/staff',
+      LIST: '/api/super-admin/staff',
+      GET: '/api/super-admin/staff/:id',
+      UPDATE: '/api/super-admin/staff/:id',
+      DELETE: '/api/super-admin/staff/:id',
+    },
+
     // Timetables Management
     TIMETABLES: {
       CREATE: '/api/super-admin/timetables',
@@ -270,15 +277,6 @@ export const API_ENDPOINTS = {
     // Employees Management
     EMPLOYEES: '/api/super-admin/employees',
 
-    // Staff Management
-    STAFF: {
-      CREATE: '/api/super-admin/staff',
-      LIST: '/api/super-admin/staff',
-      GET: '/api/super-admin/staff/:id',
-      UPDATE: '/api/super-admin/staff/:id',
-      DELETE: '/api/super-admin/staff/:id',
-    },
-
     // Parent Approval Management
     PENDING_PARENTS: '/api/super-admin/pending-parents',
     PARENTS: '/api/super-admin/parents',
@@ -303,15 +301,6 @@ export const API_ENDPOINTS = {
     // Employees Management (Teachers & Staff only from their branch)
     EMPLOYEES: {
       LIST: '/api/branch-admin/employees',
-    },
-
-    // Staff Management
-    STAFF: {
-      CREATE: '/api/branch-admin/staff',
-      LIST: '/api/branch-admin/staff',
-      GET: '/api/branch-admin/staff/:id',
-      UPDATE: '/api/branch-admin/staff/:id',
-      DELETE: '/api/branch-admin/staff/:id',
     },
 
     // Timetables Management for branch admin (branch-limited)
@@ -371,6 +360,15 @@ export const API_ENDPOINTS = {
       GET: '/api/school/grades/:id',
       UPDATE: '/api/school/grades/:id',
       DELETE: '/api/school/grades/:id',
+    },
+
+    // Staff Management
+    STAFF: {
+      CREATE: '/api/branch-admin/staff',
+      LIST: '/api/branch-admin/staff',
+      GET: '/api/branch-admin/staff/:id',
+      UPDATE: '/api/branch-admin/staff/:id',
+      DELETE: '/api/branch-admin/staff/:id',
     },
 
     // Subjects Management
@@ -672,11 +670,6 @@ export const API_ENDPOINTS = {
       HISTORY: '/student/library/history',
       SEARCH: '/student/library/search',
     },
-  },
-
-   NOTIFICATIONS: {
-    SEND: '/api/notifications/send',
-    GET_MY: '/api/notifications/web-notifications', 
   },
 
   // Common/Shared Endpoints

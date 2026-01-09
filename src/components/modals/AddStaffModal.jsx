@@ -9,7 +9,82 @@ import GenderSelect from '@/components/ui/gender-select';
 import BloodGroupSelect from '@/components/ui/blood-group';
 import BranchSelect from '@/components/ui/branch-select';
 import ButtonLoader from '@/components/ui/button-loader';
+import Dropdown from '@/components/ui/dropdown';
 import { toast } from 'sonner';
+
+const STAFF_TYPE_OPTIONS = [
+  // Administrative Staff
+  { label: 'Administrative Officer', value: 'Administrative Officer' },
+  { label: 'Office Superintendent', value: 'Office Superintendent' },
+  { label: 'Clerk', value: 'Clerk' },
+  { label: 'Accountant', value: 'Accountant' },
+  { label: 'Cashier', value: 'Cashier' },
+  { label: 'Data Entry Operator', value: 'Data Entry Operator' },
+  { label: 'Receptionist', value: 'Receptionist' },
+  { label: 'Office Assistant', value: 'Office Assistant' },
+  // Academic Support Staff
+  { label: 'Librarian', value: 'Librarian' },
+  { label: 'Assistant Librarian', value: 'Assistant Librarian' },
+  { label: 'Lab Assistant', value: 'Lab Assistant' },
+  { label: 'Lab Attendant', value: 'Lab Attendant' },
+  { label: 'Computer Lab Assistant', value: 'Computer Lab Assistant' },
+  { label: 'Science Lab Assistant', value: 'Science Lab Assistant' },
+  // Support Staff
+  { label: 'Peon', value: 'Peon' },
+  { label: 'Security Guard', value: 'Security Guard' },
+  { label: 'Gate Keeper', value: 'Gate Keeper' },
+  { label: 'Sweeper', value: 'Sweeper' },
+  { label: 'Cleaner', value: 'Cleaner' },
+  { label: 'Gardener', value: 'Gardener' },
+  { label: 'Mali', value: 'Mali' },
+  // Health & Medical Staff
+  { label: 'School Nurse', value: 'School Nurse' },
+  { label: 'Doctor', value: 'Doctor' },
+  { label: 'First Aid Assistant', value: 'First Aid Assistant' },
+  // Transportation Staff
+  { label: 'Driver', value: 'Driver' },
+  { label: 'Transport Supervisor', value: 'Transport Supervisor' },
+  { label: 'Transport Manager', value: 'Transport Manager' },
+  // Kitchen & Canteen Staff
+  { label: 'Cook', value: 'Cook' },
+  { label: 'Helper', value: 'Helper' },
+  { label: 'Canteen Manager', value: 'Canteen Manager' },
+  // Hostel Staff
+  { label: 'Hostel Warden', value: 'Hostel Warden' },
+  { label: 'Assistant Hostel Warden', value: 'Assistant Hostel Warden' },
+  { label: 'Hostel Supervisor', value: 'Hostel Supervisor' },
+  // Maintenance Staff
+  { label: 'Electrician', value: 'Electrician' },
+  { label: 'Plumber', value: 'Plumber' },
+  { label: 'Carpenter', value: 'Carpenter' },
+  { label: 'Painter', value: 'Painter' },
+  // Other
+  { label: 'Store Keeper', value: 'Store Keeper' },
+  { label: 'Inventory Manager', value: 'Inventory Manager' },
+  { label: 'Sports Equipment Manager', value: 'Sports Equipment Manager' },
+  { label: 'Event Coordinator', value: 'Event Coordinator' },
+  { label: 'Other', value: 'Other' },
+];
+
+const SHIFT_OPTIONS = [
+  { label: 'Morning', value: 'Morning' },
+  { label: 'Evening', value: 'Evening' },
+  { label: 'Night', value: 'Night' },
+  { label: 'Rotating', value: 'Rotating' },
+];
+
+const SALARY_TYPE_OPTIONS = [
+  { label: 'Monthly', value: 'monthly' },
+  { label: 'Daily', value: 'daily' },
+  { label: 'Hourly', value: 'hourly' },
+];
+
+const LICENSE_TYPE_OPTIONS = [
+  { label: 'LTV (Light Transport Vehicle)', value: 'LTV' },
+  { label: 'HTV (Heavy Transport Vehicle)', value: 'HTV' },
+  { label: 'Motorcycle', value: 'Motorcycle' },
+  { label: 'Other', value: 'Other' },
+];
 
 export default function AddStaffModal({ open, onClose, onSuccess, branches, role, staffMember = null }) {
   const [loading, setLoading] = useState(false);
@@ -576,75 +651,15 @@ export default function AddStaffModal({ open, onClose, onSuccess, branches, role
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Staff Type <span className="text-red-500">*</span>
               </label>
-              <select
+              <Dropdown
+                id="staffType"
                 name="staffType"
                 value={formData.staffType}
                 onChange={handleChange}
+                options={STAFF_TYPE_OPTIONS}
+                placeholder="Select Staff Type"
                 required
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-              >
-                <option value="">Select Staff Type</option>
-                <optgroup label="Administrative Staff">
-                  <option value="Administrative Officer">Administrative Officer</option>
-                  <option value="Office Superintendent">Office Superintendent</option>
-                  <option value="Clerk">Clerk</option>
-                  <option value="Accountant">Accountant</option>
-                  <option value="Cashier">Cashier</option>
-                  <option value="Data Entry Operator">Data Entry Operator</option>
-                  <option value="Receptionist">Receptionist</option>
-                  <option value="Office Assistant">Office Assistant</option>
-                </optgroup>
-                <optgroup label="Academic Support Staff">
-                  <option value="Librarian">Librarian</option>
-                  <option value="Assistant Librarian">Assistant Librarian</option>
-                  <option value="Lab Assistant">Lab Assistant</option>
-                  <option value="Lab Attendant">Lab Attendant</option>
-                  <option value="Computer Lab Assistant">Computer Lab Assistant</option>
-                  <option value="Science Lab Assistant">Science Lab Assistant</option>
-                </optgroup>
-                <optgroup label="Support Staff">
-                  <option value="Peon">Peon</option>
-                  <option value="Security Guard">Security Guard</option>
-                  <option value="Gate Keeper">Gate Keeper</option>
-                  <option value="Sweeper">Sweeper</option>
-                  <option value="Cleaner">Cleaner</option>
-                  <option value="Gardener">Gardener</option>
-                  <option value="Mali">Mali</option>
-                </optgroup>
-                <optgroup label="Health & Medical Staff">
-                  <option value="School Nurse">School Nurse</option>
-                  <option value="Doctor">Doctor</option>
-                  <option value="First Aid Assistant">First Aid Assistant</option>
-                </optgroup>
-                <optgroup label="Transportation Staff">
-                  <option value="Driver">Driver</option>
-                  <option value="Transport Supervisor">Transport Supervisor</option>
-                  <option value="Transport Manager">Transport Manager</option>
-                </optgroup>
-                <optgroup label="Kitchen & Canteen Staff">
-                  <option value="Cook">Cook</option>
-                  <option value="Helper">Helper</option>
-                  <option value="Canteen Manager">Canteen Manager</option>
-                </optgroup>
-                <optgroup label="Hostel Staff">
-                  <option value="Hostel Warden">Hostel Warden</option>
-                  <option value="Assistant Hostel Warden">Assistant Hostel Warden</option>
-                  <option value="Hostel Supervisor">Hostel Supervisor</option>
-                </optgroup>
-                <optgroup label="Maintenance Staff">
-                  <option value="Electrician">Electrician</option>
-                  <option value="Plumber">Plumber</option>
-                  <option value="Carpenter">Carpenter</option>
-                  <option value="Painter">Painter</option>
-                </optgroup>
-                <optgroup label="Other">
-                  <option value="Store Keeper">Store Keeper</option>
-                  <option value="Inventory Manager">Inventory Manager</option>
-                  <option value="Sports Equipment Manager">Sports Equipment Manager</option>
-                  <option value="Event Coordinator">Event Coordinator</option>
-                  <option value="Other">Other</option>
-                </optgroup>
-              </select>
+              />
             </div>
 
             <div>
@@ -665,17 +680,14 @@ export default function AddStaffModal({ open, onClose, onSuccess, branches, role
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Shift
               </label>
-              <select
+              <Dropdown
+                id="shift"
                 name="shift"
                 value={formData.shift}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-              >
-                <option value="Morning">Morning</option>
-                <option value="Evening">Evening</option>
-                <option value="Night">Night</option>
-                <option value="Rotating">Rotating</option>
-              </select>
+                options={SHIFT_OPTIONS}
+                placeholder="Select Shift"
+              />
             </div>
 
             <div>
@@ -715,16 +727,14 @@ export default function AddStaffModal({ open, onClose, onSuccess, branches, role
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Salary Type
               </label>
-              <select
+              <Dropdown
+                id="salaryType"
                 name="salaryType"
                 value={formData.salaryType}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-              >
-                <option value="monthly">Monthly</option>
-                <option value="daily">Daily</option>
-                <option value="hourly">Hourly</option>
-              </select>
+                options={SALARY_TYPE_OPTIONS}
+                placeholder="Select Salary Type"
+              />
             </div>
           </div>
         </div>
@@ -1207,18 +1217,14 @@ export default function AddStaffModal({ open, onClose, onSuccess, branches, role
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   License Type
                 </label>
-                <select
+                <Dropdown
+                  id="licenseType"
                   name="specializedInfo.driverLicense.type"
                   value={formData.specializedInfo.driverLicense.type}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-                >
-                  <option value="">Select License Type</option>
-                  <option value="LTV">LTV (Light Transport Vehicle)</option>
-                  <option value="HTV">HTV (Heavy Transport Vehicle)</option>
-                  <option value="Motorcycle">Motorcycle</option>
-                  <option value="Other">Other</option>
-                </select>
+                  options={LICENSE_TYPE_OPTIONS}
+                  placeholder="Select License Type"
+                />
               </div>
 
               <div>

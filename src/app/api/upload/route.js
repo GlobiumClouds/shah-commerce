@@ -51,14 +51,15 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
     // Handle different file types
     switch (fileType) {
       case 'profile':
-        uploadResult = await uploadProfilePhoto(base64File, userId || 'temp');
-        
-        // Return upload result directly (for new user creation, photo will be added during user creation)
-        return NextResp.json({
-          success: true,
-          message: 'Profile photo uploaded successfully',
-          data: uploadResult,
-        });
+        uploadResult = await uploadProfilePhoto(base64File, userId);
+        updateQuery = {
+          profilePhoto: {
+            url: uploadResult.url,
+            publicId: uploadResult.publicId,
+            uploadedAt: new Date(),
+          },
+        };
+        break;
 
       case 'student_document':
         if (!documentType) {
@@ -175,27 +176,28 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
             { status: 400 }
           );
         }
-        uploadResult = await uploadStaffDocument(base64File, userId || 'temp', documentType);
+        uploadResult = await uploadStaffDocument(base64File, userId, documentType);
         
-        // If userId is provided and user exists, add to staffProfile.documents array
-        if (userId && userId !== authenticatedUser.userId) {
-          const staffUser = await User.findById(userId);
-          if (staffUser && staffUser.role === 'staff') {
-            staffUser.staffProfile = staffUser.staffProfile || {};
-            staffUser.staffProfile.documents = staffUser.staffProfile.documents || [];
-            staffUser.staffProfile.documents.push({
-              type: documentType,
-              name: file.name,
-              url: uploadResult.url,
-              publicId: uploadResult.publicId,
-              uploadedAt: new Date(),
-            });
-
-            await staffUser.save();
-          }
+        // Add to staffProfile.documents array
+        const staffUser = await User.findById(userId);
+        if (!staffUser || staffUser.role !== 'staff') {
+          return NextResp.json(
+            { success: false, message: 'User is not a staff member' },
+            { status: 400 }
+          );
         }
-        
-        // Return upload result (for new staff creation, documents will be added during staff creation)
+
+        staffUser.staffProfile = staffUser.staffProfile || {};
+        staffUser.staffProfile.documents = staffUser.staffProfile.documents || [];
+        staffUser.staffProfile.documents.push({
+          type: documentType,
+          name: file.name,
+          url: uploadResult.url,
+          publicId: uploadResult.publicId,
+          uploadedAt: new Date(),
+        });
+
+        await staffUser.save();
         
         return NextResp.json({
           success: true,
@@ -209,7 +211,18 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
           { status: 400 }
         );
     }
-  } catch (error) {
+
+    // Update user profile photo (if applicable)
+    if (fileType === 'profile') {
+      await User.findByIdAndUpdate(userId, updateQuery);
+    }
+
+      return NextResp.json({
+      success: true,
+      message: 'File uploaded successfully',
+      data: uploadResult,
+    });
+    } catch (error) {
     console.error('File upload error:', error);
     return NextResp.json(
       { success: false, message: 'Failed to upload file', error: error.message },
