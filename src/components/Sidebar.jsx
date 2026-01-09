@@ -28,6 +28,7 @@ import {
   GraduationCap,
   QrCode,
   ChevronRight,
+  Bell,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -165,6 +166,12 @@ const ROLE_MENUS = {
       ],
     },
     {
+      category: "Notification Management",
+      items: [
+        { name: "Notifications", path: "/super-admin/notifications", icon: Bell },
+      ],
+    },
+    {
       category: "Salary Management",
       isCollapsible: true,
       items: [
@@ -240,6 +247,12 @@ const ROLE_MENUS = {
           icon: Receipt,
         },
         { name: "Expenses", path: "/branch-admin/expenses", icon: Wallet },
+      ],
+    },
+        {
+      category: "Notification Management",
+      items: [
+        { name: "Notifications", path: "/branch-admin/notifications", icon: Bell },
       ],
     },
     {
