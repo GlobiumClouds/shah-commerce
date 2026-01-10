@@ -34,15 +34,15 @@ const handler = withAuth(async (request, user, userDoc, context) => {
     }
 
     // Get user's branch
-    const branchAdmin = await User.findById(userDoc._id).populate('branchProfile.branchId');
-    if (!branchAdmin?.branchProfile?.branchId) {
+    const branchAdmin = await User.findById(userDoc._id);
+    if (!branchAdmin?.branchId) {
       return NextResponse.json(
         { success: false, message: 'Branch not found' },
         { status: 400 }
       );
     }
 
-    const branchId = branchAdmin.branchProfile.branchId._id;
+    const branchId = branchAdmin.branchId;
 
     // Find the voucher
     const voucher = await FeeVoucher.findById(voucherId);

@@ -140,6 +140,11 @@ const ROLE_MENUS = {
           path: "/super-admin/fee-vouchers",
           icon: Receipt,
         },
+        {
+          name: "Pending Fees",
+          path: "/super-admin/pending-fees",
+          icon: DollarSign,
+        },
       ],
     },
     {

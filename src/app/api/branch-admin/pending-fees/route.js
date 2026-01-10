@@ -19,24 +19,29 @@ const handler = withAuth(async (request, user, userDoc, context) => {
     await connectDB();
 
     // Get user's branch
-    const branchAdmin = await User.findById(userDoc._id).populate('branchProfile.branchId');
-    if (!branchAdmin?.branchProfile?.branchId) {
+    const branchAdmin = await User.findById(userDoc._id);
+    if (!branchAdmin?.branchId) {
       return NextResponse.json(
         { success: false, message: 'Branch not found' },
         { status: 400 }
       );
     }
 
-    const branchId = branchAdmin.branchProfile.branchId._id;
+    const branchId = branchAdmin.branchId;
 
     // Find all fee vouchers for this branch with pending payments
     const vouchers = await FeeVoucher.find({
       branchId,
       'paymentHistory.status': 'pending',
     })
-      .populate('studentId', 'name fatherName parentProfile')
+      .populate('studentId', 'name firstName lastName fullName fatherName parentProfile')
       .populate('classId', 'name')
       .lean();
+
+    console.log('Found vouchers with pending payments:', vouchers.length);
+    vouchers.forEach((voucher, index) => {
+      console.log(`Voucher ${index + 1}: ${voucher.voucherNumber}, Student: ${voucher.studentId?.name || voucher.studentId?.fullName || 'Unknown'}`);
+    });
 
     // Extract pending payments
     const pendingPayments = [];
@@ -54,7 +59,7 @@ const handler = withAuth(async (request, user, userDoc, context) => {
             voucherId: voucher._id,
             paymentIndex: index,
             voucherNumber: voucher.voucherNumber,
-            studentName: voucher.studentId.name || 'Unknown',
+            studentName: voucher.studentId?.fullName || `${voucher.studentId?.firstName || ''} ${voucher.studentId?.lastName || ''}`.trim() || 'Unknown',
             className: voucher.classId?.name || 'N/A',
             amount: payment.amount,
             currency: '₹', // You can make this configurable per branch

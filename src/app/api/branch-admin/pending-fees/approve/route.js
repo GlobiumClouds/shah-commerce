@@ -3,6 +3,7 @@ import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import FeeVoucher from '@/backend/models/FeeVoucher';
 import User from '@/backend/models/User';
+import Notification from '@/backend/models/Notification';
 
 const handler = withAuth(async (request, user, userDoc, context) => {
   try {
@@ -27,15 +28,15 @@ const handler = withAuth(async (request, user, userDoc, context) => {
     }
 
     // Get user's branch
-    const branchAdmin = await User.findById(userDoc._id).populate('branchProfile.branchId');
-    if (!branchAdmin?.branchProfile?.branchId) {
+    const branchAdmin = await User.findById(userDoc._id);
+    if (!branchAdmin?.branchId) {
       return NextResponse.json(
         { success: false, message: 'Branch not found' },
         { status: 400 }
       );
     }
 
-    const branchId = branchAdmin.branchProfile.branchId._id;
+    const branchId = branchAdmin.branchId;
 
     // Find the voucher
     const voucher = await FeeVoucher.findById(voucherId);
@@ -91,6 +92,30 @@ const handler = withAuth(async (request, user, userDoc, context) => {
     }
 
     await voucher.save();
+
+    // Send notification to parent
+    try {
+      const student = await User.findById(voucher.studentId).populate('parentProfile.parentId');
+      if (student?.parentProfile?.parentId) {
+        const parentId = student.parentProfile.parentId;
+
+        await Notification.create({
+          targetUser: parentId,
+          title: 'Payment Approved',
+          message: `Your payment of ₹${payment.amount} for voucher ${voucher.voucherNumber} has been approved.`,
+          type: 'payment',
+          data: {
+            voucherId: voucher._id,
+            voucherNumber: voucher.voucherNumber,
+            amount: payment.amount,
+            transactionId: payment.transactionId,
+          },
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error sending notification:', notificationError);
+      // Don't fail the payment approval if notification fails
+    }
 
     return NextResponse.json({
       success: true,
