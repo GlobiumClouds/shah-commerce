@@ -220,6 +220,7 @@ const ROLE_MENUS = {
           icon: Building2,
         },
         { name: "Syllabus", path: "/branch-admin/syllabus", icon: FileText },
+        { name: "Library", path: "/branch-admin/library", icon: BookOpen },
         {
           name: "Parents",
           path: "/branch-admin/parents",

@@ -686,6 +686,10 @@ export const API_ENDPOINTS = {
       HISTORY: '/student/library/history', // GET
       SEARCH: '/student/library/search', // GET
     },
+    // Branch Admin Library Management
+    LIBRARY_MANAGEMENT: {
+      BOOKS: '/branch-admin/library/books', // GET, POST, PUT, DELETE
+    },
   },
 
   // Common/Shared Endpoints
