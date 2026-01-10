@@ -17,7 +17,7 @@ The Library Management System has been integrated into the Ease Academy school m
 
 ### 3. API Endpoints
 - **Books Management**: `/api/branch-admin/library/books` - CRUD operations for library books
-- **Parent Library Access**: `/api/parent/[childId]/library` - Parent access to child's library activities
+- **Parent Library Access**: `/api/parent/[childId]/library` - Parent access to child's library activities (shows available books from child's branch)
 - **Authentication**: Proper role-based access control for branch admins and parents
 
 ### 4. Database Models
@@ -112,6 +112,7 @@ src/components/
 ✅ Database models created
 ✅ Role-based permissions configured
 ✅ Basic CRUD operations functional
+✅ Parent library access implemented (shows books from child's branch)
 
 ## Notes
 - Library stats show total book count (defaults to 0 if no data)

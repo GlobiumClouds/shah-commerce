@@ -220,12 +220,12 @@ const ROLE_MENUS = {
           icon: Building2,
         },
         { name: "Syllabus", path: "/branch-admin/syllabus", icon: FileText },
-        { name: "Library", path: "/branch-admin/library", icon: BookOpen },
         {
           name: "Parents",
           path: "/branch-admin/parents",
           icon: UserCheck,
         },
+        
       ],
     },
     {
@@ -256,6 +256,11 @@ const ROLE_MENUS = {
           name: "Fee Templates",
           path: "/branch-admin/fee-templates",
           icon: Receipt,
+        },
+        {
+          name: "Pending Fees",
+          path: "/branch-admin/pending-fees",
+          icon: DollarSign,
         },
         { name: "Expenses", path: "/branch-admin/expenses", icon: Wallet },
       ],
@@ -328,6 +333,7 @@ const ROLE_MENUS = {
         { name: "Attendance", path: "/parent/attendance", icon: Clock },
         { name: "Results", path: "/parent/results", icon: BarChart3 },
         { name: "Fee Status", path: "/parent/fees", icon: DollarSign },
+        { name: "Notifications", path: "/parent/notifications", icon: Calendar },
       ],
     },
   ],
