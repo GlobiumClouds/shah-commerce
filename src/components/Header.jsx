@@ -4,11 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { Search, Bell, User, ChevronDown } from 'lucide-react';
+import { Search, Bell, User, ChevronDown, Menu, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import NotificationBell from '@/components/NotificationBell';
 
-export default function Header() {
+export default function Header({ mobileOpen, setMobileOpen }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -107,20 +107,33 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-      <div className="flex items-center justify-between px-6 py-4">
+    <header className={cn(
+      "bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm",
+      mobileOpen && "md:block hidden"
+    )}>
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
         {/* Page Title */}
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
             {getPageTitle()}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1 truncate">
             {getWelcomeMessage()}
           </p>
         </div>
 
         {/* Right Side Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
+          {/* Mobile Sidebar Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden hover:bg-gray-100 h-8 w-8 sm:h-9 sm:w-9"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            {mobileOpen ? <X className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />}
+          </Button>
+
           {/* Search */}
           <div className="hidden md:block">
             <div className="relative">
@@ -128,7 +141,7 @@ export default function Header() {
               <input
                 type="text"
                 placeholder="Search..."
-                className="pl-10 pr-4 py-2 w-64 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder-gray-500 transition-colors"
+                className="pl-10 pr-4 py-2 w-48 lg:w-64 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder-gray-500 transition-colors text-sm"
               />
             </div>
           </div>
@@ -137,29 +150,35 @@ export default function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden hover:bg-gray-100"
+            className="md:hidden hover:bg-gray-100 h-8 w-8 sm:h-9 sm:w-9"
           >
-            <Search className="h-5 w-5 text-gray-600" />
+            <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
           </Button>
 
           {/* Notifications */}
-          <NotificationBell />
-
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative hover:bg-gray-100 h-8 w-8 sm:h-9 sm:w-9"
+          >
+            <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+          </Button>
 
           {/* Profile Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={toggleDropdown}
-              className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors"
+              className="flex items-center gap-2 sm:gap-3 hover:bg-gray-50 rounded-lg px-2 sm:px-3 py-2 transition-colors min-w-0"
             >
               {/* User Avatar */}
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center text-white font-semibold text-xs sm:text-sm flex-shrink-0">
                 {getUserInitials()}
               </div>
-              
+
               {/* User Info - Hidden on mobile */}
-              <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
+              <div className="hidden md:block text-left min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate max-w-[100px] lg:max-w-[120px]">
                   {user?.fullName || user?.name || 'User'}
                 </p>
                 <p className="text-xs text-gray-500 capitalize">
@@ -167,10 +186,10 @@ export default function Header() {
                 </p>
               </div>
 
-              <ChevronDown 
-                className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+              <ChevronDown
+                className={`h-3 w-3 sm:h-4 sm:w-4 text-gray-500 transition-transform duration-200 flex-shrink-0 ${
                   isDropdownOpen ? 'rotate-180' : ''
-                }`} 
+                }`}
               />
             </button>
 
