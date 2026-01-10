@@ -32,10 +32,3 @@ export async function POST(req) {
     return NextResponse.json({ success: false, message: "Server Error" }, { status: 500 });
   }
 }
-
-<<<<<<< HEAD
-
-=======
-// Export with Auth Protection - All authenticated users can save their tokens
-export const POST = withAuth(saveToken);
->>>>>>> ca7a24cc2863b76a8c6680ffe9f29dc23140dc0c
