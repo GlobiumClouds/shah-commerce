@@ -169,7 +169,8 @@ export default function LibraryPage() {
     if (!confirm('Are you sure you want to delete this book?')) return;
 
     try {
-      const response = await apiClient.delete(`${API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.BOOKS}?id=${id}`);
+      const endpoint = API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.DELETE.replace(':id', id);
+      const response = await apiClient.delete(endpoint);
       if (response.success) {
         toast.success('Book deleted successfully!');
         fetchBooks();
@@ -204,10 +205,9 @@ export default function LibraryPage() {
 
       let response;
       if (editingBook) {
-        response = await apiClient.put(API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.BOOKS, {
-          id: editingBook._id,
-          ...submitData
-        });
+        // Use ID in URL for updates
+        const endpoint = API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.UPDATE.replace(':id', editingBook._id);
+        response = await apiClient.put(endpoint, submitData);
       } else {
         response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.BOOKS, submitData);
       }

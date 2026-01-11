@@ -173,102 +173,10 @@ const handlePOST = withAuth(async (request, user, userDoc, context) => {
   }
 });
 
-// PUT /api/branch-admin/library/books - Update book (would need ID in URL, but for now keeping simple)
-const handlePUT = withAuth(async (request, user, userDoc, context) => {
-  try {
-    await connectDB();
-
-    // Only branch admins can access
-    if (userDoc.role !== 'branch_admin') {
-      return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
-    }
-
-    const body = await request.json();
-    const { id, ...updateData } = body;
-
-    if (!id) {
-      return NextResponse.json({ success: false, message: 'Book ID is required' }, { status: 400 });
-    }
-
-    // Find and update book
-    const book = await Library.findOne({ _id: id, branchId: userDoc.branchId });
-    if (!book) {
-      return NextResponse.json({ success: false, message: 'Book not found' }, { status: 404 });
-    }
-
-    // Update fields
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key] !== undefined) {
-        book[key] = updateData[key];
-      }
-    });
-
-    book.lastUpdatedBy = userDoc._id;
-    await book.save();
-
-    // Populate for response
-    await book.populate('addedBy', 'firstName lastName');
-    await book.populate('lastUpdatedBy', 'firstName lastName');
-
-    return NextResponse.json({
-      success: true,
-      message: 'Book updated successfully',
-      data: book
-    });
-
-  } catch (error) {
-    console.error('Error updating book:', error);
-    return NextResponse.json({ success: false, message: 'Failed to update book' }, { status: 500 });
-  }
-});
-
-// DELETE /api/branch-admin/library/books - Delete book
-const handleDELETE = withAuth(async (request, user, userDoc, context) => {
-  try {
-    await connectDB();
-
-    // Only branch admins can access
-    if (userDoc.role !== 'branch_admin') {
-      return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json({ success: false, message: 'Book ID is required' }, { status: 400 });
-    }
-
-    // Find and delete book
-    const book = await Library.findOneAndDelete({ _id: id, branchId: userDoc.branchId });
-
-    if (!book) {
-      return NextResponse.json({ success: false, message: 'Book not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Book deleted successfully'
-    });
-
-  } catch (error) {
-    console.error('Error deleting book:', error);
-    return NextResponse.json({ success: false, message: 'Failed to delete book' }, { status: 500 });
-  }
-});
-
 export async function GET(request, context) {
   return handleGET(request, context);
 }
 
 export async function POST(request, context) {
   return handlePOST(request, context);
-}
-
-export async function PUT(request, context) {
-  return handlePUT(request, context);
-}
-
-export async function DELETE(request, context) {
-  return handleDELETE(request, context);
 }
