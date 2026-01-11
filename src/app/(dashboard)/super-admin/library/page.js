@@ -9,7 +9,7 @@ import Dropdown from '@/components/ui/dropdown';
 import Modal from '@/components/ui/modal';
 import FullPageLoader from '@/components/ui/full-page-loader';
 import ButtonLoader from '@/components/ui/button-loader';
-import { Plus, Edit, Trash2, Search, BookOpen, Eye, FileText, Upload, X, Calendar, MapPin, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, BookOpen, Eye, FileText, Upload, X, Calendar, MapPin, Download, Building2, CheckCircle, Library as LibraryIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -46,7 +46,7 @@ const BOOK_STATUS = [
   { value: 'maintenance', label: 'Maintenance' },
 ];
 
-export default function LibraryPage() {
+export default function SuperAdminLibraryPage() {
   const { user } = useAuth();
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,14 +56,11 @@ export default function LibraryPage() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [classFilter, setClassFilter] = useState('');
-  const [gradeFilter, setGradeFilter] = useState('');
-  const [sectionFilter, setSectionFilter] = useState('');
-  const [levelFilter, setLevelFilter] = useState('');
-  const [streamFilter, setStreamFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
 
   // Data states for dropdowns
+  const [branches, setBranches] = useState([]);
   const [classes, setClasses] = useState([]);
   const [grades, setGrades] = useState([]);
   const [levels, setLevels] = useState([]);
@@ -92,23 +89,28 @@ export default function LibraryPage() {
     pages: '',
     keywords: '',
     notes: '',
+    branchId: '', // Branch association for the book
     classId: '' // Class association for the book
   });
 
   useEffect(() => {
     fetchBooks();
     fetchDropdownData();
-  }, [search, categoryFilter, statusFilter, classFilter, gradeFilter, sectionFilter, levelFilter, streamFilter, pagination.page]);
+  }, [search, categoryFilter, statusFilter, branchFilter, pagination.page]);
 
   const fetchDropdownData = async () => {
     try {
-      const [classesRes, gradesRes, levelsRes, streamsRes] = await Promise.all([
-        apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.CLASSES.LIST),
-        apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.GRADES.LIST),
-        apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.LEVELS.LIST),
-        apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.STREAMS.LIST)
+      const [branchesRes, classesRes, gradesRes, levelsRes, streamsRes] = await Promise.all([
+        apiClient.get(API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST),
+        apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST),
+        apiClient.get(API_ENDPOINTS.SUPER_ADMIN.GRADES.LIST),
+        apiClient.get(API_ENDPOINTS.SUPER_ADMIN.LEVELS.LIST),
+        apiClient.get(API_ENDPOINTS.SUPER_ADMIN.STREAMS.LIST)
       ]);
 
+      if (branchesRes.success) {
+        setBranches(branchesRes.data.map(branch => ({ value: branch._id, label: branch.name })));
+      }
       if (classesRes.success) {
         setClasses(classesRes.data.map(cls => ({ value: cls._id, label: cls.name })));
       }
@@ -135,11 +137,7 @@ export default function LibraryPage() {
         search,
         category: categoryFilter,
         status: statusFilter,
-        class: classFilter,
-        grade: gradeFilter,
-        section: sectionFilter,
-        level: levelFilter,
-        stream: streamFilter
+        branch: branchFilter
       };
 
       // Remove empty parameters
@@ -147,7 +145,7 @@ export default function LibraryPage() {
         if (!params[key]) delete params[key];
       });
 
-      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.BOOKS, params);
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.LIBRARY.BOOKS, params);
       if (response.success) {
         setBooks(response.data.books);
         setPagination(response.data.pagination);
@@ -183,6 +181,7 @@ export default function LibraryPage() {
       pages: '',
       keywords: '',
       notes: '',
+      branchId: '',
       classId: ''
     });
     setIsModalOpen(true);
@@ -211,6 +210,7 @@ export default function LibraryPage() {
       pages: book.pages || '',
       keywords: book.keywords ? book.keywords.join(', ') : '',
       notes: book.notes || '',
+      branchId: book.branchId || '',
       classId: book.classId || ''
     });
     setIsModalOpen(true);
@@ -220,7 +220,7 @@ export default function LibraryPage() {
     if (!confirm('Are you sure you want to delete this book?')) return;
 
     try {
-      const response = await apiClient.delete(`${API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.BOOKS}?id=${id}`);
+      const response = await apiClient.delete(`${API_ENDPOINTS.SUPER_ADMIN.LIBRARY.BOOKS}/${id}`);
       if (response.success) {
         toast.success('Book deleted successfully!');
         fetchBooks();
@@ -237,7 +237,7 @@ export default function LibraryPage() {
       setSubmitting(true);
 
       // Validate required fields
-      if (!formData.title || !formData.author || !formData.category || !formData.totalCopies) {
+      if (!formData.title || !formData.author || !formData.category || !formData.totalCopies || !formData.branchId) {
         toast.error('Please fill in all required fields');
         return;
       }
@@ -255,12 +255,9 @@ export default function LibraryPage() {
 
       let response;
       if (editingBook) {
-        response = await apiClient.put(API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.BOOKS, {
-          id: editingBook._id,
-          ...submitData
-        });
+        response = await apiClient.put(`${API_ENDPOINTS.SUPER_ADMIN.LIBRARY.BOOKS}/${editingBook._id}`, submitData);
       } else {
-        response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.BOOKS, submitData);
+        response = await apiClient.post(API_ENDPOINTS.SUPER_ADMIN.LIBRARY.BOOKS, submitData);
       }
 
       if (response.success) {
@@ -306,6 +303,67 @@ export default function LibraryPage() {
         </CardHeader>
 
         <CardContent>
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <BookOpen className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Total Books</p>
+                    <p className="text-2xl font-bold text-gray-900">{pagination.total}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Available Books</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {books.reduce((sum, book) => sum + (book.availableCopies || 0), 0)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Building2 className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Branches</p>
+                    <p className="text-2xl font-bold text-gray-900">{branches.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <LibraryIcon className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Categories</p>
+                    <p className="text-2xl font-bold text-gray-900">{BOOK_CATEGORIES.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Filters */}
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
             <Input
@@ -333,45 +391,13 @@ export default function LibraryPage() {
               ]}
             />
             <Dropdown
-              placeholder="Filter by class"
-              value={classFilter}
-              onChange={(e) => setClassFilter(e.target.value)}
+              placeholder="Filter by branch"
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
               options={[
-                { value: '', label: 'All Classes' },
-                ...classes
+                { value: '', label: 'All Branches' },
+                ...branches
               ]}
-            />
-            <Dropdown
-              placeholder="Filter by grade"
-              value={gradeFilter}
-              onChange={(e) => setGradeFilter(e.target.value)}
-              options={[
-                { value: '', label: 'All Grades' },
-                ...grades
-              ]}
-            />
-            <Dropdown
-              placeholder="Filter by level"
-              value={levelFilter}
-              onChange={(e) => setLevelFilter(e.target.value)}
-              options={[
-                { value: '', label: 'All Levels' },
-                ...levels
-              ]}
-            />
-            <Dropdown
-              placeholder="Filter by stream"
-              value={streamFilter}
-              onChange={(e) => setStreamFilter(e.target.value)}
-              options={[
-                { value: '', label: 'All Streams' },
-                ...streams
-              ]}
-            />
-            <Input
-              placeholder="Filter by section"
-              value={sectionFilter}
-              onChange={(e) => setSectionFilter(e.target.value)}
             />
           </div>
 
@@ -382,6 +408,7 @@ export default function LibraryPage() {
                 <TableHead>Title</TableHead>
                 <TableHead>Author</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>Branch</TableHead>
                 <TableHead>Copies</TableHead>
                 <TableHead>Available</TableHead>
                 <TableHead>Status</TableHead>
@@ -391,7 +418,7 @@ export default function LibraryPage() {
             <TableBody>
               {books.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-gray-500">
+                  <TableCell colSpan={8} className="text-center text-gray-500">
                     No books found
                   </TableCell>
                 </TableRow>
@@ -401,6 +428,7 @@ export default function LibraryPage() {
                     <TableCell className="font-medium">{book.title}</TableCell>
                     <TableCell>{book.author}</TableCell>
                     <TableCell>{book.category}</TableCell>
+                    <TableCell>{book.branchId?.name || 'N/A'}</TableCell>
                     <TableCell>{book.totalCopies}</TableCell>
                     <TableCell>{book.availableCopies}</TableCell>
                     <TableCell>
@@ -526,17 +554,27 @@ export default function LibraryPage() {
               />
             </div>
 
-            <Dropdown
-              label="Class Association"
-              placeholder="Select class (optional)"
-              value={formData.classId}
-              onChange={(e) => handleInputChange('classId', e.target.value)}
-              options={[
-                { value: '', label: '📚 General Book (Available to all classes)' },
-                ...classes.map(cls => ({ ...cls, label: `🏫 ${cls.label}` }))
-              ]}
-              helperText="Leave empty for general books available to all students"
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Dropdown
+                label="Branch *"
+                placeholder="Select branch"
+                value={formData.branchId}
+                onChange={(e) => handleInputChange('branchId', e.target.value)}
+                options={branches.map(branch => ({ ...branch, label: `🏫 ${branch.label}` }))}
+                required
+              />
+              <Dropdown
+                label="Class Association"
+                placeholder="Select class (optional)"
+                value={formData.classId}
+                onChange={(e) => handleInputChange('classId', e.target.value)}
+                options={[
+                  { value: '', label: '📚 General Book (Available to all classes)' },
+                  ...classes.map(cls => ({ ...cls, label: `🏫 ${cls.label}` }))
+                ]}
+                helperText="Leave empty for general books available to all students"
+              />
+            </div>
 
             <Input
               label="Book Description"

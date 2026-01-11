@@ -102,6 +102,11 @@ const ROLE_MENUS = {
           icon: FileText,
         },
         { name: "Timetable", path: "/super-admin/timetable", icon: Clock },
+        {
+          name: "Library",
+          path: "/super-admin/library",
+          icon: FolderOpen,
+        }
       ],
     },
     {
@@ -325,7 +330,7 @@ const ROLE_MENUS = {
     },
   ],
 
-  parent: [
+    parent: [
     {
       category: "Dashboard",
       items: [{ name: "Dashboard", path: "/parent", icon: LayoutDashboard }],

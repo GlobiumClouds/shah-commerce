@@ -22,13 +22,19 @@ const handler = withAuth(async (request, user, userDoc, context) => {
       return NextResponse.json({ success: false, message: 'Child not found or not a student' }, { status: 404 });
     }
 
-    // Get available books for the child's branch
+    // Get available books for the child's branch and class
+    // Books can be general (no classId) or specific to the child's class
     const availableBooks = await Library.find({
       branchId: child.branchId,
       availableCopies: { $gt: 0 },
-      status: 'available'
+      status: 'available',
+      $or: [
+        { classId: null }, // General books available to all classes
+        { classId: child.studentProfile?.classId } // Books specific to child's class
+      ]
     })
-    .select('title author category isbn description availableCopies totalCopies shelfLocation')
+    .select('title author category isbn description availableCopies totalCopies shelfLocation classId')
+    .populate('classId', 'name grade level stream')
     .sort({ title: 1 })
     .lean();
 

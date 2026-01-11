@@ -140,6 +140,13 @@ const librarySchema = new mongoose.Schema(
       index: true,
     },
 
+    // Class Association (for filtering books by class)
+    classId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Class',
+      index: true,
+    },
+
     // Status and Availability
     status: {
       type: String,

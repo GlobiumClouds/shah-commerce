@@ -2,15 +2,15 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Library from '@/backend/models/Library';
-import User from '@/backend/models/User';
+import Branch from '@/backend/models/Branch';
 
-// GET /api/branch-admin/library/books - List all books for branch admin
+// GET /api/super-admin/library/books - List all books across all branches
 const handleGET = withAuth(async (request, user, userDoc, context) => {
   try {
     await connectDB();
 
-    // Only branch admins can access
-    if (userDoc.role !== 'branch_admin') {
+    // Only super admins can access
+    if (userDoc.role !== 'super_admin') {
       return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
     }
 
@@ -19,11 +19,11 @@ const handleGET = withAuth(async (request, user, userDoc, context) => {
     const limit = parseInt(searchParams.get('limit')) || 10;
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
+    const branch = searchParams.get('branch') || '';
     const status = searchParams.get('status') || '';
-    const classId = searchParams.get('class') || '';
 
     // Build filter
-    const filter = { branchId: userDoc.branchId };
+    const filter = {};
 
     if (search) {
       const regex = new RegExp(search, 'i');
@@ -39,19 +39,20 @@ const handleGET = withAuth(async (request, user, userDoc, context) => {
       filter.category = category;
     }
 
-    if (status) {
-      filter.status = status;
+    if (branch) {
+      filter.branchId = branch;
     }
 
-    if (classId) {
-      filter.classId = classId;
+    if (status) {
+      filter.status = status;
     }
 
     // Get total count
     const total = await Library.countDocuments(filter);
 
-    // Get books with pagination
+    // Get books with pagination and populate branch info
     const books = await Library.find(filter)
+      .populate('branchId', 'name code')
       .populate('addedBy', 'firstName lastName')
       .populate('lastUpdatedBy', 'firstName lastName')
       .sort({ createdAt: -1 })
@@ -80,92 +81,47 @@ const handleGET = withAuth(async (request, user, userDoc, context) => {
   }
 });
 
-// POST /api/branch-admin/library/books - Add new book
+// POST /api/super-admin/library/books - Add new book
 const handlePOST = withAuth(async (request, user, userDoc, context) => {
   try {
     await connectDB();
 
-    // Only branch admins can access
-    if (userDoc.role !== 'branch_admin') {
+    // Only super admins can access
+    if (userDoc.role !== 'super_admin') {
       return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
     }
 
-    const body = await request.json();
-    const {
-      title,
-      author,
-      isbn,
-      description,
-      category,
-      subCategory,
-      publisher,
-      publicationYear,
-      edition,
-      totalCopies,
-      purchasePrice,
-      bookValue,
-      purchaseDate,
-      supplier,
-      shelfLocation,
-      callNumber,
-      language,
-      pages,
-      keywords,
-      notes,
-      classId
-    } = body;
+    const bookData = await request.json();
 
     // Validate required fields
-    if (!title || !author || !category || !totalCopies) {
+    const requiredFields = ['title', 'author', 'category', 'branchId'];
+    const missingFields = requiredFields.filter(field => !bookData[field]);
+
+    if (missingFields.length > 0) {
       return NextResponse.json({
         success: false,
-        message: 'Title, author, category, and total copies are required'
+        message: `Missing required fields: ${missingFields.join(', ')}`
       }, { status: 400 });
     }
 
-    // Check if ISBN already exists (if provided)
-    if (isbn) {
-      const existingBook = await Library.findOne({ isbn, branchId: userDoc.branchId });
-      if (existingBook) {
-        return NextResponse.json({
-          success: false,
-          message: 'A book with this ISBN already exists'
-        }, { status: 400 });
-      }
+    // Verify branch exists
+    const branch = await Branch.findById(bookData.branchId);
+    if (!branch) {
+      return NextResponse.json({ success: false, message: 'Invalid branch ID' }, { status: 400 });
     }
 
     // Create new book
     const newBook = new Library({
-      title,
-      author,
-      isbn,
-      description,
-      category,
-      subCategory,
-      publisher,
-      publicationYear,
-      edition,
-      totalCopies,
-      availableCopies: totalCopies, // Initially all copies are available
-      purchasePrice,
-      bookValue,
-      purchaseDate: purchaseDate ? new Date(purchaseDate) : undefined,
-      supplier,
-      shelfLocation,
-      callNumber,
-      language,
-      pages,
-      keywords,
-      notes,
-      classId: classId || null, // Class association (null for general books)
-      branchId: userDoc.branchId,
+      ...bookData,
       addedBy: userDoc._id,
-      lastUpdatedBy: userDoc._id
+      lastUpdatedBy: userDoc._id,
+      status: bookData.availableCopies > 0 ? 'available' : 'unavailable'
     });
 
     await newBook.save();
 
-    // Populate addedBy for response
+    // Populate for response
+    await newBook.populate('branchId', 'name code');
     await newBook.populate('addedBy', 'firstName lastName');
 
     return NextResponse.json({
@@ -176,29 +132,32 @@ const handlePOST = withAuth(async (request, user, userDoc, context) => {
 
   } catch (error) {
     console.error('Error adding book:', error);
+    if (error.code === 11000) {
+      return NextResponse.json({ success: false, message: 'A book with this ISBN already exists' }, { status: 400 });
+    }
     return NextResponse.json({ success: false, message: 'Failed to add book' }, { status: 500 });
   }
 });
 
-// PUT /api/branch-admin/library/books - Update book (would need ID in URL, but for now keeping simple)
+// PUT /api/super-admin/library/books/[id] - Update book
 const handlePUT = withAuth(async (request, user, userDoc, context) => {
   try {
     await connectDB();
 
-    // Only branch admins can access
-    if (userDoc.role !== 'branch_admin') {
+    // Only super admins can access
+    if (userDoc.role !== 'super_admin') {
       return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { id, ...updateData } = body;
-
+    const { id } = context.params || {};
     if (!id) {
       return NextResponse.json({ success: false, message: 'Book ID is required' }, { status: 400 });
     }
 
+    const updateData = await request.json();
+
     // Find and update book
-    const book = await Library.findOne({ _id: id, branchId: userDoc.branchId });
+    const book = await Library.findById(id);
     if (!book) {
       return NextResponse.json({ success: false, message: 'Book not found' }, { status: 404 });
     }
@@ -214,7 +173,7 @@ const handlePUT = withAuth(async (request, user, userDoc, context) => {
     await book.save();
 
     // Populate for response
-    await book.populate('addedBy', 'firstName lastName');
+    await book.populate('branchId', 'name code');
     await book.populate('lastUpdatedBy', 'firstName lastName');
 
     return NextResponse.json({
@@ -229,25 +188,23 @@ const handlePUT = withAuth(async (request, user, userDoc, context) => {
   }
 });
 
-// DELETE /api/branch-admin/library/books - Delete book
+// DELETE /api/super-admin/library/books/[id] - Delete book
 const handleDELETE = withAuth(async (request, user, userDoc, context) => {
   try {
     await connectDB();
 
-    // Only branch admins can access
-    if (userDoc.role !== 'branch_admin') {
+    // Only super admins can access
+    if (userDoc.role !== 'super_admin') {
       return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
+    const { id } = context.params || {};
     if (!id) {
       return NextResponse.json({ success: false, message: 'Book ID is required' }, { status: 400 });
     }
 
     // Find and delete book
-    const book = await Library.findOneAndDelete({ _id: id, branchId: userDoc.branchId });
+    const book = await Library.findByIdAndDelete(id);
 
     if (!book) {
       return NextResponse.json({ success: false, message: 'Book not found' }, { status: 404 });
