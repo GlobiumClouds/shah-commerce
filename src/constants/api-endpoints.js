@@ -590,6 +590,16 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/branch-admin/library/books/:id', // PUT
       DELETE: '/api/branch-admin/library/books/:id', // DELETE
     },
+
+    // User Management for Dropdowns
+    USERS: {
+      LIST: '/api/branch-admin/users', // GET (search/filter by role)
+    },
+
+    // Notifications Management
+    NOTIFICATIONS: {
+      HISTORY: '/api/branch-admin/notifications/history', // GET
+    },
   },
 
   // Teacher Endpoints
@@ -794,6 +804,13 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/school/grade-stream-subjects/:id', // PUT
       DELETE: '/api/school/grade-stream-subjects/:id', // DELETE
     },
+  },
+
+  // Shared Endpoints (Used by multiple roles)
+  USERS: '/api/branch-admin/users', // GET
+  NOTIFICATIONS: {
+    SEND: '/api/notifications/send', // POST
+    HISTORY: '/api/branch-admin/notifications/history', // GET
   },
 
   // Parent Portal Endpoints
