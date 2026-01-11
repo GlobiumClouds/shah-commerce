@@ -71,16 +71,17 @@ const handler = withAuth(async (request, user, userDoc, context) => {
       );
     }
 
+    // Calculate total approved amount (including current payment being approved now)
+    let totalApprovedAmount = voucher.paymentHistory
+      .filter((p, idx) => p.status === 'approved' || idx === paymentIndex)
+      .reduce((sum, p) => sum + p.amount, 0);
+
     // Approve the payment
     payment.status = 'approved';
     payment.approvedBy = userDoc._id;
     payment.approvedAt = new Date();
 
     // Update paid amount and remaining amount
-    const totalApprovedAmount = voucher.paymentHistory
-      .filter((p) => p.status === 'approved')
-      .reduce((sum, p) => sum + p.amount, 0);
-
     voucher.paidAmount = totalApprovedAmount;
     voucher.remainingAmount = Math.max(0, voucher.totalAmount - totalApprovedAmount);
 

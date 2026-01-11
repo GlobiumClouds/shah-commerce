@@ -60,6 +60,8 @@ const handler = withAuth(async (request, user, userDoc, context) => {
         return await getSystemSettings();
       case 'update-settings':
         return await updateSystemSettings(request);
+      case 'pending-fees':
+        return await getPendingFees();
       default:
         return NextResponse.json({
           success: false,
@@ -758,6 +760,41 @@ async function updateSystemSettings(request) {
   return NextResponse.json({
     success: true,
     message: 'Settings updated successfully'
+  });
+}
+
+// Get Pending Fees (Super Admin - All Branches)
+async function getPendingFees() {
+  const feeVouchers = await FeeVoucher.find({ status: 'pending' })
+    .populate('studentId', 'firstName lastName')
+    .populate('classId', 'name')
+    .populate('branchId', 'name')
+    .sort({ createdAt: -1 });
+
+  const pendingPayments = feeVouchers.map(voucher => {
+    const pendingPayments = voucher.paymentHistory.filter(payment => payment.status === 'pending');
+
+    return pendingPayments.map(payment => ({
+      id: `${voucher._id}_${payment._id}`,
+      voucherId: voucher._id,
+      studentName: `${voucher.studentId?.firstName} ${voucher.studentId?.lastName}`,
+      className: voucher.classId?.name || 'N/A',
+      branchName: voucher.branchId?.name || 'N/A',
+      amount: payment.amount,
+      dueDate: payment.dueDate,
+      paymentDate: payment.paymentDate,
+      description: payment.description || 'Fee Payment',
+      status: payment.status
+    }));
+  }).flat();
+
+  // Sort by payment date (latest first)
+  pendingPayments.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
+  return NextResponse.json({
+    success: true,
+    data: pendingPayments,
+    total: pendingPayments.length
   });
 }
 

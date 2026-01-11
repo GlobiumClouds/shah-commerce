@@ -191,6 +191,13 @@ export const API_ENDPOINTS = {
       // REJECT_PAYMENT: '/api/super-admin/fee-vouchers/:voucherId/reject-payment',
     },
 
+    // Pending Fees Management
+    PENDING_FEES: {
+      LIST: '/api/super-admin/pending-fees',
+      APPROVE: '/api/super-admin/pending-fees/approve',
+      REJECT: '/api/super-admin/pending-fees/reject',
+    },
+
     // Subjects Management
     SUBJECTS: {
       CREATE: '/api/super-admin/subjects',
@@ -534,6 +541,13 @@ export const API_ENDPOINTS = {
       SUMMARY: '/api/employee-attendance/summary', // GET
       TODAY: '/api/employee-attendance/today', // GET
       REPORTS: '/api/employee-attendance/reports', // GET
+    },
+
+    // Pending Fees Management
+    PENDING_FEES: {
+      LIST: '/api/branch-admin/pending-fees',
+      APPROVE: '/api/branch-admin/pending-fees/approve',
+      REJECT: '/api/branch-admin/pending-fees/reject',
     },
 
     // Parent Approval Management

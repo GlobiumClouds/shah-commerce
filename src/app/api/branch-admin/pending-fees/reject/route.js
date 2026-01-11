@@ -79,8 +79,8 @@ const handler = withAuth(async (request, user, userDoc, context) => {
 
     // Reject the payment
     payment.status = 'rejected';
-    payment.approvedBy = userDoc._id;
-    payment.approvedAt = new Date();
+    payment.rejectedBy = userDoc._id;
+    payment.rejectedAt = new Date();
     payment.rejectionReason = rejectionReason.trim();
 
     await voucher.save();
