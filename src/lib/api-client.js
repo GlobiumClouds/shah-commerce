@@ -147,7 +147,7 @@ class ApiClient {
    */
   async request(method, endpoint, data = null, config = {}) {
     this.loading = true;
-    
+
     try {
       const response = await apiClient({
         method,
@@ -155,11 +155,18 @@ class ApiClient {
         data,
         ...config,
       });
-      
+
       this.loading = false;
       return response;
     } catch (error) {
       this.loading = false;
+      console.error('API Client Error:', {
+        method,
+        endpoint,
+        error: error.message || error,
+        status: error.status,
+        response: error.response?.data
+      });
       throw error;
     }
   }
@@ -197,6 +204,32 @@ class ApiClient {
    */
   delete(endpoint, config = {}) {
     return this.request('DELETE', endpoint, null, config);
+  }
+
+  /**
+   * POST FormData request
+   */
+  postFormData(endpoint, formData, config = {}) {
+    return this.request('POST', endpoint, formData, {
+      ...config,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...config.headers,
+      },
+    });
+  }
+
+  /**
+   * PUT FormData request
+   */
+  putFormData(endpoint, formData, config = {}) {
+    return this.request('PUT', endpoint, formData, {
+      ...config,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...config.headers,
+      },
+    });
   }
 
   /**

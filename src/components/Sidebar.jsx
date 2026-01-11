@@ -28,6 +28,7 @@ import {
   GraduationCap,
   QrCode,
   ChevronRight,
+  Library,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,11 @@ const ROLE_MENUS = {
           path: "/super-admin/branch-management/branches",
           icon: FolderOpen,
         },
+        {
+          name: "Library",
+          path: "/super-admin/library",
+          icon: Library,
+        }
       ],
     },
     {
@@ -105,7 +111,7 @@ const ROLE_MENUS = {
         {
           name: "Library",
           path: "/super-admin/library",
-          icon: FolderOpen,
+          icon: Library,
         }
       ],
     },
@@ -231,11 +237,16 @@ const ROLE_MENUS = {
         },
         { name: "Syllabus", path: "/branch-admin/syllabus", icon: FileText },
         {
+          name: "Library",
+          path: "/branch-admin/library",
+          icon: Library,
+        },
+        {
           name: "Parents",
           path: "/branch-admin/parents",
           icon: UserCheck,
         },
-        
+
       ],
     },
     {
@@ -330,7 +341,7 @@ const ROLE_MENUS = {
     },
   ],
 
-    parent: [
+  parent: [
     {
       category: "Dashboard",
       items: [{ name: "Dashboard", path: "/parent", icon: LayoutDashboard }],
@@ -524,8 +535,8 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                   >
                     <span>{group.category}</span>
                     {group.isCollapsible && (
-                      <ChevronRight 
-                        size={14} 
+                      <ChevronRight
+                        size={14}
                         className={cn("transition-transform duration-200", open && "rotate-90")}
                       />
                     )}
@@ -554,7 +565,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                         >
                           <Icon size={19} className={cn("transition-transform", !isActive && "group-hover:scale-110")} />
                           {isOpen && <span className="truncate">{item.name}</span>}
-                          
+
                           {/* Tooltip for collapsed state */}
                           {!isOpen && (
                             <div className="fixed left-24 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-[9999] shadow-2xl pointer-events-none">

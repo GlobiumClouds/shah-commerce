@@ -285,6 +285,12 @@ export const API_ENDPOINTS = {
       EXPORT: '/api/super-admin/users/export',
     },
 
+    // Library Management
+    LIBRARY: {
+      BOOKS: '/api/super-admin/library/books', // GET, POST
+      BOOK: (id) => `/api/super-admin/library/books/${id}`, // GET, PUT, DELETE
+    },
+
     // Employees Management
     EMPLOYEES: '/api/super-admin/employees',
 
@@ -548,6 +554,11 @@ export const API_ENDPOINTS = {
       LIST: '/api/branch-admin/pending-fees',
       APPROVE: '/api/branch-admin/pending-fees/approve',
       REJECT: '/api/branch-admin/pending-fees/reject',
+    },
+
+    // Library Management
+    LIBRARY_MANAGEMENT: {
+      BOOKS: '/api/branch-admin/library/books', // GET, POST, PUT, DELETE
     },
 
     // Parent Approval Management

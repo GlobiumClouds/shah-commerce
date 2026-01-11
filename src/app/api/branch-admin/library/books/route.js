@@ -3,6 +3,10 @@ import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Library from '@/backend/models/Library';
 import User from '@/backend/models/User';
+import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
+
+// Ensure Node runtime so Buffer is available for binary handling
+export const runtime = 'nodejs';
 
 // GET /api/branch-admin/library/books - List all books for branch admin
 const handleGET = withAuth(async (request, user, userDoc, context) => {
@@ -90,7 +94,78 @@ const handlePOST = withAuth(async (request, user, userDoc, context) => {
       return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
     }
 
-    const body = await request.json();
+    let body, attachments = [];
+
+    // Check if request is multipart/form-data
+    const contentType = request.headers.get('content-type') || '';
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+
+      // Parse JSON data
+      const jsonData = formData.get('data');
+      if (!jsonData) {
+        return NextResponse.json({
+          success: false,
+          message: 'Book data is required'
+        }, { status: 400 });
+      }
+      body = JSON.parse(jsonData);
+
+      // Handle file uploads
+      const files = formData.getAll('attachments');
+      for (const file of files) {
+        if (file && file.size > 0) {
+          // Validate file type
+          const allowedTypes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'text/plain',
+            'image/jpeg',
+            'image/png',
+            'image/gif'
+          ];
+
+          if (!allowedTypes.includes(file.type)) {
+            return NextResponse.json({
+              success: false,
+              message: `File type ${file.type} is not allowed. Allowed types: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, JPG, PNG, GIF`
+            }, { status: 400 });
+          }
+
+          // Convert file to buffer and upload to Cloudinary
+          const bytes = await file.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+          const base64File = `data:${file.type};base64,${buffer.toString('base64')}`;
+
+          const uploadResult = await uploadToCloudinary(base64File, {
+            folder: `ease-academy/library/${userDoc.branchId}`,
+            resourceType: 'auto'
+          });
+
+          // Get file extension for fileType
+          const fileName = file.name;
+          const fileExtension = fileName.split('.').pop().toLowerCase();
+
+          attachments.push({
+            url: uploadResult.url,
+            publicId: uploadResult.publicId,
+            filename: fileName,
+            fileType: fileExtension,
+            mimeType: file.type,
+            size: file.size,
+            uploadedBy: userDoc._id
+          });
+        }
+      }
+    } else {
+      body = await request.json();
+    }
+
     const {
       title,
       author,
@@ -190,7 +265,78 @@ const handlePUT = withAuth(async (request, user, userDoc, context) => {
       return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
     }
 
-    const body = await request.json();
+    let body, newAttachments = [];
+
+    // Check if request is multipart/form-data
+    const contentType = request.headers.get('content-type') || '';
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+
+      // Parse JSON data
+      const jsonData = formData.get('data');
+      if (!jsonData) {
+        return NextResponse.json({
+          success: false,
+          message: 'Book data is required'
+        }, { status: 400 });
+      }
+      body = JSON.parse(jsonData);
+
+      // Handle file uploads
+      const files = formData.getAll('attachments');
+      for (const file of files) {
+        if (file && file.size > 0) {
+          // Validate file type
+          const allowedTypes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'text/plain',
+            'image/jpeg',
+            'image/png',
+            'image/gif'
+          ];
+
+          if (!allowedTypes.includes(file.type)) {
+            return NextResponse.json({
+              success: false,
+              message: `File type ${file.type} is not allowed. Allowed types: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, JPG, PNG, GIF`
+            }, { status: 400 });
+          }
+
+          // Convert file to buffer and upload to Cloudinary
+          const bytes = await file.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+          const base64File = `data:${file.type};base64,${buffer.toString('base64')}`;
+
+          const uploadResult = await uploadToCloudinary(base64File, {
+            folder: `ease-academy/library/${userDoc.branchId}`,
+            resourceType: 'auto'
+          });
+
+          // Get file extension for fileType
+          const fileName = file.name;
+          const fileExtension = fileName.split('.').pop().toLowerCase();
+
+          newAttachments.push({
+            url: uploadResult.url,
+            publicId: uploadResult.publicId,
+            filename: fileName,
+            fileType: fileExtension,
+            mimeType: file.type,
+            size: file.size,
+            uploadedBy: userDoc._id
+          });
+        }
+      }
+    } else {
+      body = await request.json();
+    }
+
     const { id, ...updateData } = body;
 
     if (!id) {
@@ -209,6 +355,11 @@ const handlePUT = withAuth(async (request, user, userDoc, context) => {
         book[key] = updateData[key];
       }
     });
+
+    // Handle attachments - append new ones if any
+    if (newAttachments.length > 0) {
+      book.attachments = [...(book.attachments || []), ...newAttachments];
+    }
 
     book.lastUpdatedBy = userDoc._id;
     await book.save();
