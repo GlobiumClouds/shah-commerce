@@ -33,18 +33,28 @@ const handler = withAuth(async (request, user, userDoc, context) => {
         { classId: child.studentProfile?.classId } // Books specific to child's class
       ]
     })
-    .select('title author category isbn description availableCopies totalCopies shelfLocation classId')
+    .select('+attachments title author category isbn description availableCopies totalCopies shelfLocation classId')
     .populate('classId', 'name grade level stream')
     .sort({ title: 1 })
     .lean();
+
+    // Ensure attachments are properly included in the response
+    // Transform the data to make sure attachments are accessible
+    const booksWithAttachments = availableBooks.map(book => ({
+      ...book,
+      attachments: book.attachments || [],
+      // Add convenience fields for frontend
+      hasAttachments: (book.attachments && book.attachments.length > 0) || false,
+      attachmentCount: (book.attachments && book.attachments.length) || 0
+    }));
 
     // Get child's current borrowed books (placeholder for future borrowing system)
     const borrowedBooks = []; // TODO: Implement borrowing history
 
     const libraryData = {
-      availableBooks,
+      availableBooks: booksWithAttachments,
       borrowedBooks,
-      totalAvailable: availableBooks.length,
+      totalAvailable: booksWithAttachments.length,
       childInfo: {
         id: child._id,
         name: child.fullName,

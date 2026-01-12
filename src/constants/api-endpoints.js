@@ -238,11 +238,37 @@ export const API_ENDPOINTS = {
 
     // Grades (alias to school endpoints)
     GRADES: {
-      LIST: '/api/super-admin/school/grades',
-      CREATE: '/api/super-admin/school/grades',
-      GET: '/api/super-admin/school/grades/:id',
-      UPDATE: '/api/super-admin/school/grades/:id',
-      DELETE: '/api/super-admin/school/grades/:id',
+      LIST: '/api/school/grades',
+      CREATE: '/api/school/grades',
+      GET: '/api/school/grades/:id',
+      UPDATE: '/api/school/grades/:id',
+      DELETE: '/api/school/grades/:id',
+    },
+
+    // Levels (alias to school endpoints)
+    LEVELS: {
+      LIST: '/api/school/levels',
+      CREATE: '/api/school/levels',
+      GET: '/api/school/levels/:id',
+      UPDATE: '/api/school/levels/:id',
+      DELETE: '/api/school/levels/:id',
+    },
+
+    // Streams (alias to school endpoints)
+    STREAMS: {
+      LIST: '/api/school/streams',
+      CREATE: '/api/school/streams',
+      GET: '/api/school/streams/:id',
+      UPDATE: '/api/school/streams/:id',
+      DELETE: '/api/school/streams/:id',
+    },
+
+    // Library Management
+    LIBRARY: {
+      BOOKS: '/api/super-admin/library/books', // GET, POST
+      GET: '/api/super-admin/library/books/:id', // GET
+      UPDATE: '/api/super-admin/library/books/:id', // PUT
+      DELETE: '/api/super-admin/library/books/:id', // DELETE
     },
 
     // Departments Management
@@ -567,6 +593,24 @@ export const API_ENDPOINTS = {
     CHECK_CHILDREN_MATCHES: '/api/branch-admin/check-children-matches', // POST
     APPROVE_PARENT: '/api/branch-admin/approve-parent/:id', // POST
     REJECT_PARENT: '/api/branch-admin/reject-parent/:id', // POST
+
+    // Library Management
+    LIBRARY_MANAGEMENT: {
+      BOOKS: '/api/branch-admin/library/books', // GET, POST
+      GET: '/api/branch-admin/library/books/:id', // GET
+      UPDATE: '/api/branch-admin/library/books/:id', // PUT
+      DELETE: '/api/branch-admin/library/books/:id', // DELETE
+    },
+
+    // User Management for Dropdowns
+    USERS: {
+      LIST: '/api/branch-admin/users', // GET (search/filter by role)
+    },
+
+    // Notifications Management
+    NOTIFICATIONS: {
+      HISTORY: '/api/branch-admin/notifications/history', // GET
+    },
   },
 
   // Teacher Endpoints
@@ -771,6 +815,13 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/school/grade-stream-subjects/:id', // PUT
       DELETE: '/api/school/grade-stream-subjects/:id', // DELETE
     },
+  },
+
+  // Shared Endpoints (Used by multiple roles)
+  USERS: '/api/branch-admin/users', // GET
+  NOTIFICATIONS: {
+    SEND: '/api/notifications/send', // POST
+    HISTORY: '/api/branch-admin/notifications/history', // GET
   },
 
   // Parent Portal Endpoints

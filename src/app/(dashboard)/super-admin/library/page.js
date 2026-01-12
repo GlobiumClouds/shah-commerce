@@ -9,8 +9,8 @@ import Dropdown from '@/components/ui/dropdown';
 import Modal from '@/components/ui/modal';
 import FullPageLoader from '@/components/ui/full-page-loader';
 import ButtonLoader from '@/components/ui/button-loader';
-import BookDetailModal from '@/components/BookDetailModal';
 import { Plus, Edit, Trash2, Search, BookOpen, Eye, FileText, Upload, X, Calendar, MapPin, Download, Building2, CheckCircle, Library as LibraryIcon } from 'lucide-react';
+import BookDetailModal from '@/components/BookDetailModal';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -52,17 +52,25 @@ export default function SuperAdminLibraryPage() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBookDetailModalOpen, setIsBookDetailModalOpen] = useState(false);
+  const [selectedBook, setSelectedBook] = useState(null);
   const [editingBook, setEditingBook] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // File upload state
+  const [attachments, setAttachments] = useState([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const fileInputRef = useRef(null);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
+  const [classFilter, setClassFilter] = useState('');
+  const [gradeFilter, setGradeFilter] = useState('');
+  const [sectionFilter, setSectionFilter] = useState('');
+  const [levelFilter, setLevelFilter] = useState('');
+  const [streamFilter, setStreamFilter] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
-
-  // Book detail modal state
-  const [selectedBook, setSelectedBook] = useState(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Data states for dropdowns
   const [branches, setBranches] = useState([]);
@@ -98,15 +106,10 @@ export default function SuperAdminLibraryPage() {
     classId: '' // Class association for the book
   });
 
-  // File upload state
-  const [attachments, setAttachments] = useState([]);
-  const [uploadingFiles, setUploadingFiles] = useState(false);
-  const fileInputRef = useRef(null);
-
   useEffect(() => {
     fetchBooks();
     fetchDropdownData();
-  }, [search, categoryFilter, statusFilter, branchFilter, pagination.page]);
+  }, [search, categoryFilter, statusFilter, branchFilter, classFilter, gradeFilter, sectionFilter, levelFilter, streamFilter, pagination.page]);
 
   const fetchDropdownData = async () => {
     try {
@@ -119,7 +122,7 @@ export default function SuperAdminLibraryPage() {
       ]);
 
       if (branchesRes.success) {
-        setBranches(branchesRes.data.map(branch => ({ value: branch._id, label: branch.name })));
+        setBranches(branchesRes.data.branches.map(branch => ({ value: branch._id, label: branch.name })));
       }
       if (classesRes.success) {
         setClasses(classesRes.data.map(cls => ({ value: cls._id, label: cls.name })));
@@ -220,11 +223,15 @@ export default function SuperAdminLibraryPage() {
       pages: book.pages || '',
       keywords: book.keywords ? book.keywords.join(', ') : '',
       notes: book.notes || '',
-      branchId: book.branchId?._id || book.branchId || '',
+      branchId: book.branchId || '',
       classId: book.classId || ''
     });
-    setAttachments([]); // Clear attachments
     setIsModalOpen(true);
+  };
+
+  const handleView = (book) => {
+    setSelectedBook(book);
+    setIsBookDetailModalOpen(true);
   };
 
   const handleDelete = async (id) => {
@@ -266,44 +273,15 @@ export default function SuperAdminLibraryPage() {
 
       let response;
       if (editingBook) {
-        // For updates, check if files are attached
-        if (attachments.length > 0) {
-          const formDataToSend = new FormData();
-          formDataToSend.append('data', JSON.stringify(submitData));
-          attachments.forEach((file, index) => {
-            formDataToSend.append('attachments', file);
-          });
-          response = await apiClient.put(`${API_ENDPOINTS.SUPER_ADMIN.LIBRARY.BOOKS}/${editingBook._id}`, formDataToSend, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-          });
-        } else {
-          response = await apiClient.put(`${API_ENDPOINTS.SUPER_ADMIN.LIBRARY.BOOKS}/${editingBook._id}`, submitData);
-        }
+        response = await apiClient.put(`${API_ENDPOINTS.SUPER_ADMIN.LIBRARY.BOOKS}/${editingBook._id}`, submitData);
       } else {
-        // For new books, check if files are attached
-        if (attachments.length > 0) {
-          const formDataToSend = new FormData();
-          formDataToSend.append('data', JSON.stringify(submitData));
-          attachments.forEach((file, index) => {
-            formDataToSend.append('attachments', file);
-          });
-          response = await apiClient.post(API_ENDPOINTS.SUPER_ADMIN.LIBRARY.BOOKS, formDataToSend, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-          });
-        } else {
-          response = await apiClient.post(API_ENDPOINTS.SUPER_ADMIN.LIBRARY.BOOKS, submitData);
-        }
+        response = await apiClient.post(API_ENDPOINTS.SUPER_ADMIN.LIBRARY.BOOKS, submitData);
       }
 
       if (response.success) {
         toast.success(editingBook ? 'Book updated successfully!' : 'Book added successfully!');
         setIsModalOpen(false);
         setEditingBook(null);
-        setAttachments([]); // Clear attachments
         fetchBooks();
       } else {
         toast.error(response.message || 'Operation failed');
@@ -316,52 +294,11 @@ export default function SuperAdminLibraryPage() {
     }
   };
 
-  const handleViewDetails = (book) => {
-    setSelectedBook(book);
-    setIsDetailModalOpen(true);
-  };
-
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
-  };
-
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files);
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    const allowedTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-powerpoint',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/plain',
-      'image/jpeg',
-      'image/png',
-      'image/gif'
-    ];
-
-    const validFiles = files.filter(file => {
-      if (file.size > maxSize) {
-        toast.error(`${file.name} is too large. Maximum size is 10MB.`);
-        return false;
-      }
-      if (!allowedTypes.includes(file.type)) {
-        toast.error(`${file.name} has an unsupported file type.`);
-        return false;
-      }
-      return true;
-    });
-
-    setAttachments(prev => [...prev, ...validFiles]);
-  };
-
-  const removeAttachment = (index) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   if (loading && books.length === 0) {
@@ -529,7 +466,7 @@ export default function SuperAdminLibraryPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="icon-sm" onClick={() => handleViewDetails(book)} title="View Details">
+                        <Button variant="ghost" size="icon-sm" onClick={() => handleView(book)} title="View Book">
                           <Eye className="w-4 h-4" />
                         </Button>
                         <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(book)} title="Edit Book">
@@ -637,46 +574,25 @@ export default function SuperAdminLibraryPage() {
                 required
               />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Dropdown
-                label="Branch *"
-                placeholder="Select branch"
-                value={formData.branchId}
-                onChange={(e) => handleInputChange('branchId', e.target.value)}
-                options={branches.map(branch => ({ ...branch, label: `🏫 ${branch.label}` }))}
-                required
-              />
-              <Dropdown
-                label="Class Association"
-                placeholder="Select class (optional)"
-                value={formData.classId}
-                onChange={(e) => handleInputChange('classId', e.target.value)}
-                options={[
-                  { value: '', label: '📚 General Book (Available to all classes)' },
-                  ...classes.map(cls => ({ ...cls, label: `🏫 ${cls.label}` }))
-                ]}
-                helperText="Leave empty for general books available to all students"
+            <div>
+              <Input
+                label="Description" 
+                placeholder="Enter a brief description of the book"
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                as="textarea"
+                className="h-24"
               />
             </div>
-
-            <Input
-              label="Book Description"
-              placeholder="Enter a brief description of the book"
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              type="textarea"
-              rows={3}
-            />
           </div>
 
-          {/* Publication Details Section */}
+          {/* Publishing Details */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
-              <Calendar className="w-5 h-5 text-green-600" />
-              <h3 className="text-lg font-medium text-gray-900">Publication Details</h3>
+              <Calendar className="w-5 h-5 text-purple-600" />
+              <h3 className="text-lg font-medium text-gray-900">Publishing Details</h3>
             </div>
-
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Input
                 label="Publisher"
@@ -686,135 +602,184 @@ export default function SuperAdminLibraryPage() {
               />
               <Input
                 label="Publication Year"
-                placeholder="e.g., 2023"
                 type="number"
-                min="1000"
-                max={new Date().getFullYear() + 1}
+                placeholder="YYYY"
                 value={formData.publicationYear}
                 onChange={(e) => handleInputChange('publicationYear', e.target.value)}
               />
               <Input
                 label="Edition"
-                placeholder="e.g., 1st Edition"
+                placeholder="e.g. 2nd Edition"
                 value={formData.edition}
                 onChange={(e) => handleInputChange('edition', e.target.value)}
               />
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Language"
+                placeholder="Language (default English)"
+                value={formData.language}
+                onChange={(e) => handleInputChange('language', e.target.value)}
+              />
+              <Input
+                label="Number of Pages"
+                type="number"
+                placeholder="Total pages"
+                value={formData.pages}
+                onChange={(e) => handleInputChange('pages', e.target.value)}
+              />
+            </div>
           </div>
 
-          {/* File Attachments Section */}
+          {/* Inventory & Location */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
-              <Upload className="w-5 h-5 text-purple-600" />
-              <h3 className="text-lg font-medium text-gray-900">File Attachments</h3>
-              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Optional</span>
+              <MapPin className="w-5 h-5 text-green-600" />
+              <h3 className="text-lg font-medium text-gray-900">Inventory & Location</h3>
             </div>
 
-            <div className="space-y-4">
-              <div
-                className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600 mb-1">
-                  Click to upload or drag and drop files here
-                </p>
-                <p className="text-xs text-gray-500">
-                  Supported formats: PDF, Word, PowerPoint, Excel, Text, Images (Max 10MB each)
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Dropdown
+                label="Branch *"
+                placeholder="Select Branch"
+                value={formData.branchId}
+                onChange={(e) => handleInputChange('branchId', e.target.value)}
+                options={branches}
+                required
+              />
+               <Dropdown
+                label="Class (Optional)"
+                placeholder="Select Class Association"
+                value={formData.classId}
+                onChange={(e) => handleInputChange('classId', e.target.value)}
+                options={classes}
+              />
+            </div>
 
-              {attachments.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-gray-700">Selected Files:</h4>
-                  {attachments.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
-                    >
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-4 h-4 text-gray-500" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {(file.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => removeAttachment(index)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Input
+                label="Shelf Location"
+                placeholder="e.g. A-12"
+                value={formData.shelfLocation}
+                onChange={(e) => handleInputChange('shelfLocation', e.target.value)}
+              />
+              <Input
+                label="Call Number"
+                placeholder="e.g. 823.91"
+                value={formData.callNumber}
+                onChange={(e) => handleInputChange('callNumber', e.target.value)}
+              />
+              <Input
+                label="Total Copies *"
+                type="number"
+                min="1"
+                value={formData.totalCopies}
+                onChange={(e) => handleInputChange('totalCopies', e.target.value)}
+                required
+              />
             </div>
           </div>
 
-
-
-          {/* Enhanced Footer */}
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-gray-200 bg-gray-50 -m-6 px-6 py-4 rounded-b-lg">
-            <div className="text-sm text-gray-600">
-              {editingBook ? 'Update the book information' : 'Add this book to the library collection'}
+          {/* Pricing & Supplier */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+              <FileText className="w-5 h-5 text-orange-600" />
+              <h3 className="text-lg font-medium text-gray-900">Pricing & Supplier</h3>
             </div>
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsModalOpen(false)}
-                disabled={submitting}
-                className="px-6"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="px-8 bg-blue-600 hover:bg-blue-700"
-              >
-                {submitting ? (
-                  <div className="flex items-center gap-2">
-                    <ButtonLoader />
-                    {editingBook ? 'Updating...' : 'Adding...'}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4" />
-                    {editingBook ? 'Update Book' : 'Add Book'}
-                  </div>
-                )}
-              </Button>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Input
+                label="Book Value"
+                type="number"
+                placeholder="0.00"
+                value={formData.bookValue}
+                onChange={(e) => handleInputChange('bookValue', e.target.value)}
+              />
+              <Input
+                label="Purchase Price"
+                type="number"
+                placeholder="0.00"
+                value={formData.purchasePrice}
+                onChange={(e) => handleInputChange('purchasePrice', e.target.value)}
+              />
+              <Input
+                label="Purchase Date"
+                type="date"
+                value={formData.purchaseDate}
+                onChange={(e) => handleInputChange('purchaseDate', e.target.value)}
+              />
             </div>
+
+             <div className="grid grid-cols-1 gap-6">
+              <Input
+                label="Supplier/Vendor"
+                placeholder="Name of supplier"
+                value={formData.supplier}
+                onChange={(e) => handleInputChange('supplier', e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Additional Info */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+              <Eye className="w-5 h-5 text-gray-600" />
+              <h3 className="text-lg font-medium text-gray-900">Additional Information</h3>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              <Input
+                label="Keywords"
+                placeholder="Comma separated keywords (e.g. History, War, Novel)"
+                value={formData.keywords}
+                onChange={(e) => handleInputChange('keywords', e.target.value)}
+              />
+              <Input
+                label="Internal Notes"
+                placeholder="Any private notes about this book..."
+                value={formData.notes}
+                onChange={(e) => handleInputChange('notes', e.target.value)}
+                as="textarea"
+                className="h-24"
+              />
+            </div>
+          </div>
+
+          {/* Form Actions */}
+          <div className="sticky bottom-0 bg-white pt-4 pb-0 flex justify-end gap-3 border-t border-gray-100 mt-8">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsModalOpen(false)}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {submitting ? <ButtonLoader /> : (editingBook ? 'Update Book' : 'Add Book')}
+            </Button>
           </div>
         </form>
       </Modal>
 
       {/* Book Detail Modal */}
-      {selectedBook && (
-        <BookDetailModal
-          book={selectedBook}
-          open={isDetailModalOpen}
-          onClose={() => {
-            setIsDetailModalOpen(false);
-            setSelectedBook(null);
-          }}
-        />
-      )}
+      <BookDetailModal
+        isOpen={isBookDetailModalOpen}
+        onClose={() => {
+          setIsBookDetailModalOpen(false);
+          setSelectedBook(null);
+        }}
+        book={selectedBook}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        userRole="super_admin"
+        showActions={true}
+      />
     </div>
   );
 }

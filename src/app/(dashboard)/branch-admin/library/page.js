@@ -236,7 +236,8 @@ export default function LibraryPage() {
     if (!confirm('Are you sure you want to delete this book?')) return;
 
     try {
-      const response = await apiClient.delete(`${API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.BOOKS}?id=${id}`);
+      const endpoint = API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.DELETE.replace(':id', id);
+      const response = await apiClient.delete(endpoint);
       if (response.success) {
         toast.success('Book deleted successfully!');
         fetchBooks();
@@ -271,10 +272,9 @@ export default function LibraryPage() {
 
       let response;
       if (editingBook) {
-        response = await apiClient.put(API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.BOOKS, {
-          id: editingBook._id,
-          ...submitData
-        });
+        // Use ID in URL for updates
+        const endpoint = API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.UPDATE.replace(':id', editingBook._id);
+        response = await apiClient.put(endpoint, submitData);
       } else {
         response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.LIBRARY_MANAGEMENT.BOOKS, submitData);
       }
@@ -443,6 +443,7 @@ export default function LibraryPage() {
                 <TableHead>Category</TableHead>
                 <TableHead>Copies</TableHead>
                 <TableHead>Available</TableHead>
+                <TableHead>Attachments</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
             </TableRow>
@@ -450,7 +451,7 @@ export default function LibraryPage() {
             <TableBody>
               {books.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-gray-500">
+                  <TableCell colSpan={8} className="text-center text-gray-500">
                     No books found
                   </TableCell>
                 </TableRow>
@@ -462,6 +463,18 @@ export default function LibraryPage() {
                     <TableCell>{book.category}</TableCell>
                     <TableCell>{book.totalCopies}</TableCell>
                     <TableCell>{book.availableCopies}</TableCell>
+                    <TableCell>
+                      {book.attachments?.length > 0 ? (
+                        <div className="flex items-center gap-1">
+                          <FileText className="w-4 h-4 text-blue-600" />
+                          <span className="text-sm text-blue-600 font-medium">
+                            {book.attachments.length}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">None</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <span
                         className={`px-2 py-1 rounded-full text-xs ${
@@ -754,6 +767,17 @@ export default function LibraryPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Book Detail Modal */}
+      <BookDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        book={selectedBook}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        userRole="branch_admin"
+        showActions={true}
+      />
     </div>
   );
 }

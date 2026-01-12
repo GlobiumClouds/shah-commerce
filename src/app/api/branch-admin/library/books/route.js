@@ -56,6 +56,7 @@ const handleGET = withAuth(async (request, user, userDoc, context) => {
 
     // Get books with pagination
     const books = await Library.find(filter)
+      .select('+attachments') // Explicitly include attachments
       .populate('addedBy', 'firstName lastName')
       .populate('lastUpdatedBy', 'firstName lastName')
       .sort({ createdAt: -1 })
@@ -65,10 +66,17 @@ const handleGET = withAuth(async (request, user, userDoc, context) => {
 
     const totalPages = Math.ceil(total / limit);
 
+    // Add convenience fields for attachments
+    const booksWithAttachments = books.map(book => ({
+      ...book,
+      hasAttachments: (book.attachments && book.attachments.length > 0) || false,
+      attachmentCount: (book.attachments && book.attachments.length) || 0
+    }));
+
     return NextResponse.json({
       success: true,
       data: {
-        books,
+        books: booksWithAttachments,
         pagination: {
           page,
           limit,
@@ -232,6 +240,7 @@ const handlePOST = withAuth(async (request, user, userDoc, context) => {
       pages,
       keywords,
       notes,
+      attachments, // Add attachments to the book
       classId: classId || null, // Class association (null for general books)
       branchId: userDoc.branchId,
       addedBy: userDoc._id,
@@ -255,178 +264,10 @@ const handlePOST = withAuth(async (request, user, userDoc, context) => {
   }
 });
 
-// PUT /api/branch-admin/library/books - Update book (would need ID in URL, but for now keeping simple)
-const handlePUT = withAuth(async (request, user, userDoc, context) => {
-  try {
-    await connectDB();
-
-    // Only branch admins can access
-    if (userDoc.role !== 'branch_admin') {
-      return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
-    }
-
-    let body, newAttachments = [];
-
-    // Check if request is multipart/form-data
-    const contentType = request.headers.get('content-type') || '';
-    if (contentType.includes('multipart/form-data')) {
-      const formData = await request.formData();
-
-      // Parse JSON data
-      const jsonData = formData.get('data');
-      if (!jsonData) {
-        return NextResponse.json({
-          success: false,
-          message: 'Book data is required'
-        }, { status: 400 });
-      }
-      body = JSON.parse(jsonData);
-
-      // Handle file uploads
-      const files = formData.getAll('attachments');
-      for (const file of files) {
-        if (file && file.size > 0) {
-          // Validate file type
-          const allowedTypes = [
-            'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.ms-powerpoint',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'text/plain',
-            'image/jpeg',
-            'image/png',
-            'image/gif'
-          ];
-
-          if (!allowedTypes.includes(file.type)) {
-            return NextResponse.json({
-              success: false,
-              message: `File type ${file.type} is not allowed. Allowed types: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, JPG, PNG, GIF`
-            }, { status: 400 });
-          }
-
-          // Convert file to buffer and upload to Cloudinary
-          const bytes = await file.arrayBuffer();
-          const buffer = Buffer.from(bytes);
-          const base64File = `data:${file.type};base64,${buffer.toString('base64')}`;
-
-          const uploadResult = await uploadToCloudinary(base64File, {
-            folder: `ease-academy/library/${userDoc.branchId}`,
-            resourceType: 'auto'
-          });
-
-          // Get file extension for fileType
-          const fileName = file.name;
-          const fileExtension = fileName.split('.').pop().toLowerCase();
-
-          newAttachments.push({
-            url: uploadResult.url,
-            publicId: uploadResult.publicId,
-            filename: fileName,
-            fileType: fileExtension,
-            mimeType: file.type,
-            size: file.size,
-            uploadedBy: userDoc._id
-          });
-        }
-      }
-    } else {
-      body = await request.json();
-    }
-
-    const { id, ...updateData } = body;
-
-    if (!id) {
-      return NextResponse.json({ success: false, message: 'Book ID is required' }, { status: 400 });
-    }
-
-    // Find and update book
-    const book = await Library.findOne({ _id: id, branchId: userDoc.branchId });
-    if (!book) {
-      return NextResponse.json({ success: false, message: 'Book not found' }, { status: 404 });
-    }
-
-    // Update fields
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key] !== undefined) {
-        book[key] = updateData[key];
-      }
-    });
-
-    // Handle attachments - append new ones if any
-    if (newAttachments.length > 0) {
-      book.attachments = [...(book.attachments || []), ...newAttachments];
-    }
-
-    book.lastUpdatedBy = userDoc._id;
-    await book.save();
-
-    // Populate for response
-    await book.populate('addedBy', 'firstName lastName');
-    await book.populate('lastUpdatedBy', 'firstName lastName');
-
-    return NextResponse.json({
-      success: true,
-      message: 'Book updated successfully',
-      data: book
-    });
-
-  } catch (error) {
-    console.error('Error updating book:', error);
-    return NextResponse.json({ success: false, message: 'Failed to update book' }, { status: 500 });
-  }
-});
-
-// DELETE /api/branch-admin/library/books - Delete book
-const handleDELETE = withAuth(async (request, user, userDoc, context) => {
-  try {
-    await connectDB();
-
-    // Only branch admins can access
-    if (userDoc.role !== 'branch_admin') {
-      return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json({ success: false, message: 'Book ID is required' }, { status: 400 });
-    }
-
-    // Find and delete book
-    const book = await Library.findOneAndDelete({ _id: id, branchId: userDoc.branchId });
-
-    if (!book) {
-      return NextResponse.json({ success: false, message: 'Book not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Book deleted successfully'
-    });
-
-  } catch (error) {
-    console.error('Error deleting book:', error);
-    return NextResponse.json({ success: false, message: 'Failed to delete book' }, { status: 500 });
-  }
-});
-
 export async function GET(request, context) {
   return handleGET(request, context);
 }
 
 export async function POST(request, context) {
   return handlePOST(request, context);
-}
-
-export async function PUT(request, context) {
-  return handlePUT(request, context);
-}
-
-export async function DELETE(request, context) {
-  return handleDELETE(request, context);
 }

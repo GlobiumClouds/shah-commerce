@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useApi } from '@/hooks/useApi';
@@ -28,42 +27,10 @@ export default function SuperAdminPendingFeesPage() {
       try {
         setLoading(true);
         setError(null);
-        // For super admin, we need to get all pending payments across all branches
-        // We'll use the branch admin API but modify it to work for super admin
-        const response = await request('/api/super-admin/fee-vouchers?status=pending&limit=1000');
+        // For super admin, get all pending payments across all branches
+        const response = await request('/api/super-admin/pending-fees');
         if (response.success) {
-          // Transform fee vouchers data to pending payments format
-          const transformedPayments = [];
-          response.data.vouchers.forEach(voucher => {
-            if (voucher.paymentHistory) {
-              voucher.paymentHistory.forEach((payment, index) => {
-                if (payment.status === 'pending') {
-                  transformedPayments.push({
-                    paymentId: `${voucher._id}-${index}`,
-                    voucherId: voucher._id,
-                    paymentIndex: index,
-                    voucherNumber: voucher.voucherNumber,
-                    studentName: voucher.studentId?.fullName || voucher.studentId?.firstName + ' ' + voucher.studentId?.lastName || 'Unknown',
-                    className: voucher.classId?.name || 'N/A',
-                    branchName: voucher.branchId?.name || 'N/A',
-                    amount: payment.amount,
-                    currency: '₹',
-                    paymentMethod: payment.paymentMethod,
-                    paymentDate: payment.paymentDate,
-                    transactionId: payment.transactionId,
-                    screenshotUrl: payment.screenshot?.url,
-                    remarks: payment.remarks,
-                    submittedBy: payment.submittedBy,
-                  });
-                }
-              });
-            }
-          });
-
-          // Sort by latest payment date first
-          transformedPayments.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
-
-          setPendingPayments(transformedPayments);
+          setPendingPayments(response.data || []);
         } else {
           setError(response.message || 'Failed to fetch pending payments');
         }
@@ -121,16 +88,13 @@ export default function SuperAdminPendingFeesPage() {
       setActionLoading(true);
       setError(null);
 
-      // Use super admin approve/reject endpoints
-      const endpoint =
-        actionType === 'approve'
-          ? '/api/super-admin/fee-vouchers/approve-payment'
-          : '/api/super-admin/fee-vouchers/reject-payment';
+      // Use super admin approve/reject endpoint (single endpoint handles both)
+      const endpoint = `/api/super-admin/fee-vouchers/${selectedPayment.voucherId}/approve-payment`;
 
       const payload = {
-        voucherId: selectedPayment.voucherId,
-        paymentIndex: selectedPayment.paymentIndex,
-        ...(actionType === 'reject' && { rejectionReason }),
+        paymentId: selectedPayment.paymentId.split('-')[1], // Extract payment ID from paymentId format
+        action: actionType,
+        remarks: actionType === 'reject' ? rejectionReason : '',
       };
 
       const response = await request(endpoint, {

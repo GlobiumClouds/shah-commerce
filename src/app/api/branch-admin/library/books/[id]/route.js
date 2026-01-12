@@ -3,18 +3,14 @@ import connectDB from '@/lib/database';
 import Library from '@/backend/models/Library';
 import { withAuth } from '@/backend/middleware/auth';
 
-// Helper to get ID from URL
-function extractIdFromUrl(url) {
-  const parts = url.split('/');
-  return parts[parts.length - 1].split('?')[0];
-}
-
-export const GET = withAuth(async (request) => {
+export const GET = withAuth(async (request, authenticatedUser, userDoc, context) => {
   try {
     await connectDB();
-    const id = extractIdFromUrl(request.url);
+    const { params } = context;
+    const { id } = await params;
 
-    const book = await Library.findById(id).populate('branchId', 'name');
+    // Ensure the book belongs to the admin's branch
+    const book = await Library.findOne({ _id: id, branchId: userDoc.branchId });
 
     if (!book) {
       return NextResponse.json(
@@ -40,13 +36,15 @@ export const GET = withAuth(async (request) => {
   }
 });
 
-export const PUT = withAuth(async (request, authenticatedUser) => {
+export const PUT = withAuth(async (request, authenticatedUser, userDoc, context) => {
   try {
     await connectDB();
-    const id = extractIdFromUrl(request.url);
+    const { params } = context;
+    const { id } = await params;
     const body = await request.json();
 
-    const book = await Library.findById(id);
+    // Ensure the book belongs to the admin's branch
+    const book = await Library.findOne({ _id: id, branchId: userDoc.branchId });
 
     if (!book) {
       return NextResponse.json(
@@ -57,20 +55,12 @@ export const PUT = withAuth(async (request, authenticatedUser) => {
 
     // Update fields
     Object.keys(body).forEach((key) => {
-      // Prevent updating system fields directly if needed, but for now we trust validation logic
-      if (key !== '_id' && key !== 'createdAt' && key !== 'updatedAt' && key !== 'addedBy') {
+      // Prevent updating system fields or branchId directly
+      if (key !== '_id' && key !== 'createdAt' && key !== 'updatedAt' && key !== 'addedBy' && key !== 'branchId') {
         book[key] = body[key];
       }
     });
 
-    // Handle copy count changes logic implicitly by model pre-save or explicit logic if needed
-    // For now assuming direct update is okay, but we should ensure available copies are consistent.
-    // The Library model has a pre-save hook that might handle this, but let's be safe.
-    // If totalCopies is changed, we might need to adjust availableCopies delta.
-    // Check model pre-save logic in attachment...
-    // "Pre-save: Update available copies if total copies changed" - Good. 
-    // It says: "Update available copies if total copies changed". 
-    
     book.lastUpdatedBy = authenticatedUser.userId;
 
     await book.save();
@@ -89,12 +79,14 @@ export const PUT = withAuth(async (request, authenticatedUser) => {
   }
 });
 
-export const DELETE = withAuth(async (request) => {
+export const DELETE = withAuth(async (request, authenticatedUser, userDoc, context) => {
   try {
     await connectDB();
-    const id = extractIdFromUrl(request.url);
+    const { params } = context;
+    const { id } = await params;
 
-    const book = await Library.findByIdAndDelete(id);
+    // Ensure the book belongs to the admin's branch
+    const book = await Library.findOneAndDelete({ _id: id, branchId: userDoc.branchId });
 
     if (!book) {
       return NextResponse.json(

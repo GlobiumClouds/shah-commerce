@@ -5,7 +5,7 @@ const API_BASE_URL = 'http://localhost:3000';
 
 // Test credentials
 const credentials = {
-  branchAdmin: { email: 'branchadmin@easeacademy.com', password: 'BranchAdmin@123' },
+  branchAdmin: { email: 'hafizshoaib@gmail.com', password: '123456' },
   parent: { email: 'arshayn@example.com', password: 'password123' }
 };
 

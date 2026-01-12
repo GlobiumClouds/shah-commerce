@@ -1,0 +1,82 @@
+import { NextResponse } from 'next/server';
+import { withAuth } from '@/backend/middleware/auth';
+import connectDB from '@/lib/database';
+import FeeVoucher from '@/backend/models/FeeVoucher';
+
+const handler = withAuth(async (request, user, userDoc, context) => {
+  try {
+    // Check if user is super admin
+    if (userDoc.role !== 'super-admin') {
+      return NextResponse.json(
+        { success: false, message: 'Only super admins can access this endpoint' },
+        { status: 403 }
+      );
+    }
+
+    await connectDB();
+
+    // Find all fee vouchers that have pending payments in their history
+    const feeVouchers = await FeeVoucher.find({
+      'paymentHistory.status': 'pending'
+    })
+      .populate('studentId', 'firstName lastName fullName')
+      .populate('classId', 'name')
+      .populate('branchId', 'name')
+      .sort({ createdAt: -1 });
+
+    console.log('Super Admin - Found vouchers with pending payments:', feeVouchers.length);
+
+    const pendingPayments = [];
+
+    for (const voucher of feeVouchers) {
+      const pendingHistoryItems = voucher.paymentHistory.filter(
+        (payment) => payment.status === 'pending'
+      );
+
+      for (let index = 0; index < voucher.paymentHistory.length; index++) {
+        const payment = voucher.paymentHistory[index];
+        if (payment.status === 'pending') {
+          pendingPayments.push({
+            paymentId: `${voucher._id}-${index}`,
+            voucherId: voucher._id.toString(),
+            paymentIndex: index,
+            voucherNumber: voucher.voucherNumber,
+            studentName: voucher.studentId?.fullName || `${voucher.studentId?.firstName || ''} ${voucher.studentId?.lastName || ''}`.trim() || 'Unknown',
+            className: voucher.classId?.name || 'N/A',
+            branchName: voucher.branchId?.name || 'N/A',
+            amount: payment.amount,
+            currency: 'PKR',
+            paymentMethod: payment.paymentMethod,
+            paymentDate: payment.paymentDate,
+            transactionId: payment.transactionId,
+            screenshotUrl: payment.screenshot?.url,
+            remarks: payment.remarks,
+            submittedBy: payment.submittedBy,
+            status: payment.status
+          });
+        }
+      }
+    }
+
+    // Sort by latest payment date first
+    pendingPayments.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
+    console.log('Super Admin - Total pending payments:', pendingPayments.length);
+
+    return NextResponse.json({
+      success: true,
+      data: pendingPayments,
+      total: pendingPayments.length
+    });
+  } catch (error) {
+    console.error('Error fetching pending fees:', error);
+    return NextResponse.json({
+      success: false,
+      message: error.message || 'Failed to fetch pending fees'
+    }, { status: 500 });
+  }
+});
+
+export async function GET(request, context) {
+  return handler(request, context);
+}
