@@ -166,52 +166,27 @@ async function sendNotification(request, currentUser, userDoc) {
     await connectDB();
 
     const body = await request.json();
-    // 🔥 targetBranch yahan zaroori hai Super Admin k liye
-    const { title, message, type, targetRole, targetBranch, metadata } = body; 
+    const { title, message, type, targetRole, metadata } = body;
 
-    // Basic Validation
-    if (!title || !message || !targetRole) {
-      return NextResponse.json({ success: false, error: "Title, Message, and Role are required" }, { status: 400 });
-    }
-
-    console.log('📨 Request from:', currentUser.role, '| Branch ID:', currentUser.branchId);
+    console.log('📨 Sending notification from:', currentUser.role, currentUser.branchId);
 
     // ============================================================
     // 🎯 FILTERING LOGIC (Super vs Branch Admin)
     // ============================================================
     
-    let query = { 
-      role: targetRole,
-      isActive: true // ✅ Sirf active users ko bhejo (Safety check)
-    };
+    let filter = { role: targetRole }; // e.g. 'student'
 
     // SCENARIO 1: Branch Admin
     if (currentUser.role === 'branch_admin') {
       if (!currentUser.branchId) {
         return NextResponse.json({ success: false, error: "Your account is not linked to any branch." }, { status: 400 });
       }
-      query.branchId = currentUser.branchId; // Force restriction
+      filter.branchId = currentUser.branchId; // Sirf apni branch walo ko dhoondo
     }
-    
-    // SCENARIO 2: Super Admin (Jo Merge me miss ho gaya tha)
-    else if (currentUser.role === 'super_admin') {
-      // Agar Super Admin ne 'All Branches' select nahi kiya, toh specific branch filter lagao
-      if (targetBranch && targetBranch !== 'all') {
-        query.branchId = targetBranch;
-      }
-      // Agar 'all' hai, toh query.branchId mat lagao (Sabko jayega)
-    }
+    // Note: Super admin ke liye filter me branchId nahi lagega, wo sab uthayega
 
-    console.log("🔍 Database Query:", query);
-
-    // ============================================================
-    // 👥 USERS FETCH
-    // ============================================================
-
-    // Hamein wo users chahiye jinka Token ho (Mobile ke liye) 
-    // Aur wo bhi chahiye jinka Token na ho (Sirf Web ke liye)
-    // Isliye hum sirf filter use karenge, token check loop me karenge
-    const users = await User.find(query).select('_id expoPushToken');
+    // Users dhoondo unke Tokens k sath
+    const users = await User.find(filter).select('_id expoPushToken');
 
     if (!users || users.length === 0) {
       return NextResponse.json({ success: false, message: "No users found matching criteria" }, { status: 404 });
@@ -223,13 +198,24 @@ async function sendNotification(request, currentUser, userDoc) {
     // 💾 DATABASE SAVE (Web Dashboard)
     // ============================================================
     
+    // Add Sender Info to Metadata for History Tracking
+    const senderName = currentUser.fullName || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Unknown';
+    
+    const enhancedMetadata = {
+      ...metadata,
+      senderId: currentUser.userId,
+      senderName: senderName,
+      senderRole: currentUser.role,
+      sentAt: new Date()
+    };
+
     const dbNotifications = users.map(user => ({
       type,
       title,
       message,
       targetUser: user._id,
-      metadata: metadata || {},
-      isRead: false,
+      metadata,
+      isRead: false
     }));
 
     await Notification.insertMany(dbNotifications);
