@@ -10,7 +10,6 @@ import Modal from '@/components/ui/modal';
 import FullPageLoader from '@/components/ui/full-page-loader';
 import ButtonLoader from '@/components/ui/button-loader';
 import { Plus, Edit, Trash2, Search, BookOpen, Eye, FileText, Upload, X, Calendar, MapPin, Download, Building2, CheckCircle, Library as LibraryIcon } from 'lucide-react';
-import BookDetailModal from '@/components/BookDetailModal';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -52,24 +51,12 @@ export default function SuperAdminLibraryPage() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isBookDetailModalOpen, setIsBookDetailModalOpen] = useState(false);
-  const [selectedBook, setSelectedBook] = useState(null);
   const [editingBook, setEditingBook] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-
-  // File upload state
-  const [attachments, setAttachments] = useState([]);
-  const [uploadingFiles, setUploadingFiles] = useState(false);
-  const fileInputRef = useRef(null);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
-  const [classFilter, setClassFilter] = useState('');
-  const [gradeFilter, setGradeFilter] = useState('');
-  const [sectionFilter, setSectionFilter] = useState('');
-  const [levelFilter, setLevelFilter] = useState('');
-  const [streamFilter, setStreamFilter] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
 
   // Data states for dropdowns
@@ -109,7 +96,7 @@ export default function SuperAdminLibraryPage() {
   useEffect(() => {
     fetchBooks();
     fetchDropdownData();
-  }, [search, categoryFilter, statusFilter, branchFilter, classFilter, gradeFilter, sectionFilter, levelFilter, streamFilter, pagination.page]);
+  }, [search, categoryFilter, statusFilter, branchFilter, pagination.page]);
 
   const fetchDropdownData = async () => {
     try {
@@ -227,11 +214,6 @@ export default function SuperAdminLibraryPage() {
       classId: book.classId || ''
     });
     setIsModalOpen(true);
-  };
-
-  const handleView = (book) => {
-    setSelectedBook(book);
-    setIsBookDetailModalOpen(true);
   };
 
   const handleDelete = async (id) => {
@@ -466,9 +448,6 @@ export default function SuperAdminLibraryPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="icon-sm" onClick={() => handleView(book)} title="View Book">
-                          <Eye className="w-4 h-4" />
-                        </Button>
                         <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(book)} title="Edit Book">
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -766,20 +745,6 @@ export default function SuperAdminLibraryPage() {
           </div>
         </form>
       </Modal>
-
-      {/* Book Detail Modal */}
-      <BookDetailModal
-        isOpen={isBookDetailModalOpen}
-        onClose={() => {
-          setIsBookDetailModalOpen(false);
-          setSelectedBook(null);
-        }}
-        book={selectedBook}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        userRole="super_admin"
-        showActions={true}
-      />
     </div>
   );
 }

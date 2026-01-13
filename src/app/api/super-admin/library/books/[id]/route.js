@@ -23,14 +23,7 @@ export const GET = withAuth(async (request) => {
       );
     }
 
-    // Add convenience fields for attachments
-    const bookWithAttachments = {
-      ...book.toObject(),
-      hasAttachments: (book.attachments && book.attachments.length > 0) || false,
-      attachmentCount: (book.attachments && book.attachments.length) || 0
-    };
-
-    return NextResponse.json({ success: true, data: bookWithAttachments });
+    return NextResponse.json({ success: true, data: book });
   } catch (error) {
     console.error('Error fetching book:', error);
     return NextResponse.json(

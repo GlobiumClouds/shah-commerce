@@ -27,22 +27,39 @@ export default function SuperAdminPendingFeesPage() {
       try {
         setLoading(true);
         setError(null);
-        // For super admin, get all pending payments across all branches
-        const response = await request('/api/super-admin/pending-fees');
+
+        // 1. Token nikaalein (Check karein aapka token localStorage mein kis naam se hai)
+        // Aksar 'token' ya 'auth-token' naam se hota hai
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+
+        // 2. Fetch call with Authorization header
+        const res = await fetch('/api/super-admin/pending-fees', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` // Token yahan ja raha hai
+          }
+        });
+
+        const response = await res.json();
+        console.log('Final Response with Auth:', response);
+
         if (response.success) {
           setPendingPayments(response.data || []);
         } else {
-          setError(response.message || 'Failed to fetch pending payments');
+          // Agar abhi bhi auth error aaye, toh iska matlab token nahi mila ya expire ho gaya
+          setError(response.message || "Session expired, please login again.");
         }
       } catch (err) {
-        setError(err.message || 'An error occurred');
+        console.error("Fetch Error:", err);
+        setError("Failed to connect to server.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchPendingPayments();
-  }, [authLoading, user, request]);
+  }, [authLoading, user]);
 
   // Fetch branches for filter
   useEffect(() => {
@@ -57,7 +74,7 @@ export default function SuperAdminPendingFeesPage() {
       }
     };
 
-    if (user?.role === 'super-admin') {
+    if (user?.role === 'super_admin') {
       fetchBranches();
     }
   }, [user, request]);
@@ -335,8 +352,8 @@ export default function SuperAdminPendingFeesPage() {
                     ? 'Approving...'
                     : 'Rejecting...'
                   : actionType === 'approve'
-                  ? 'Approve'
-                  : 'Reject'}
+                    ? 'Approve'
+                    : 'Reject'}
               </button>
             </div>
           </div>

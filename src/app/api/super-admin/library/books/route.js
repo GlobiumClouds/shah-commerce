@@ -55,17 +55,10 @@ export const GET = withAuth(async (request) => {
 
     const pages = Math.ceil(total / limit);
 
-    // Add convenience fields for attachments
-    const booksWithAttachments = books.map(book => ({
-      ...book,
-      hasAttachments: (book.attachments && book.attachments.length > 0) || false,
-      attachmentCount: (book.attachments && book.attachments.length) || 0
-    }));
-
     return NextResponse.json({
       success: true,
       data: {
-        books: booksWithAttachments,
+        books,
         pagination: {
           page,
           limit,

@@ -80,26 +80,26 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    
+
     // Handle 401 Unauthorized - Token expired
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      
+
       try {
         // Attempt to refresh token
-        const refreshToken = typeof window !== 'undefined' 
-          ? localStorage.getItem('refresh_token') 
+        const refreshToken = typeof window !== 'undefined'
+          ? localStorage.getItem('refresh_token')
           : null;
-        
+
         if (refreshToken) {
           const response = await axios.post(
             getFullUrl('/auth/refresh'),
             { refreshToken }
           );
-          
+
           const { token } = response.data.data;
           setAccessToken(token);
-          
+
           // Retry original request
           originalRequest.headers.Authorization = `Bearer ${token}`;
           return apiClient(originalRequest);
@@ -113,7 +113,7 @@ apiClient.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
-    
+
     // Handle network errors
     if (!error.response) {
       return Promise.reject({
@@ -121,11 +121,35 @@ apiClient.interceptors.response.use(
         status: 0,
       });
     }
-    
-    // Handle other errors
+
+    // Handle HTML responses (when API returns error pages)
+    const contentType = error.response.headers['content-type'];
+    if (contentType && contentType.includes('text/html')) {
+      // Return JSON error for HTML responses
+      const errorStatus = error.response?.status || 500;
+      let errorMessage = 'An error occurred';
+
+      if (errorStatus === 401) {
+        errorMessage = 'Authentication required. Please login again.';
+      } else if (errorStatus === 403) {
+        errorMessage = 'Access denied. Insufficient permissions.';
+      } else if (errorStatus === 404) {
+        errorMessage = 'API endpoint not found.';
+      } else if (errorStatus === 500) {
+        errorMessage = 'Internal server error.';
+      }
+
+      return Promise.reject({
+        message: errorMessage,
+        status: errorStatus,
+        htmlResponse: true, // Flag to indicate this was originally HTML
+      });
+    }
+
+    // Handle JSON error responses
     const errorMessage = error.response?.data?.message || 'An error occurred';
     const errorStatus = error.response?.status || 500;
-    
+
     return Promise.reject({
       message: errorMessage,
       status: errorStatus,
@@ -163,9 +187,9 @@ class ApiClient {
       console.error('API Client Error:', {
         method,
         endpoint,
-        error: error.message || error,
-        status: error.status,
-        response: error.response?.data
+        error, // Log the full error object
+        status: error?.status,
+        response: error?.response?.data
       });
       throw error;
     }
