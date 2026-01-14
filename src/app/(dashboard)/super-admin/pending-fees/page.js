@@ -218,7 +218,7 @@ export default function SuperAdminPendingFeesPage() {
                   <td style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>{payment.studentName}</td>
                   <td style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>{payment.className}</td>
                   <td style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd', fontWeight: 'bold', color: '#28a745' }}>
-                    <strong>{payment.currency || '₹'} {payment.amount?.toFixed(2)}</strong>
+                    <strong>{payment.currency || 'PKR'} {payment.amount?.toFixed(2)}</strong>
                   </td>
                   <td style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>
                     <span style={{ display: 'inline-block', padding: '4px 8px', backgroundColor: '#007bff', color: 'white', borderRadius: '4px', fontSize: '12px' }}>
@@ -243,13 +243,13 @@ export default function SuperAdminPendingFeesPage() {
                       >
                         Reject
                       </button>
-                      <button
+                      {/* <button
                         style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px', transition: 'background-color 0.3s', backgroundColor: '#6c757d', color: 'white' }}
                         onClick={() => setSelectedPayment(payment)}
                         title="View receipt"
                       >
                         📄
-                      </button>
+                      </button> */}
                     </div>
                   </td>
                 </tr>
@@ -276,7 +276,7 @@ export default function SuperAdminPendingFeesPage() {
                 <strong>Student:</strong> {selectedPayment.studentName}
               </p>
               <p>
-                <strong>Amount:</strong> {selectedPayment.currency || '₹'}{' '}
+                <strong>Amount:</strong> {selectedPayment.currency || 'PKR'}{' '}
                 {selectedPayment.amount?.toFixed(2)}
               </p>
               <p>
