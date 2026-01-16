@@ -170,20 +170,36 @@ async function sendNotification(request, currentUser, userDoc) {
     console.log('📨 Sending notification from:', currentUser.role, currentUser.branchId);
     console.log('🎯 Target Branch:', targetBranch);
 
+<<<<<<< HEAD
     // Build query/filter
     const filter = { role: targetRole, isActive: true };
+=======
+    // ============================================================
+    // 🎯 FILTERING LOGIC (Super vs Branch Admin)
+    // ============================================================
+    
+    let filter = { role: targetRole, isActive: true }; // e.g. 'student'
+>>>>>>> 0c0e9ba851880523bf2f30d9ee6abca6fdcd2be9
 
     // Branch admin: restrict to their branch
     if (currentUser.role === 'branch_admin') {
       if (!currentUser.branchId) {
         return NextResponse.json({ success: false, error: 'Your account is not linked to any branch.' }, { status: 400 });
       }
+<<<<<<< HEAD
       filter.branchId = currentUser.branchId;
     }
 
     // Super admin: can target a specific branch
     if (currentUser.role === 'super_admin' && targetBranch && targetBranch !== 'all') {
       filter.branchId = targetBranch;
+=======
+      filter.branchId = currentUser.branchId; // Sirf apni branch walo ko dhoondo
+    }
+    // Agar SUPER ADMIN hai aur specific branch select ki hai
+    else if (currentUser.role === 'super_admin' && targetBranch && targetBranch !== 'all') {
+      filter.branchId = targetBranch; // Specific branch ko target kro
+>>>>>>> 0c0e9ba851880523bf2f30d9ee6abca6fdcd2be9
       console.log('🏢 Filtering by specific branch:', targetBranch);
     }
 
@@ -197,6 +213,10 @@ async function sendNotification(request, currentUser, userDoc) {
 
     // Fetch users
     const users = await User.find(filter).select('_id expoPushToken');
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0c0e9ba851880523bf2f30d9ee6abca6fdcd2be9
     if (!users || users.length === 0) {
       return NextResponse.json({ success: false, message: 'No users found matching criteria' }, { status: 404 });
     }
@@ -220,7 +240,11 @@ async function sendNotification(request, currentUser, userDoc) {
       message,
       targetUser: user._id,
       metadata: enhancedMetadata,
+<<<<<<< HEAD
       isRead: false,
+=======
+      isRead: false
+>>>>>>> 0c0e9ba851880523bf2f30d9ee6abca6fdcd2be9
     }));
 
     await Notification.insertMany(dbNotifications);
