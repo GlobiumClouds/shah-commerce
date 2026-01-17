@@ -26,7 +26,7 @@ const EmployeeAttendanceSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['present', 'absent', 'late', 'half-day', 'leave', 'excused'],
+      enum: ['present', 'absent', 'late', 'half-day', 'leave', 'excused', 'early_checkout'],
       required: true,
       default: 'present',
     },
@@ -153,7 +153,6 @@ const EmployeeAttendanceSchema = new mongoose.Schema(
 // Indexes
 EmployeeAttendanceSchema.index({ userId: 1, date: -1 });
 EmployeeAttendanceSchema.index({ branchId: 1, date: -1 });
-EmployeeAttendanceSchema.index({ userId: 1, date: 1 }, { unique: true });
 EmployeeAttendanceSchema.index({ status: 1 });
 EmployeeAttendanceSchema.index({ approvalStatus: 1 });
 

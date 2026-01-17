@@ -52,6 +52,10 @@ export const API_ENDPOINTS = {
       DELETE: '/api/super-admin/branch-admins/:id', // DELETE
       ASSIGN_BRANCH: '/api/super-admin/branch-admins/:id/assign-branch', // POST
     },
+    SELF_ATTENDANCE: {
+      CHECK_IN: '/api/teacher/self-attendance/check-in', // POST
+      CHECK_OUT: '/api/teacher/self-attendance/check-out', // POST
+    },
 
     // Global Settings
     SETTINGS: {
@@ -575,6 +579,11 @@ export const API_ENDPOINTS = {
       REPORTS: '/api/employee-attendance/reports', // GET
     },
 
+    // Teacher Attendance Management
+    TEACHER_ATTENDANCE: {
+      LIST: '/api/branch-admin/teacher-attendance', // GET
+    },
+
     // Pending Fees Management
     PENDING_FEES: {
       LIST: '/api/branch-admin/pending-fees',
@@ -652,6 +661,12 @@ export const API_ENDPOINTS = {
       REPORT: '/api/teacher/attendance/report', // GET
       BULK_MARK: '/api/teacher/attendance/bulk-mark', // POST
       SCAN: '/api/teacher/attendance/scan', // POST
+
+    },
+    //self-attendece
+    SELF_ATTENDANCE: {
+      CHECK_IN: '/api/teacher/self-attendance/check-in', // POST
+      CHECK_OUT: '/api/teacher/self-attendance/check-out', // POST
     },
 
     // Assignments
