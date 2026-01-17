@@ -10,12 +10,6 @@ const teacherCredentials = {
   password: 'Teacher@123'
 };
 
-// Test location (branch coordinates)
-const testLocation = {
-  latitude: 24.96136,
-  longitude: 67.07103
-};
-
 // Helper function to make HTTP requests
 function makeRequest(options, data = null) {
   return new Promise((resolve, reject) => {
@@ -88,14 +82,19 @@ async function loginTeacher() {
   }
 }
 
-// Test Teacher Check-In API
-async function testTeacherCheckIn(token) {
-  console.log('\n🧪 Testing Teacher Check-In API...');
+// Test Teacher Check-Out API
+async function testTeacherCheckOut(token) {
+  console.log('\n🧪 Testing Teacher Check-Out API...');
+
+  const testLocation = {
+    latitude: 24.96136,
+    longitude: 67.07103
+  };
 
   const options = {
     hostname: BASE_URL,
     port: PORT,
-    path: '/api/teacher/self-attendance/check-in',
+    path: '/api/teacher/self-attendance/check-out',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -109,16 +108,16 @@ async function testTeacherCheckIn(token) {
     console.log('Response:', JSON.stringify(response.body, null, 2));
 
     if (response.statusCode === 200 && response.body?.success) {
-      console.log('✅ Check-In API: SUCCESS');
-      console.log('📊 Check-In Details:', response.body.data);
+      console.log('✅ Check-Out API: SUCCESS');
+      console.log('📊 Check-Out Details:', response.body.data);
       return true;
     } else {
-      console.log('❌ Check-In API: FAILED');
+      console.log('❌ Check-Out API: FAILED');
       console.log('Error:', response.body?.message || 'Unknown error');
       return false;
     }
   } catch (error) {
-    console.log('❌ Check-In API: ERROR');
+    console.log('❌ Check-Out API: ERROR');
     console.log('Error:', error.message);
     return false;
   }
@@ -126,32 +125,32 @@ async function testTeacherCheckIn(token) {
 
 // Main test runner
 async function runTest() {
-  console.log('🚀 Starting Teacher Login and Check-In Test...');
+  console.log('🚀 Starting Teacher Check-Out Test...');
   console.log('=' .repeat(60));
 
   // Step 1: Login as Teacher
   const teacherToken = await loginTeacher();
 
   if (!teacherToken) {
-    console.log('\n❌ Login failed. Cannot proceed with check-in test.');
+    console.log('\n❌ Login failed. Cannot proceed with check-out test.');
     console.log('=' .repeat(60));
     return;
   }
 
-  // Step 2: Test Check-In API
-  const checkInSuccess = await testTeacherCheckIn(teacherToken);
+  // Step 2: Test Check-Out API
+  const checkOutSuccess = await testTeacherCheckOut(teacherToken);
 
   // Summary
   console.log('\n' + '='.repeat(60));
   console.log('📊 Test Results Summary:');
   console.log(`Login: ✅ SUCCESS`);
-  console.log(`Check-In: ${checkInSuccess ? '✅ SUCCESS' : '❌ FAILED'}`);
+  console.log(`Check-Out: ${checkOutSuccess ? '✅ SUCCESS' : '❌ FAILED'}`);
 
-  if (checkInSuccess) {
-    console.log('\n🎉 Teacher login and check-in test completed successfully!');
-    console.log('The attendance check-in functionality is working correctly.');
+  if (checkOutSuccess) {
+    console.log('\n🎉 Teacher check-out test completed successfully!');
+    console.log('The attendance check-out functionality is working correctly.');
   } else {
-    console.log('\n⚠️  Check-in test failed. Please check the errors above.');
+    console.log('\n⚠️  Check-out test failed. Please check the errors above.');
   }
 }
 

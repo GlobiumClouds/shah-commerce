@@ -417,6 +417,8 @@ export default function BranchAdminEmployeeAttendancePage() {
                 <th className="text-left p-3 font-semibold">Check In</th>
                 <th className="text-left p-3 font-semibold">Check Out</th>
                 <th className="text-left p-3 font-semibold">Working Hours</th>
+                <th className="text-left p-3 font-semibold">Check-in Location</th>
+                <th className="text-left p-3 font-semibold">Check-out Location</th>
                 <th className="text-left p-3 font-semibold">Actions</th>
               </tr>
             </thead>
@@ -479,6 +481,30 @@ export default function BranchAdminEmployeeAttendancePage() {
                       <span className="text-sm font-medium">
                         {record.workingHours ? `${record.workingHours.toFixed(1)}h` : '-'}
                       </span>
+                    </td>
+                    <td className="p-3">
+                      {record.checkIn?.location?.latitude && record.checkIn?.location?.longitude ? (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-gray-400" />
+                          <span className="text-sm">
+                            {record.checkIn.location.latitude.toFixed(4)}, {record.checkIn.location.longitude.toFixed(4)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      {record.checkOut?.location?.latitude && record.checkOut?.location?.longitude ? (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-gray-400" />
+                          <span className="text-sm">
+                            {record.checkOut.location.latitude.toFixed(4)}, {record.checkOut.location.longitude.toFixed(4)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">

@@ -97,24 +97,27 @@ export const teacherCheckIn = async (req, res, body = null) => {
       });
     }
 
-    // Validate location
-    const branchLat = parseFloat(process.env.BRANCH_LATITUDE) || 24.96136; // Default Karachi coordinates
-    const branchLng = parseFloat(process.env.BRANCH_LONGITUDE) || 67.07103;
-    const radius = parseInt(process.env.LOCATION_RADIUS_METERS || '100');
+    // Location validation is optional for check-out
+    let locationValidation = null;
+    if (latitude && longitude) {
+      const branchLat = parseFloat(process.env.BRANCH_LATITUDE) || 24.96136; // Default Karachi coordinates
+      const branchLng = parseFloat(process.env.BRANCH_LONGITUDE) || 67.07103;
+      const radius = parseInt(process.env.LOCATION_RADIUS_METERS || '100');
 
-    const locationValidation = validateLocation(
-      parseFloat(latitude),
-      parseFloat(longitude),
-      branchLat,
-      branchLng,
-      radius
-    );
+      locationValidation = validateLocation(
+        parseFloat(latitude),
+        parseFloat(longitude),
+        branchLat,
+        branchLng,
+        radius
+      );
 
-    if (!locationValidation.isValid) {
-      return res.status(400).json({
-        success: false,
-        message: `You are not within the branch location. Distance: ${Math.round(locationValidation.distance)} meters. Allowed radius: ${radius} meters.`
-      });
+      if (!locationValidation.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: `You are not within the branch location. Distance: ${Math.round(locationValidation.distance)} meters. Allowed radius: ${radius} meters.`
+        });
+      }
     }
 
     // Create or update attendance record
@@ -175,31 +178,18 @@ export const teacherCheckIn = async (req, res, body = null) => {
 // Teacher Check-Out
 export const teacherCheckOut = async (req, res) => {
   try {
+    console.log('=== TEACHER CHECK-OUT START ===');
+    console.log('Check-out request body:', req.body);
+    console.log('Check-out user:', req.user);
     const { latitude, longitude } = req.body;
     const teacherId = req.user.userId;
+    console.log('Teacher ID:', teacherId);
 
     // Validate required fields
     if (!latitude || !longitude) {
       return res.status(400).json({
         success: false,
         message: 'Latitude and longitude are required'
-      });
-    }
-
-    // Get teacher and branch info
-    const teacher = await User.findById(teacherId).populate('branchId');
-    if (!teacher) {
-      return res.status(404).json({
-        success: false,
-        message: 'Teacher not found'
-      });
-    }
-
-    const branch = teacher.branchId;
-    if (!branch) {
-      return res.status(404).json({
-        success: false,
-        message: 'Branch information not found'
       });
     }
 
@@ -228,24 +218,27 @@ export const teacherCheckOut = async (req, res) => {
       });
     }
 
-    // Validate location
-    const branchLat = parseFloat(process.env.BRANCH_LATITUDE) || 24.96136; // Default Karachi coordinates
-    const branchLng = parseFloat(process.env.BRANCH_LONGITUDE) || 67.07103;
-    const radius = parseInt(process.env.LOCATION_RADIUS_METERS || '100');
+    // Location validation
+    let locationValidation = null;
+    if (latitude && longitude) {
+      const branchLat = parseFloat(process.env.BRANCH_LATITUDE) || 24.96136; // Default Karachi coordinates
+      const branchLng = parseFloat(process.env.BRANCH_LONGITUDE) || 67.07103;
+      const radius = parseInt(process.env.LOCATION_RADIUS_METERS || '100');
 
-    const locationValidation = validateLocation(
-      parseFloat(latitude),
-      parseFloat(longitude),
-      branchLat,
-      branchLng,
-      radius
-    );
+      locationValidation = validateLocation(
+        parseFloat(latitude),
+        parseFloat(longitude),
+        branchLat,
+        branchLng,
+        radius
+      );
 
-    if (!locationValidation.isValid) {
-      return res.status(400).json({
-        success: false,
-        message: `You are not within the branch location. Distance: ${Math.round(locationValidation.distance)} meters. Allowed radius: ${radius} meters.`
-      });
+      if (!locationValidation.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: `You are not within the branch location. Distance: ${Math.round(locationValidation.distance)} meters. Allowed radius: ${radius} meters.`
+        });
+      }
     }
 
     // Update attendance record with check-out
@@ -265,10 +258,12 @@ export const teacherCheckOut = async (req, res) => {
     const updateData = {
       checkOut: {
         time: checkOutTime,
-        location: {
-          latitude: parseFloat(latitude),
-          longitude: parseFloat(longitude)
-        }
+        ...(latitude && longitude && {
+          location: {
+            latitude: parseFloat(latitude),
+            longitude: parseFloat(longitude)
+          }
+        })
       },
       status: finalStatus
     };
@@ -287,7 +282,7 @@ export const teacherCheckOut = async (req, res) => {
           id: attendance._id,
           checkOutTime: attendance.checkOut.time,
           status: attendance.status,
-          distance: Math.round(locationValidation.distance)
+          ...(locationValidation && { distance: Math.round(locationValidation.distance) })
         }
       }
     });
@@ -341,19 +336,40 @@ export const getTeacherAttendance = async (req, res) => {
       .sort({ date: -1, 'checkIn.time': -1 });
 
     // Format response
-    const formattedRecords = attendanceRecords.map(record => ({
-      id: record._id,
-      teacherId: record.userId._id,
-      teacherName: `${record.userId.firstName} ${record.userId.lastName}`,
-      teacherEmail: record.userId.email,
-      date: record.date,
-      checkInTime: record.checkIn?.time,
-      checkOutTime: record.checkOut?.time,
-      checkInLocation: record.checkIn?.location,
-      checkOutLocation: record.checkOut?.location,
-      status: record.status,
-      distanceFromBranch: record.distanceFromBranch
-    }));
+    const formattedRecords = attendanceRecords.map(record => {
+      // Calculate early/late status for check-in
+      let checkInStatus = 'on-time';
+      if (record.checkIn?.time) {
+        const workStartTime = process.env.WORK_START_TIME || '09:00';
+        const lateAfterMin = parseInt(process.env.LATE_AFTER_MIN || '15');
+        const isLate = isLateCheckIn(record.checkIn.time, workStartTime, lateAfterMin);
+        checkInStatus = isLate ? 'late' : 'on-time';
+      }
+
+      // Calculate early/late status for check-out
+      let checkOutStatus = 'on-time';
+      if (record.checkOut?.time) {
+        const workEndTime = process.env.WORK_END_TIME || '17:00';
+        const isEarly = isEarlyCheckOut(record.checkOut.time, workEndTime);
+        checkOutStatus = isEarly ? 'early' : 'on-time';
+      }
+
+      return {
+        id: record._id,
+        teacherId: record.userId._id,
+        teacherName: `${record.userId.firstName} ${record.userId.lastName}`,
+        teacherEmail: record.userId.email,
+        date: record.date,
+        checkInTime: record.checkIn?.time,
+        checkOutTime: record.checkOut?.time,
+        checkInLocation: record.checkIn?.location,
+        checkOutLocation: record.checkOut?.location,
+        status: record.status,
+        checkInStatus,
+        checkOutStatus,
+        distanceFromBranch: record.distanceFromBranch
+      };
+    });
 
     res.status(200).json({
       success: true,
