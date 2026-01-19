@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+ import mongoose from 'mongoose';
 
 const EmployeeAttendanceSchema = new mongoose.Schema(
   {
@@ -34,6 +34,11 @@ const EmployeeAttendanceSchema = new mongoose.Schema(
       time: {
         type: Date,
       },
+      status: {
+        type: String,
+        enum: ['on-time', 'late'],
+        default: 'on-time',
+      },
       location: {
         latitude: {
           type: Number,
@@ -58,6 +63,11 @@ const EmployeeAttendanceSchema = new mongoose.Schema(
     checkOut: {
       time: {
         type: Date,
+      },
+      status: {
+        type: String,
+        enum: ['on-time', 'early'],
+        default: 'on-time',
       },
       location: {
         latitude: {
@@ -203,22 +213,24 @@ EmployeeAttendanceSchema.pre('save', function (next) {
   next();
 });
 
-// Virtual for formatted check-in time
+// Virtual for formatted check-in time (12-hour format)
 EmployeeAttendanceSchema.virtual('checkInFormatted').get(function () {
   if (!this.checkIn?.time) return null;
   return new Date(this.checkIn.time).toLocaleTimeString('en-US', {
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
+    hour12: true,
   });
 });
 
 
-// Virtual for formatted check-out time
+// Virtual for formatted check-out time (12-hour format)
 EmployeeAttendanceSchema.virtual('checkOutFormatted').get(function () {
   if (!this.checkOut?.time) return null;
   return new Date(this.checkOut.time).toLocaleTimeString('en-US', {
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
+    hour12: true,
   });
 });
 
