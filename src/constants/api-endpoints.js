@@ -665,6 +665,7 @@ export const API_ENDPOINTS = {
     },
     //self-attendece
     SELF_ATTENDANCE: {
+      STATUS: '/api/teacher/self-attendance/status', // GET
       CHECK_IN: '/api/teacher/self-attendance/check-in', // POST
       CHECK_OUT: '/api/teacher/self-attendance/check-out', // POST
     },

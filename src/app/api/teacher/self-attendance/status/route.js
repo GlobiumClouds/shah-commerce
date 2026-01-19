@@ -1,8 +1,8 @@
-import { teacherCheckOut } from '@/backend/controllers/teacherAttendanceController';
+import { teacherAttendanceStatus } from '@/backend/controllers/teacherAttendanceController';
 import { authenticate } from '@/backend/middleware/auth';
 import { NextResponse } from 'next/server';
 
-export async function POST(req) {
+export async function GET(req) {
   try {
     // Authenticate user
     const authResult = await authenticate(req);
@@ -14,9 +14,6 @@ export async function POST(req) {
     }
 
     req.user = authResult.user;
-
-    // Parse request body
-    const body = await req.json();
 
     // Create a mock response object that captures the response
     let responseData = null;
@@ -32,13 +29,13 @@ export async function POST(req) {
     };
 
     // Call controller
-    await teacherCheckOut(req, mockRes, body);
+    await teacherAttendanceStatus(req, mockRes);
 
     // Return the response from controller
     return NextResponse.json(responseData, { status: responseStatus });
 
   } catch (error) {
-    console.error('Teacher check-out API error:', error);
+    console.error('Teacher attendance status API error:', error);
     return NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }

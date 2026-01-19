@@ -322,6 +322,7 @@ const ROLE_MENUS = {
         { name: "My Classes", path: "/teacher/classes", icon: School },
         { name: "Assignments", path: "/teacher/assignments", icon: FileText },
         { name: "Attendance", path: "/teacher/attendance", icon: Clock },
+        { name: "Self Attendance", path: "/teacher/self-attendance", icon: UserCheck },
         { name: "Exams", path: "/teacher/exams", icon: Calendar },
         { name: "Results", path: "/teacher/results", icon: BarChart3 },
       ],

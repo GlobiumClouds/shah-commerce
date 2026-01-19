@@ -97,8 +97,9 @@ export const teacherCheckIn = async (req, res, body = null) => {
       });
     }
 
-    // Location validation is optional for check-out
+    // Location validation is optional for check-in (warning only)
     let locationValidation = null;
+    let locationWarning = null;
     if (latitude && longitude) {
       const branchLat = parseFloat(process.env.BRANCH_LATITUDE) || 24.96136; // Default Karachi coordinates
       const branchLng = parseFloat(process.env.BRANCH_LONGITUDE) || 67.07103;
@@ -113,10 +114,7 @@ export const teacherCheckIn = async (req, res, body = null) => {
       );
 
       if (!locationValidation.isValid) {
-        return res.status(400).json({
-          success: false,
-          message: `You are not within the branch location. Distance: ${Math.round(locationValidation.distance)} meters. Allowed radius: ${radius} meters.`
-        });
+        locationWarning = `Warning: You are not within the branch location. Distance: ${Math.round(locationValidation.distance)} meters. Allowed radius: ${radius} meters.`;
       }
     }
 
@@ -155,13 +153,14 @@ export const teacherCheckIn = async (req, res, body = null) => {
 
     res.status(200).json({
       success: true,
-      message: `Checked in successfully${isLate ? ' (Late)' : ''}`,
+      message: `Checked in successfully${isLate ? ' (Late)' : ''}${locationWarning ? ' - ' + locationWarning : ''}`,
       data: {
         attendance: {
           id: attendance._id,
           checkInTime: attendance.checkIn.time,
           status: attendance.status,
-          distance: Math.round(locationValidation.distance)
+          distance: locationValidation ? Math.round(locationValidation.distance) : null,
+          locationWarning
         }
       }
     });
@@ -176,14 +175,11 @@ export const teacherCheckIn = async (req, res, body = null) => {
 };
 
 // Teacher Check-Out
-export const teacherCheckOut = async (req, res) => {
+export const teacherCheckOut = async (req, res, body = null) => {
   try {
-    console.log('=== TEACHER CHECK-OUT START ===');
-    console.log('Check-out request body:', req.body);
-    console.log('Check-out user:', req.user);
-    const { latitude, longitude } = req.body;
+    const requestBody = body || req.body || {};
+    const { latitude, longitude } = requestBody;
     const teacherId = req.user.userId;
-    console.log('Teacher ID:', teacherId);
 
     // Validate required fields
     if (!latitude || !longitude) {
@@ -218,8 +214,9 @@ export const teacherCheckOut = async (req, res) => {
       });
     }
 
-    // Location validation
+    // Location validation (warning only for check-out)
     let locationValidation = null;
+    let locationWarning = null;
     if (latitude && longitude) {
       const branchLat = parseFloat(process.env.BRANCH_LATITUDE) || 24.96136; // Default Karachi coordinates
       const branchLng = parseFloat(process.env.BRANCH_LONGITUDE) || 67.07103;
@@ -234,10 +231,7 @@ export const teacherCheckOut = async (req, res) => {
       );
 
       if (!locationValidation.isValid) {
-        return res.status(400).json({
-          success: false,
-          message: `You are not within the branch location. Distance: ${Math.round(locationValidation.distance)} meters. Allowed radius: ${radius} meters.`
-        });
+        locationWarning = `Warning: You are not within the branch location. Distance: ${Math.round(locationValidation.distance)} meters. Allowed radius: ${radius} meters.`;
       }
     }
 
@@ -276,19 +270,72 @@ export const teacherCheckOut = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Checked out successfully${isEarly ? ' (Early Checkout)' : ''}`,
+      message: `Checked out successfully${isEarly ? ' (Early Checkout)' : ''}${locationWarning ? ' - ' + locationWarning : ''}`,
       data: {
         attendance: {
           id: attendance._id,
           checkOutTime: attendance.checkOut.time,
           status: attendance.status,
-          ...(locationValidation && { distance: Math.round(locationValidation.distance) })
+          distance: locationValidation ? Math.round(locationValidation.distance) : null,
+          locationWarning
         }
       }
     });
 
   } catch (error) {
     console.error('Teacher check-out error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Get Teacher Self Attendance Status
+export const teacherAttendanceStatus = async (req, res) => {
+  try {
+    const teacherId = req.user.userId;
+
+    // Get today's attendance record
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const attendance = await EmployeeAttendance.findOne({
+      userId: teacherId,
+      date: { $gte: today, $lt: tomorrow }
+    });
+
+    if (!attendance) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          isCheckedIn: false,
+          todayRecord: null
+        }
+      });
+    }
+
+    // Format the response
+    const todayRecord = {
+      id: attendance._id,
+      checkInTime: attendance.checkIn?.time,
+      checkOutTime: attendance.checkOut?.time,
+      status: attendance.status,
+      location: attendance.checkIn?.location
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        isCheckedIn: !!attendance.checkIn?.time,
+        todayRecord
+      }
+    });
+
+  } catch (error) {
+    console.error('Teacher attendance status error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
