@@ -79,12 +79,14 @@ export const teacherCheckIn = async (req, res, body = null) => {
       });
     }
 
-    // Check if already checked in today
+    // Create check-in time and calculate today's date
+    const checkInTime = new Date();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    // Check if already checked in today
     const existingAttendance = await EmployeeAttendance.findOne({
       userId: teacherId,
       date: { $gte: today, $lt: tomorrow }
@@ -118,36 +120,43 @@ export const teacherCheckIn = async (req, res, body = null) => {
       }
     }
 
-    // Create or update attendance record
-    const checkInTime = new Date();
+    // Calculate if late
     const workStartTime = process.env.WORK_START_TIME || '09:00';
     const lateAfterMin = parseInt(process.env.LATE_AFTER_MIN || '15');
-
     const isLate = isLateCheckIn(checkInTime, workStartTime, lateAfterMin);
-
-    const attendanceData = {
-      userId: teacherId,
-      branchId: branch._id,
-      date: today,
-      checkIn: {
-        time: checkInTime,
-        location: {
-          latitude: parseFloat(latitude),
-          longitude: parseFloat(longitude)
-        }
-      },
-      status: isLate ? 'late' : 'present'
-    };
 
     let attendance;
     if (existingAttendance) {
+      // Update existing record
       attendance = await EmployeeAttendance.findByIdAndUpdate(
         existingAttendance._id,
-        attendanceData,
+        {
+          checkIn: {
+            time: checkInTime,
+            location: {
+              latitude: parseFloat(latitude),
+              longitude: parseFloat(longitude)
+            }
+          },
+          status: isLate ? 'late' : 'present'
+        },
         { new: true }
       );
     } else {
-      attendance = new EmployeeAttendance(attendanceData);
+      // Create new record
+      attendance = new EmployeeAttendance({
+        userId: teacherId,
+        branchId: branch._id,
+        date: today,
+        checkIn: {
+          time: checkInTime,
+          location: {
+            latitude: parseFloat(latitude),
+            longitude: parseFloat(longitude)
+          }
+        },
+        status: isLate ? 'late' : 'present'
+      });
       await attendance.save();
     }
 
@@ -339,6 +348,125 @@ export const teacherAttendanceStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Internal server error'
+    });
+  }
+};
+
+// Get Teacher Attendance History and Statistics
+export const teacherAttendanceHistory = async (req, res) => {
+  try {
+    console.log('🔍 Teacher Attendance History API called');
+    console.log('📊 Query params:', req.query);
+    console.log('👤 User ID:', req.user?.userId);
+
+    const teacherId = req.user.userId;
+    const { month, year } = req.query;
+
+    // Default to current month/year if not provided
+    const currentDate = new Date();
+    const queryMonth = month ? parseInt(month) : currentDate.getMonth() + 1;
+    const queryYear = year ? parseInt(year) : currentDate.getFullYear();
+
+    console.log('📅 Query month/year:', queryMonth, queryYear);
+
+    // Validate month and year
+    if (queryMonth < 1 || queryMonth > 12) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid month. Must be between 1 and 12.'
+      });
+    }
+
+    if (queryYear < 2020 || queryYear > 2030) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid year. Must be between 2020 and 2030.'
+      });
+    }
+
+    // Calculate date range for the month
+    const startDate = new Date(queryYear, queryMonth - 1, 1);
+    const endDate = new Date(queryYear, queryMonth - 1, new Date(queryYear, queryMonth, 0).getDate(), 23, 59, 59);
+
+    console.log('📅 Date range:', startDate.toISOString(), 'to', endDate.toISOString());
+
+    // Get all attendance records for the month
+    const attendanceRecords = await EmployeeAttendance.find({
+      userId: teacherId,
+      date: { $gte: startDate, $lte: endDate }
+    }).sort({ date: 1 });
+
+    console.log('📊 Found attendance records:', attendanceRecords.length);
+
+    // Calculate statistics
+    const totalDays = attendanceRecords.length;
+    const presentDays = attendanceRecords.filter(record => record.status === 'present').length;
+    const lateDays = attendanceRecords.filter(record => record.status === 'late').length;
+    const absentDays = attendanceRecords.filter(record => record.status === 'absent').length;
+    const halfDays = attendanceRecords.filter(record => record.status === 'half-day').length;
+    const leaveDays = attendanceRecords.filter(record => record.status === 'leave').length;
+    const earlyCheckoutDays = attendanceRecords.filter(record => record.status === 'early_checkout').length;
+
+    console.log('📈 Statistics:', { totalDays, presentDays, lateDays, absentDays });
+
+    // Calculate working days (excluding weekends)
+    const workingDays = [];
+    const tempDate = new Date(startDate);
+    while (tempDate <= endDate) {
+      const dayOfWeek = tempDate.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Exclude Sunday (0) and Saturday (6)
+        workingDays.push(new Date(tempDate));
+      }
+      tempDate.setDate(tempDate.getDate() + 1);
+    }
+
+    const totalWorkingDays = workingDays.length;
+    const attendancePercentage = totalWorkingDays > 0 ? ((presentDays + lateDays + halfDays) / totalWorkingDays * 100).toFixed(1) : 0;
+
+    console.log('📊 Working days:', totalWorkingDays, 'Attendance %:', attendancePercentage);
+
+    // Format attendance records for response
+    const formattedRecords = attendanceRecords.map(record => ({
+      id: record._id,
+      date: record.date,
+      status: record.status,
+      checkInTime: record.checkIn?.time,
+      checkOutTime: record.checkOut?.time,
+      workingHours: record.workingHours || 0,
+      lateBy: record.lateBy || 0,
+      earlyLeaveBy: record.earlyLeaveBy || 0,
+      location: record.checkIn?.location
+    }));
+
+    console.log('✅ Sending response with', formattedRecords.length, 'records');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        month: queryMonth,
+        year: queryYear,
+        statistics: {
+          totalDays,
+          workingDays: totalWorkingDays,
+          presentDays,
+          lateDays,
+          absentDays,
+          halfDays,
+          leaveDays,
+          earlyCheckoutDays,
+          attendancePercentage: parseFloat(attendancePercentage)
+        },
+        records: formattedRecords
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Teacher attendance history error:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
     });
   }
 };

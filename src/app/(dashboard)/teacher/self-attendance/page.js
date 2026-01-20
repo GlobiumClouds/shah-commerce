@@ -26,10 +26,15 @@ export default function TeacherSelfAttendancePage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [locationError, setLocationError] = useState(null);
+  const [attendanceHistory, setAttendanceHistory] = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     loadAttendanceStatus();
     getCurrentLocation();
+    loadAttendanceHistory();
   }, []);
 
   const getCurrentLocation = () => {
@@ -73,6 +78,26 @@ export default function TeacherSelfAttendancePage() {
       toast.error("Failed to load attendance status");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAttendanceHistory = async (month = selectedMonth, year = selectedYear) => {
+    try {
+      setHistoryLoading(true);
+      const response = await apiClient.get(
+        `${API_ENDPOINTS.TEACHER.SELF_ATTENDANCE.HISTORY}?month=${month}&year=${year}`
+      );
+
+      if (response.success) {
+        setAttendanceHistory(response.data);
+      } else {
+        toast.error(response.message || "Failed to load attendance history");
+      }
+    } catch (error) {
+      console.error("Error loading attendance history:", error);
+      toast.error("Failed to load attendance history");
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -168,6 +193,7 @@ export default function TeacherSelfAttendancePage() {
 
   const isCheckedIn = attendanceStatus?.isCheckedIn;
   const todayRecord = attendanceStatus?.todayRecord;
+  const hasCompletedToday = todayRecord && todayRecord.checkOutTime;
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
@@ -187,6 +213,10 @@ export default function TeacherSelfAttendancePage() {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
+            ) : hasCompletedToday ? (
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-blue-600" />
+              </div>
             ) : (
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
                 <XCircle className="w-8 h-8 text-red-600" />
@@ -196,21 +226,23 @@ export default function TeacherSelfAttendancePage() {
 
           <div>
             <h2 className="text-2xl font-semibold">
-              {isCheckedIn ? "Checked In" : "Not Checked In"}
+              {isCheckedIn ? "Checked In" : hasCompletedToday ? "Day Completed" : "Not Checked In"}
             </h2>
             <p className="text-muted-foreground">
               {isCheckedIn
                 ? `Checked in at ${formatTime(todayRecord?.checkInTime)}`
+                : hasCompletedToday
+                ? `Completed at ${formatTime(todayRecord?.checkOutTime)}`
                 : "Please check in to start your day"
               }
             </p>
           </div>
 
           <Badge
-            variant={isCheckedIn ? "default" : "secondary"}
+            variant={isCheckedIn ? "default" : hasCompletedToday ? "secondary" : "secondary"}
             className="text-lg px-4 py-2"
           >
-            {isCheckedIn ? "Active Session" : "Inactive"}
+            {isCheckedIn ? "Active Session" : hasCompletedToday ? "Completed" : "Inactive"}
           </Badge>
         </div>
       </Card>
@@ -310,7 +342,7 @@ export default function TeacherSelfAttendancePage() {
                 <div>
                   <p className="font-medium">Location</p>
                   <p className="text-sm text-muted-foreground">
-                    {todayRecord.location
+                    {todayRecord.location && todayRecord.location.latitude && todayRecord.location.longitude
                       ? `${todayRecord.location.latitude.toFixed(6)}, ${todayRecord.location.longitude.toFixed(6)}`
                       : "N/A"}
                   </p>
@@ -324,7 +356,21 @@ export default function TeacherSelfAttendancePage() {
       {/* Action Buttons */}
       <Card className="p-6">
         <div className="flex gap-4 justify-center">
-          {!isCheckedIn ? (
+          {hasCompletedToday ? (
+            <div className="text-center">
+              <Button
+                disabled
+                size="lg"
+                className="px-8 opacity-50 cursor-not-allowed"
+              >
+                <CheckCircle className="w-5 h-5 mr-2" />
+                Attendance Completed
+              </Button>
+              <p className="text-sm text-muted-foreground mt-2">
+                You have completed today's attendance. Check-in will be available tomorrow.
+              </p>
+            </div>
+          ) : !isCheckedIn ? (
             <Button
               onClick={handleCheckIn}
               disabled={actionLoading || !currentLocation}
@@ -360,6 +406,178 @@ export default function TeacherSelfAttendancePage() {
           <p className="text-center text-sm text-muted-foreground mt-4">
             Location is required for attendance marking
           </p>
+        )}
+      </Card>
+
+      {/* Attendance History */}
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold">Attendance History</h2>
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedMonth}
+              onChange={(e) => {
+                setSelectedMonth(parseInt(e.target.value));
+                loadAttendanceHistory(parseInt(e.target.value), selectedYear);
+              }}
+              className="px-3 py-2 border border-border rounded-lg text-sm"
+            >
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => {
+                setSelectedYear(parseInt(e.target.value));
+                loadAttendanceHistory(selectedMonth, parseInt(e.target.value));
+              }}
+              className="px-3 py-2 border border-border rounded-lg text-sm"
+            >
+              {Array.from({ length: 5 }, (_, i) => {
+                const year = new Date().getFullYear() - i;
+                return (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        </div>
+
+        {historyLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin" />
+            <span className="ml-2">Loading history...</span>
+          </div>
+        ) : attendanceHistory?.data?.records?.length > 0 ? (
+          <>
+            {/* Statistics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-muted-foreground">Present</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {attendanceHistory.data.statistics.presentDays}
+                </p>
+              </div>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-muted-foreground">Absent</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {attendanceHistory.data.statistics.absentDays}
+                </p>
+              </div>
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-muted-foreground">Late</p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {attendanceHistory.data.statistics.lateDays}
+                </p>
+              </div>
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-muted-foreground">Attendance Rate</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {attendanceHistory.data.statistics.attendancePercentage}%
+                </p>
+              </div>
+            </div>
+
+            {/* Records List */}
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {attendanceHistory.data.records.map((record, index) => (
+                <motion.div
+                  key={record.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={`p-4 rounded-lg border ${
+                    record.status === 'present'
+                      ? 'bg-green-50 border-green-200'
+                      : record.status === 'absent'
+                      ? 'bg-red-50 border-red-200'
+                      : record.status === 'late'
+                      ? 'bg-yellow-50 border-yellow-200'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-medium">
+                          {new Date(record.date).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${
+                            record.status === 'present'
+                              ? 'text-green-700 border-green-300'
+                              : record.status === 'absent'
+                              ? 'text-red-700 border-red-300'
+                              : record.status === 'late'
+                              ? 'text-yellow-700 border-yellow-300'
+                              : 'text-gray-700 border-gray-300'
+                          }`}
+                        >
+                          {record.status === 'present' ? 'Present' :
+                           record.status === 'absent' ? 'Absent' :
+                           record.status === 'late' ? 'Late' :
+                           record.status === 'early_checkout' ? 'Early Checkout' :
+                           record.status}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-sm">
+                        {record.checkInTime && (
+                          <div className="flex items-center gap-1">
+                            <LogIn className="w-4 h-4 text-green-600" />
+                            <span className="text-green-600 font-medium">
+                              {formatTime(record.checkInTime)}
+                            </span>
+                            <span className="text-muted-foreground">Check-in</span>
+                          </div>
+                        )}
+                        {record.checkOutTime && (
+                          <div className="flex items-center gap-1">
+                            <LogOut className="w-4 h-4 text-blue-600" />
+                            <span className="text-blue-600 font-medium">
+                              {formatTime(record.checkOutTime)}
+                            </span>
+                            <span className="text-muted-foreground">Check-out</span>
+                          </div>
+                        )}
+                        {record.workingHours && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-4 h-4 text-primary" />
+                            <span className="text-primary font-medium">
+                              {record.workingHours}
+                            </span>
+                            <span className="text-muted-foreground">Hours</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-12">
+            <Calendar className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
+            <p className="text-muted-foreground font-medium">
+              No attendance records found
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Records for {new Date(selectedYear, selectedMonth - 1).toLocaleString('default', { month: 'long' })} {selectedYear} will appear here
+            </p>
+          </div>
         )}
       </Card>
 
