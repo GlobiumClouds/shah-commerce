@@ -47,24 +47,35 @@ export default function NotificationBell() {
     }
   };
 
-  const markAsRead = async (id) => {
+  const markAsRead = async (notification) => {
     try {
       const token =
         localStorage.getItem("accessToken") || localStorage.getItem("token");
+
+      const notifId = notification._id || notification.id;
+
       // Optimistically update UI
       setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)),
+        prev.map((n) =>
+          (n._id || n.id) === notifId ? { ...n, isRead: true } : n,
+        ),
       );
       setUnreadCount((c) => Math.max(0, c - 1));
 
-      await fetch("/api/notifications/mark-read", {
-        method: "POST",
+      await fetch("/api/notifications", {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({
+          notificationId: notifId,
+          isEvent: notification.isEvent || false,
+        }),
       });
+
+      // Success console message
+      console.log(`✅ Notification marked as read: "${notification.title}"`);
     } catch (err) {
       console.error("Mark read failed", err);
     }
@@ -149,12 +160,13 @@ export default function NotificationBell() {
                   onClick={async () => {
                     // If there's a link, navigate. Otherwise open modal detail view.
                     if (n.link) {
-                      if (!n.isRead) await markAsRead(n._id);
+                      if (!n.isRead) await markAsRead(n);
                       setIsOpen(false);
                       router.push(n.link);
                       return;
                     }
-                    if (!n.isRead) await markAsRead(n._id);
+                    // Auto mark as read when opening detail modal
+                    if (!n.isRead) await markAsRead(n);
                     setSelectedNotification(n);
                     setIsOpen(false);
                   }}
@@ -227,26 +239,28 @@ export default function NotificationBell() {
             className="relative w-full max-w-2xl mx-auto transform transition-all duration-300 animate-in zoom-in-95 slide-in-from-bottom-4"
           >
             <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden ring-1 ring-black/5">
-              
               {/* Header with Gradient */}
               <div className="relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600"></div>
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-20"></div>
-                
+
                 <div className="relative flex items-start gap-4 p-6">
                   <div className="flex-shrink-0 mt-1">
                     <div className="h-14 w-14 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-lg ring-2 ring-white/30">
                       <Bell className="h-7 w-7" />
                     </div>
                   </div>
-                  
+
                   <div className="flex-1 min-w-0 text-white">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider bg-white/30 backdrop-blur-md shadow-sm ring-1 ring-white/40 text-white">
-                        {selectedNotification.type?.replace("_", " ") || "General"}
+                        {selectedNotification.type?.replace("_", " ") ||
+                          "General"}
                       </span>
                       <span className="text-xs text-white/80 font-medium">
-                        {new Date(selectedNotification.createdAt).toLocaleString("en-US", {
+                        {new Date(
+                          selectedNotification.createdAt,
+                        ).toLocaleString("en-US", {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
@@ -255,11 +269,14 @@ export default function NotificationBell() {
                         })}
                       </span>
                     </div>
-                    <h3 id="notif-title" className="text-xl font-bold text-white leading-tight">
+                    <h3
+                      id="notif-title"
+                      className="text-xl font-bold text-white leading-tight"
+                    >
                       {selectedNotification.title}
                     </h3>
                   </div>
-                  
+
                   <div className="flex items-start">
                     <button
                       onClick={() => setSelectedNotification(null)}
@@ -295,24 +312,6 @@ export default function NotificationBell() {
               {/* Footer Actions */}
               <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-t border-gray-200 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  {!selectedNotification.isRead && (
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        await markAsRead(selectedNotification._id);
-                        setSelectedNotification({
-                          ...selectedNotification,
-                          isRead: true,
-                        });
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium text-sm shadow-sm hover:shadow"
-                    >
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Mark as read
-                    </button>
-                  )}
                   {selectedNotification.link && (
                     <button
                       onClick={(e) => {
@@ -322,15 +321,118 @@ export default function NotificationBell() {
                       }}
                       className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium text-sm shadow-md hover:shadow-lg transform hover:scale-105"
                     >
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
                       </svg>
-                      Open link
+                      Open Link
                     </button>
                   )}
                 </div>
 
-                <div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={async () => {
+                      if (
+                        confirm(
+                          "Are you sure you want to delete this notification? This action cannot be undone.",
+                        )
+                      ) {
+                        try {
+                          const token =
+                            localStorage.getItem("accessToken") ||
+                            localStorage.getItem("token");
+
+                          const payload = {
+                            notificationId:
+                              selectedNotification._id ||
+                              selectedNotification.id,
+                            isEvent: selectedNotification.isEvent || false,
+                          };
+
+                          console.log(
+                            "🔍 Deleting notification with payload:",
+                            payload,
+                          );
+
+                          const response = await fetch("/api/notifications", {
+                            method: "DELETE",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify(payload),
+                          });
+
+                          console.log(
+                            "📡 Delete response status:",
+                            response.status,
+                          );
+
+                          const data = await response.json();
+                          console.log("📦 Delete response data:", data);
+
+                          if (!response.ok || !data.success) {
+                            throw new Error(
+                              data.message || "Failed to delete notification",
+                            );
+                          }
+
+                          // Remove from local state
+                          setNotifications((prev) =>
+                            prev.filter(
+                              (n) =>
+                                (n._id || n.id) !==
+                                (selectedNotification._id ||
+                                  selectedNotification.id),
+                            ),
+                          );
+                          setUnreadCount((c) =>
+                            selectedNotification.isRead
+                              ? c
+                              : Math.max(0, c - 1),
+                          );
+
+                          // Success console message
+                          console.log(
+                            `✅ Notification deleted successfully: "${selectedNotification.title}"`,
+                          );
+                          setSelectedNotification(null);
+                        } catch (err) {
+                          console.error("❌ Delete failed:", err);
+                          alert(
+                            `Failed to delete notification: ${err.message || "Please try again."}`,
+                          );
+                        }
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-red-300 rounded-lg text-red-600 hover:bg-red-50 hover:border-red-400 transition-all duration-200 font-medium text-sm shadow-sm hover:shadow"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                    Delete
+                  </button>
+
                   <button
                     onClick={() => setSelectedNotification(null)}
                     className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-white rounded-lg transition-all duration-200 font-medium"

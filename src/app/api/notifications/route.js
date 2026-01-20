@@ -194,10 +194,12 @@ async function hideNotification(request, user) {
     const userId = user.userId;
     const { notificationId, isEvent } = await request.json();
 
+    console.log('🗑️ DELETE Request received:', { userId, notificationId, isEvent });
+
     if (isEvent) {
       // 🔥 1. Agar EVENT (Broadcast) hai:
       // Isi model mein user ke liye ek hidden entry dalo
-      await Notification.create({
+      const result = await Notification.create({
         type: 'event', // type event hi rakhein
         title: 'hidden_event', // Pehchan ke liye
         message: 'hidden',
@@ -205,17 +207,25 @@ async function hideNotification(request, user) {
         isHidden: true, // User ke liye hide kar do
         metadata: { eventId: notificationId } // Asal event ki ID yahan rakhein
       });
+      console.log('✅ Event notification hidden (created hidden entry):', result._id);
     } else {
       // 🔥 2. Agar NORMAL notification hai:
       // Bas isHidden ko true kar do
-      await Notification.updateOne(
+      const result = await Notification.updateOne(
         { _id: notificationId, targetUser: userId },
         { $set: { isHidden: true } }
       );
+      console.log('✅ Normal notification hidden:', { matched: result.matchedCount, modified: result.modifiedCount });
+
+      if (result.matchedCount === 0) {
+        console.warn('⚠️ No notification found with ID:', notificationId);
+      }
     }
 
+    console.log('✅ Notification deleted successfully for user:', userId);
     return NextResponse.json({ success: true, message: 'Deleted for user' });
   } catch (error) {
+    console.error('❌ Hide notification error:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
