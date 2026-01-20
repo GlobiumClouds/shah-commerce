@@ -620,6 +620,16 @@ export const API_ENDPOINTS = {
     NOTIFICATIONS: {
       HISTORY: '/api/branch-admin/notifications/history', // GET
     },
+
+    // Charts and Analytics
+    CHARTS: {
+      STUDENT_TRENDS: '/api/branch-admin/charts/student-trends', // GET
+      CLASS_WISE_STUDENTS: '/api/branch-admin/charts/class-wise-students', // GET
+      STUDENT_ATTENDANCE: '/api/branch-admin/charts/student-attendance', // GET
+      FEES_COLLECTED_PENDING: '/api/branch-admin/charts/fees-collected-pending', // GET
+      MONTHLY_FEE_COLLECTION: '/api/branch-admin/charts/monthly-fee-collection', // GET
+      PASS_FAIL_RATIO: '/api/branch-admin/charts/pass-fail-ratio', // GET
+    },
   },
 
   // Teacher Endpoints
