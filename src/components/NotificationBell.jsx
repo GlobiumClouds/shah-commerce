@@ -1,40 +1,32 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Bell } from "lucide-react";
+import { Bell, CheckCheck, Trash2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-// import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import { toast } from "sonner";
 
 export default function NotificationBell() {
-  const { user } = useAuth(); // ✅ User data seedha Context se liya (No LocalStorage needed for user)
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
   const router = useRouter();
   const [selectedNotification, setSelectedNotification] = useState(null);
 
   const fetchNotis = async () => {
-    // Agar user load nahi hua ya login nahi hai, to return ho jao
-    if (!user || !user._id) {
-      // Fallback: Agar context me id na ho (rare case), to id dhundo
-      // user.id ya user._id dono check kar rahe hain
-      return;
-    }
-
+    if (!user?._id && !user?.id) return;
     const userId = user._id || user.id;
-
-    // Token hum localStorage se utha lenge (Kyunki Login ne 'accessToken' save kiya tha)
     const token =
       localStorage.getItem("accessToken") || localStorage.getItem("token");
 
     try {
+      setLoading(true);
       const res = await fetch(
         `/api/notifications/web-notifications?userId=${userId}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         },
       );
       const data = await res.json();
@@ -44,6 +36,8 @@ export default function NotificationBell() {
       }
     } catch (err) {
       console.error("Notification Fetch Error:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -51,10 +45,8 @@ export default function NotificationBell() {
     try {
       const token =
         localStorage.getItem("accessToken") || localStorage.getItem("token");
-
       const notifId = notification._id || notification.id;
 
-      // Optimistically update UI
       setNotifications((prev) =>
         prev.map((n) =>
           (n._id || n.id) === notifId ? { ...n, isRead: true } : n,
@@ -73,27 +65,80 @@ export default function NotificationBell() {
           isEvent: notification.isEvent || false,
         }),
       });
-
-      // Success console message
-      console.log(`✅ Notification marked as read: "${notification.title}"`);
     } catch (err) {
       console.error("Mark read failed", err);
     }
   };
 
-  // ✅ Dependency Array me 'user' daal diya
-  // Jaise hi Login complete hoga aur 'user' milega, ye fetch karega
+  const markAllAsRead = async () => {
+    try {
+      const token =
+        localStorage.getItem("accessToken") || localStorage.getItem("token");
+
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+
+      const res = await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ markAll: true }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success("All notifications marked as read");
+      }
+    } catch (err) {
+      console.error("Mark all as read failed", err);
+      toast.error("Failed to mark all as read");
+    }
+  };
+
+  const deleteNotification = async (notification, e) => {
+    if (e) e.stopPropagation();
+
+    try {
+      const token =
+        localStorage.getItem("accessToken") || localStorage.getItem("token");
+      const notifId = notification._id || notification.id;
+
+      // Optimistic Update
+      setNotifications((prev) =>
+        prev.filter((n) => (n._id || n.id) !== notifId),
+      );
+      if (!notification.isRead) {
+        setUnreadCount((c) => Math.max(0, c - 1));
+      }
+
+      await fetch("/api/notifications", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          notificationId: notifId,
+          isEvent: notification.isEvent || false,
+        }),
+      });
+    } catch (err) {
+      console.error("Delete failed", err);
+      toast.error("Failed to delete notification");
+      fetchNotis(); // Sync back if failed
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchNotis();
-
-      // Polling: Har 15 second me refresh
-      const interval = setInterval(fetchNotis, 15000);
+      const interval = setInterval(fetchNotis, 30000); // 30s instead of 15s to save resources
       return () => clearInterval(interval);
     }
-  }, [user]); // <-- Jab user change hoga tab chalega
+  }, [user]);
 
-  // Click outside logic
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -106,14 +151,11 @@ export default function NotificationBell() {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* 🔔 Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-md hover:bg-gray-100 transition-colors focus:outline-none"
       >
         <Bell className="h-5 w-5 text-gray-600" />
-
-        {/* Red Badge */}
         {unreadCount > 0 && (
           <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -122,22 +164,38 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* 📜 Enhanced Dropdown List */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 backdrop-blur-sm">
-          <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex justify-between items-center">
-            <div>
-              <h3 className="font-bold text-base">Notifications</h3>
-              <p className="text-xs text-blue-100 mt-0.5">
+        <div className="absolute right-0 mt-2 w-[400px] bg-white border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 backdrop-blur-sm">
+          <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+            <div className="flex justify-between items-center mb-1">
+              <h3 className="font-bold text-lg">Notifications</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={fetchNotis}
+                  disabled={loading}
+                  className="p-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all"
+                  title="Refresh"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                  />
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-blue-100">
                 {unreadCount} unread message{unreadCount !== 1 ? "s" : ""}
               </p>
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="text-[10px] uppercase font-bold tracking-wider hover:underline flex items-center gap-1"
+                >
+                  <CheckCheck className="h-3 w-3" />
+                  Mark all as read
+                </button>
+              )}
             </div>
-            <button
-              className="text-xs px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-all duration-200 font-medium"
-              onClick={fetchNotis}
-            >
-              Refresh
-            </button>
           </div>
 
           <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
@@ -158,19 +216,17 @@ export default function NotificationBell() {
                 <div
                   key={n._id}
                   onClick={async () => {
-                    // If there's a link, navigate. Otherwise open modal detail view.
                     if (n.link) {
                       if (!n.isRead) await markAsRead(n);
                       setIsOpen(false);
                       router.push(n.link);
                       return;
                     }
-                    // Auto mark as read when opening detail modal
                     if (!n.isRead) await markAsRead(n);
                     setSelectedNotification(n);
                     setIsOpen(false);
                   }}
-                  className={`p-4 border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 cursor-pointer group ${!n.isRead ? "bg-blue-50/50 border-l-4 border-l-blue-500" : ""}`}
+                  className={`p-4 border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 cursor-pointer group relative ${!n.isRead ? "bg-blue-50/50 border-l-4 border-l-blue-500" : ""}`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span
@@ -185,24 +241,38 @@ export default function NotificationBell() {
                     >
                       {n.type?.replace("_", " ") || "General"}
                     </span>
-                    <span className="text-[10px] text-gray-500 font-medium">
-                      {new Date(n.createdAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">
+                        {new Date(n.createdAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+
+                      {/* Quick Delete Button */}
+                      <button
+                        onClick={(e) => deleteNotification(n, e)}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-100 text-gray-400 hover:text-red-600 rounded-md transition-all duration-200"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <h4 className="text-sm font-bold text-gray-900 leading-snug mb-1.5 group-hover:text-blue-700 transition-colors">
+
+                  <h4 className="text-sm font-bold text-gray-900 leading-snug mb-1 group-hover:text-blue-700 transition-colors pr-6">
                     {n.title}
                   </h4>
                   <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
                     {n.message}
                   </p>
+
                   {!n.isRead && (
                     <div className="flex items-center gap-1.5 mt-2">
                       <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse"></div>
                       <span className="text-[10px] font-semibold text-blue-600 uppercase tracking-wide">
-                        New
+                        New Message
                       </span>
                     </div>
                   )}
