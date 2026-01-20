@@ -17,13 +17,23 @@ async function sendNotification(request, currentUser, userDoc) {
     const { title, message, type, targetRole, targetBranch, metadata } = body;
 
     console.log('📨 Sending notification from:', currentUser.role, currentUser.branchId);
+    console.log('🎯 Target Role:', targetRole);
     console.log('🎯 Target Branch:', targetBranch);
 
     // ============================================================
     // 🎯 FILTERING LOGIC (Super vs Branch Admin)
     // ============================================================
-    
-    let filter = { role: targetRole, isActive: true }; // e.g. 'student'
+
+    let filter = { isActive: true };
+
+    // Handle targetRole
+    if (targetRole === 'all') {
+      // Send to everyone: students, parents, teachers, staff, branch_admins
+      filter.role = { $in: ['student', 'parent', 'teacher', 'staff', 'branch_admin'] };
+    } else {
+      // Specific role (student/parent/teacher/staff/branch_admin)
+      filter.role = targetRole;
+    }
 
     // SCENARIO 1: Branch Admin
     if (currentUser.role === 'branch_admin') {
@@ -57,10 +67,10 @@ async function sendNotification(request, currentUser, userDoc) {
     // ============================================================
     // 💾 DATABASE SAVE (Web Dashboard)
     // ============================================================
-    
+
     // Add Sender Info to Metadata for History Tracking
     const senderName = currentUser.fullName || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Unknown';
-    
+
     const enhancedMetadata = {
       ...metadata,
       senderId: currentUser.userId,
@@ -106,7 +116,7 @@ async function sendNotification(request, currentUser, userDoc) {
     if (messages.length > 0) {
       console.log(`🚀 Pushing to ${messages.length} mobile devices...`);
       let chunks = expo.chunkPushNotifications(messages);
-      
+
       for (let chunk of chunks) {
         try {
           await expo.sendPushNotificationsAsync(chunk);
@@ -119,8 +129,8 @@ async function sendNotification(request, currentUser, userDoc) {
       console.log("⚠️ No valid tokens found. Skipping Mobile Push.");
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: `Notification sent successfully to ${users.length} users (${messages.length} on Mobile)`,
       totalUsers: users.length,
       pushedTo: messages.length
