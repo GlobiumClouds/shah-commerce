@@ -11,8 +11,9 @@ import Textarea from '@/components/ui/textarea';
 import Dropdown from '@/components/ui/dropdown';
 import MultiSelectDropdown from '@/components/ui/multi-select';
 import ButtonLoader from '@/components/ui/button-loader';
-import { Bell, Users, Type, Building2, Megaphone, History, Clock, CheckCircle } from 'lucide-react';
+import { Bell, Users, Type, Building2, Megaphone, History, Clock, CheckCircle, BarChart3, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import NotificationStatsModal from '@/components/NotificationStatsModal';
 
 // Notification Types
 const NOTIFICATION_TYPES = [
@@ -51,8 +52,10 @@ export default function SuperAdminNotification() {
   const [availableUsers, setAvailableUsers] = useState([]);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
 
-  // History State
+  // History & Tracking State
   const [history, setHistory] = useState([]);
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -385,34 +388,52 @@ export default function SuperAdminNotification() {
         ) : (
           <div className="grid gap-4">
             {history.map((item, index) => (
-              <Card key={index} className="overflow-hidden hover:shadow-md transition-shadow">
-                <div className="p-4 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 capitalize`}>
+              <Card key={index} className="overflow-hidden hover:shadow-md transition-shadow group border-l-4 border-l-indigo-500">
+                <div className="p-4 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center flex-wrap gap-2">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase`}>
                         {item.type || 'general'}
                       </span>
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <span className="text-xs text-gray-400 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {new Date(item.createdAt).toLocaleString()}
                       </span>
+                      <span className="text-xs font-medium px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center gap-1 text-gray-600 dark:text-gray-400">
+                        <ShieldCheck className="w-3 h-3" />
+                        By: {item.senderName} ({item.senderRole})
+                      </span>
                     </div>
-                    <h4 className="font-semibold text-gray-900 dark:text-white">{item.title}</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1">{item.message}</p>
+                    <h4 className="font-bold text-gray-900 dark:text-white uppercase text-sm mt-1">{item.title}</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-1">{item.message}</p>
                   </div>
 
-                  <div className="flex items-center gap-6 text-sm text-gray-500">
+                  <div className="flex flex-wrap items-center gap-5 text-sm">
                     <div className="text-right">
-                      <p className="text-xs uppercase tracking-wider font-semibold">Recipients</p>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{item.recipientCount || 0} Users</p>
+                      <p className="text-[10px] uppercase font-bold text-gray-400">Recipients</p>
+                      <p className="font-bold text-gray-900 dark:text-gray-100">{item.recipientCount || 0}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs uppercase tracking-wider font-semibold">Status</p>
-                      <div className="flex items-center justify-end gap-1 text-green-600">
-                        <CheckCircle className="w-4 h-4" />
-                        <span className="font-medium">Sent</span>
-                      </div>
+                      <p className="text-[10px] uppercase font-bold text-green-500">Parha Gaya</p>
+                      <p className="font-bold text-green-600">{item.readCount || 0}</p>
                     </div>
+                    <div className="text-right border-r dark:border-gray-800 pr-5">
+                      <p className="text-[10px] uppercase font-bold text-orange-400">Pending</p>
+                      <p className="font-bold text-orange-600">{item.unreadCount || 0}</p>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/30 hover:bg-indigo-600 hover:text-white transition-all"
+                      onClick={() => {
+                        setSelectedCampaign(item);
+                        setShowStatsModal(true);
+                      }}
+                    >
+                      <BarChart3 className="w-4 h-4 mr-1.5" />
+                      Full Track Report
+                    </Button>
                   </div>
                 </div>
               </Card>
@@ -420,6 +441,17 @@ export default function SuperAdminNotification() {
           </div>
         )}
       </div>
+
+      {/* Notification Stats Modal */}
+      {showStatsModal && (
+        <NotificationStatsModal
+          notification={selectedCampaign}
+          onClose={() => {
+            setShowStatsModal(false);
+            setSelectedCampaign(null);
+          }}
+        />
+      )}
 
     </div>
   );
