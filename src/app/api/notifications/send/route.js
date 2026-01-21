@@ -17,18 +17,28 @@ async function sendNotification(request, currentUser, userDoc) {
     const { title, message, type, targetRole, targetBranch, metadata } = body;
 
     console.log('📨 Sending notification from:', currentUser.role, currentUser.branchId);
+    console.log('🎯 Target Role:', targetRole);
     console.log('🎯 Target Branch:', targetBranch);
 
     // ============================================================
-    // STEP A: LOGIC - Kisko bhejna hai? (Super vs Branch Admin)
+    // 🎯 FILTERING LOGIC (Super vs Branch Admin)
     // ============================================================
-    
-    let filter = { role: targetRole, isActive: true }; // e.g. 'student'
 
-    // Agar BRANCH ADMIN hai, toh filter restrict kro
+    let filter = { isActive: true };
+
+    // Handle targetRole
+    if (targetRole === 'all') {
+      // Send to everyone: students, parents, teachers, staff, branch_admins
+      filter.role = { $in: ['student', 'parent', 'teacher', 'staff', 'branch_admin'] };
+    } else {
+      // Specific role (student/parent/teacher/staff/branch_admin)
+      filter.role = targetRole;
+    }
+
+    // SCENARIO 1: Branch Admin
     if (currentUser.role === 'branch_admin') {
       if (!currentUser.branchId) {
-        return NextResponse.json({ success: false, error: "Branch ID missing" }, { status: 400 });
+        return NextResponse.json({ success: false, error: "Your account is not linked to any branch." }, { status: 400 });
       }
       filter.branchId = currentUser.branchId; // Sirf apni branch walo ko dhoondo
     }
@@ -48,19 +58,19 @@ async function sendNotification(request, currentUser, userDoc) {
     // Users dhoondo unke Tokens k sath
     const users = await User.find(filter).select('_id expoPushToken');
 
-    if (!users.length) {
-      return NextResponse.json({ success: false, message: "No users found" }, { status: 404 });
+    if (!users || users.length === 0) {
+      return NextResponse.json({ success: false, message: "No users found matching criteria" }, { status: 404 });
     }
 
-    console.log(`✅ Found ${users.length} users to notify`);
+    console.log(`👥 Total Users Found: ${users.length}`);
 
     // ============================================================
-    // STEP B: DATABASE MEIN SAVE KRO (In-App List ke liye)
+    // 💾 DATABASE SAVE (Web Dashboard)
     // ============================================================
-    
+
     // Add Sender Info to Metadata for History Tracking
     const senderName = currentUser.fullName || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Unknown';
-    
+
     const enhancedMetadata = {
       ...metadata,
       senderId: currentUser.userId,
@@ -81,13 +91,15 @@ async function sendNotification(request, currentUser, userDoc) {
     await Notification.insertMany(dbNotifications);
 
     // ============================================================
-    // STEP C: EXPO PUSH NOTIFICATION BHEJO (Pop-up ke liye)
+    // 📱 MOBILE PUSH (Expo)
     // ============================================================
 
     let messages = [];
-    
+    let tokenCount = 0;
+    let missingTokenCount = 0;
+
     for (let user of users) {
-      // Check kro token valid hai ya nahi (Expo tokens start with Exponent...)
+      // Token check logic
       if (user.expoPushToken && Expo.isExpoPushToken(user.expoPushToken)) {
         messages.push({
           to: user.expoPushToken,
@@ -96,34 +108,39 @@ async function sendNotification(request, currentUser, userDoc) {
           body: message,
           data: { type: type, ...metadata }, // Ye data app click hony p kaam ayega
         });
+        tokenCount++;
       }
     }
 
-    console.log(`📱 Sending push to ${messages.length} devices`);
+    // Sending in Chunks (Expo Limit Handling)
+    if (messages.length > 0) {
+      console.log(`🚀 Pushing to ${messages.length} mobile devices...`);
+      let chunks = expo.chunkPushNotifications(messages);
 
-    // Expo ko chunks me bhejte hain (optimization)
-    let chunks = expo.chunkPushNotifications(messages);
-    
-    for (let chunk of chunks) {
-      try {
-        await expo.sendPushNotificationsAsync(chunk);
-      } catch (error) {
-        console.error("Error sending chunk:", error);
+      for (let chunk of chunks) {
+        try {
+          await expo.sendPushNotificationsAsync(chunk);
+        } catch (error) {
+          console.error("Expo Push Error:", error);
+          // Error aane par process mat roko, continue karo
+        }
       }
+    } else {
+      console.log("⚠️ No valid tokens found. Skipping Mobile Push.");
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `Notification saved and sent to ${messages.length} devices`,
+    return NextResponse.json({
+      success: true,
+      message: `Notification sent successfully to ${users.length} users (${messages.length} on Mobile)`,
       totalUsers: users.length,
-      devicesNotified: messages.length
+      pushedTo: messages.length
     });
 
   } catch (error) {
-    console.error("Notification Error:", error);
+    console.error("Critical Notification Error:", error);
     return NextResponse.json({ success: false, error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
 
-// Export with Auth Protection - Only super_admin and branch_admin can send notifications
+// ✅ Correct Export with Middleware
 export const POST = withAuth(sendNotification, [requireRole(['super_admin', 'branch_admin'])]);
