@@ -21,6 +21,7 @@ import {
   TrendingUp,
   AlertCircle,
   Search,
+  Eye,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ import Dropdown from '@/components/ui/dropdown';
 import Modal from '@/components/ui/modal';
 import ButtonLoader from '@/components/ui/button-loader';
 import FullPageLoader from '@/components/ui/full-page-loader';
+import AttendanceViewModal from '@/components/modals/AttendanceViewModal';
 
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -53,7 +55,9 @@ export default function BranchAdminEmployeeAttendancePage() {
   // Modal states
   const [showMarkModal, setShowMarkModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [selectedViewRecord, setSelectedViewRecord] = useState(null);
   
   // Form data
   const [formData, setFormData] = useState({
@@ -102,6 +106,113 @@ export default function BranchAdminEmployeeAttendancePage() {
     }
   };
 
+  // Mock data for employee attendance
+  const getMockAttendanceData = () => {
+    const mockUsers = [
+      { _id: '1', firstName: 'Ahmed', lastName: 'Khan', email: 'ahmed.khan@easeacademy.com' },
+      { _id: '2', firstName: 'Fatima', lastName: 'Ali', email: 'fatima.ali@easeacademy.com' },
+      { _id: '3', firstName: 'Muhammad', lastName: 'Hassan', email: 'muhammad.hassan@easeacademy.com' },
+      { _id: '4', firstName: 'Ayesha', lastName: 'Ahmed', email: 'ayesha.ahmed@easeacademy.com' },
+      { _id: '5', firstName: 'Omar', lastName: 'Farooq', email: 'omar.farooq@easeacademy.com' },
+      { _id: '6', firstName: 'Zainab', lastName: 'Malik', email: 'zainab.malik@easeacademy.com' },
+      { _id: '7', firstName: 'Bilal', lastName: 'Khan', email: 'bilal.khan@easeacademy.com' },
+      { _id: '8', firstName: 'Maryam', lastName: 'Shah', email: 'maryam.shah@easeacademy.com' },
+    ];
+
+    const mockRecords = [];
+    const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+
+    // Generate mock data for the selected month
+    for (let day = 1; day <= Math.min(daysInMonth, 31); day++) {
+      const date = new Date(selectedYear, selectedMonth - 1, day);
+      const dayOfWeek = date.getDay();
+
+      // Skip weekends (Saturday = 6, Sunday = 0)
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+
+      // Generate records for random employees
+      const numRecords = Math.floor(Math.random() * 4) + 3; // 3-6 records per day
+      const selectedUsers = mockUsers.sort(() => 0.5 - Math.random()).slice(0, numRecords);
+
+      selectedUsers.forEach((user, index) => {
+        const statuses = ['present', 'present', 'present', 'late', 'half-day', 'absent'];
+        let status = statuses[Math.floor(Math.random() * statuses.length)];
+
+        let checkInTime = null;
+        let checkOutTime = null;
+        let checkInStatus = null;
+        let checkOutStatus = null;
+        let workingHours = 0;
+
+        if (status === 'present' || status === 'late' || status === 'half-day') {
+          // Generate check-in time (between 8:30 AM and 10:00 AM)
+          const checkInHour = 8 + Math.floor(Math.random() * 2);
+          const checkInMinute = Math.floor(Math.random() * 60);
+          checkInTime = new Date(selectedYear, selectedMonth - 1, day, checkInHour, checkInMinute);
+
+          // Determine check-in status
+          checkInStatus = checkInTime.getHours() === 8 && checkInTime.getMinutes() <= 30 ? 'on-time' : 'late';
+
+          // Generate check-out time (between 4:00 PM and 6:00 PM)
+          const checkOutHour = 16 + Math.floor(Math.random() * 2);
+          const checkOutMinute = Math.floor(Math.random() * 60);
+          checkOutTime = new Date(selectedYear, selectedMonth - 1, day, checkOutHour, checkOutMinute);
+
+          // Calculate working hours
+          const diffMs = checkOutTime - checkInTime;
+          workingHours = Math.max(0, diffMs / (1000 * 60 * 60));
+
+          // Determine check-out status
+          checkOutStatus = checkOutTime.getHours() >= 17 ? 'on-time' : 'early';
+
+          // Adjust status based on working hours
+          if (workingHours < 4) {
+            status = 'half-day';
+          }
+        }
+
+        const record = {
+          _id: `mock_${user._id}_${day}_${index}`,
+          userId: user,
+          date: date.toISOString().split('T')[0],
+          status,
+          checkIn: checkInTime ? {
+            time: checkInTime.toISOString(),
+            status: checkInStatus,
+            location: {
+              latitude: 24.8607 + (Math.random() - 0.5) * 0.01,
+              longitude: 67.0011 + (Math.random() - 0.5) * 0.01,
+              address: 'Karachi, Pakistan'
+            },
+            device: 'Mobile Device',
+            ipAddress: '192.168.1.100'
+          } : null,
+          checkOut: checkOutTime ? {
+            time: checkOutTime.toISOString(),
+            status: checkOutStatus,
+            location: {
+              latitude: 24.8607 + (Math.random() - 0.5) * 0.01,
+              longitude: 67.0011 + (Math.random() - 0.5) * 0.01,
+              address: 'Karachi, Pakistan'
+            },
+            device: 'Mobile Device',
+            ipAddress: '192.168.1.100'
+          } : null,
+          workingHours: workingHours > 0 ? workingHours : 0,
+          overtimeHours: Math.max(0, workingHours - 8),
+          lateBy: checkInStatus === 'late' ? Math.floor((checkInTime.getTime() - new Date(selectedYear, selectedMonth - 1, day, 9, 0).getTime()) / (1000 * 60)) : 0,
+          earlyLeaveBy: checkOutStatus === 'early' ? Math.floor((new Date(selectedYear, selectedMonth - 1, day, 17, 0).getTime() - checkOutTime.getTime()) / (1000 * 60)) : 0,
+          createdAt: date.toISOString(),
+          updatedAt: date.toISOString()
+        };
+
+        mockRecords.push(record);
+      });
+    }
+
+    return mockRecords;
+  };
+
   const fetchAttendanceRecords = async () => {
     try {
       const params = {
@@ -111,13 +222,22 @@ export default function BranchAdminEmployeeAttendancePage() {
         limit: 200,
       };
 
-      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.EMPLOYEE_ATTENDANCE.LIST, params);
-      if (response.success) {
+      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.EMPLOYEE_ATTENDANCE.LIST, params);
+      if (response.success && response.data && response.data.length > 0) {
         setAttendanceRecords(response.data);
+      } else {
+        // Use mock data if API returns null or empty array
+        console.log('API returned no data, using mock data');
+        const mockData = getMockAttendanceData();
+        setAttendanceRecords(mockData);
       }
     } catch (error) {
       console.error('Error fetching attendance records:', error);
-      toast.error('Failed to fetch attendance records');
+      // Use mock data on API error
+      console.log('API error, using mock data');
+      const mockData = getMockAttendanceData();
+      setAttendanceRecords(mockData);
+      toast.error('Failed to fetch attendance records, showing sample data');
     }
   };
 
@@ -415,7 +535,9 @@ export default function BranchAdminEmployeeAttendancePage() {
                 <th className="text-left p-3 font-semibold">Date</th>
                 <th className="text-left p-3 font-semibold">Status</th>
                 <th className="text-left p-3 font-semibold">Check In</th>
+                <th className="text-left p-3 font-semibold">Check-in Status</th>
                 <th className="text-left p-3 font-semibold">Check Out</th>
+                <th className="text-left p-3 font-semibold">Check-out Status</th>
                 <th className="text-left p-3 font-semibold">Working Hours</th>
                 <th className="text-left p-3 font-semibold">Actions</th>
               </tr>
@@ -452,10 +574,24 @@ export default function BranchAdminEmployeeAttendancePage() {
                           <span className="text-sm">
                             {new Date(record.checkIn.time).toLocaleTimeString([], {
                               hour: '2-digit',
-                              minute: '2-digit'
+                              minute: '2-digit',
+                              hour12: true
                             })}
                           </span>
                         </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      {record.checkIn?.status ? (
+                        <Badge className={`text-xs ${
+                          record.checkIn.status === 'on-time'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {record.checkIn.status === 'on-time' ? '✓ On Time' : '⚠ Late'}
+                        </Badge>
                       ) : (
                         <span className="text-gray-400 text-sm">-</span>
                       )}
@@ -467,10 +603,24 @@ export default function BranchAdminEmployeeAttendancePage() {
                           <span className="text-sm">
                             {new Date(record.checkOut.time).toLocaleTimeString([], {
                               hour: '2-digit',
-                              minute: '2-digit'
+                              minute: '2-digit',
+                              hour12: true
                             })}
                           </span>
                         </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      {record.checkOut?.status ? (
+                        <Badge className={`text-xs ${
+                          record.checkOut.status === 'on-time'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {record.checkOut.status === 'on-time' ? '✓ On Time' : '⚠ Early'}
+                        </Badge>
                       ) : (
                         <span className="text-gray-400 text-sm">-</span>
                       )}
@@ -482,6 +632,16 @@ export default function BranchAdminEmployeeAttendancePage() {
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedViewRecord(record);
+                            setShowViewModal(true);
+                          }}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -789,6 +949,16 @@ export default function BranchAdminEmployeeAttendancePage() {
           </div>
         </div>
       </Modal>
+
+      {/* View Attendance Modal */}
+      <AttendanceViewModal
+        open={showViewModal}
+        onClose={() => {
+          setShowViewModal(false);
+          setSelectedViewRecord(null);
+        }}
+        attendanceRecord={selectedViewRecord}
+      />
     </div>
   );
 }

@@ -9,7 +9,7 @@ const handler = withAuth(async (request, user, userDoc, context) => {
     await connectDB();
 
     // Verify user is super admin
-    if (userDoc.role !== 'super-admin') {
+    if (userDoc.role !== 'super_admin') {
       return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
     }
 
@@ -36,8 +36,13 @@ const handler = withAuth(async (request, user, userDoc, context) => {
       return NextResponse.json({ success: false, message: 'Fee voucher not found' }, { status: 404 });
     }
 
-    // Find payment in history
-    const payment = voucher.paymentHistory.id(paymentId);
+    // Find payment in history by index (since paymentId is sent as index from frontend)
+    const paymentIndex = parseInt(paymentId);
+    if (isNaN(paymentIndex) || paymentIndex < 0 || paymentIndex >= voucher.paymentHistory.length) {
+      return NextResponse.json({ success: false, message: 'Invalid payment index' }, { status: 400 });
+    }
+
+    const payment = voucher.paymentHistory[paymentIndex];
     if (!payment) {
       return NextResponse.json({ success: false, message: 'Payment not found' }, { status: 404 });
     }
@@ -71,8 +76,8 @@ const handler = withAuth(async (request, user, userDoc, context) => {
     } else {
       // Reject payment
       payment.status = 'rejected';
-      payment.approvedBy = userDoc._id;
-      payment.approvedAt = new Date();
+      payment.rejectedBy = userDoc._id;
+      payment.rejectedAt = new Date();
       payment.rejectionReason = remarks || 'Payment rejected by admin';
     }
 

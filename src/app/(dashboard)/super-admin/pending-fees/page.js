@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useApi } from '@/hooks/useApi';
@@ -28,54 +27,39 @@ export default function SuperAdminPendingFeesPage() {
       try {
         setLoading(true);
         setError(null);
-        // For super admin, we need to get all pending payments across all branches
-        // We'll use the branch admin API but modify it to work for super admin
-        const response = await request('/api/super-admin/fee-vouchers?status=pending&limit=1000');
+
+        // 1. Token nikaalein (Check karein aapka token localStorage mein kis naam se hai)
+        // Aksar 'token' ya 'auth-token' naam se hota hai
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+
+        // 2. Fetch call with Authorization header
+        const res = await fetch('/api/super-admin/pending-fees', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` // Token yahan ja raha hai
+          }
+        });
+
+        const response = await res.json();
+        console.log('Final Response with Auth:', response);
+
         if (response.success) {
-          // Transform fee vouchers data to pending payments format
-          const transformedPayments = [];
-          response.data.vouchers.forEach(voucher => {
-            if (voucher.paymentHistory) {
-              voucher.paymentHistory.forEach((payment, index) => {
-                if (payment.status === 'pending') {
-                  transformedPayments.push({
-                    paymentId: `${voucher._id}-${index}`,
-                    voucherId: voucher._id,
-                    paymentIndex: index,
-                    voucherNumber: voucher.voucherNumber,
-                    studentName: voucher.studentId?.fullName || voucher.studentId?.firstName + ' ' + voucher.studentId?.lastName || 'Unknown',
-                    className: voucher.classId?.name || 'N/A',
-                    branchName: voucher.branchId?.name || 'N/A',
-                    amount: payment.amount,
-                    currency: '₹',
-                    paymentMethod: payment.paymentMethod,
-                    paymentDate: payment.paymentDate,
-                    transactionId: payment.transactionId,
-                    screenshotUrl: payment.screenshot?.url,
-                    remarks: payment.remarks,
-                    submittedBy: payment.submittedBy,
-                  });
-                }
-              });
-            }
-          });
-
-          // Sort by latest payment date first
-          transformedPayments.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
-
-          setPendingPayments(transformedPayments);
+          setPendingPayments(response.data || []);
         } else {
-          setError(response.message || 'Failed to fetch pending payments');
+          // Agar abhi bhi auth error aaye, toh iska matlab token nahi mila ya expire ho gaya
+          setError(response.message || "Session expired, please login again.");
         }
       } catch (err) {
-        setError(err.message || 'An error occurred');
+        console.error("Fetch Error:", err);
+        setError("Failed to connect to server.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchPendingPayments();
-  }, [authLoading, user, request]);
+  }, [authLoading, user]);
 
   // Fetch branches for filter
   useEffect(() => {
@@ -90,7 +74,7 @@ export default function SuperAdminPendingFeesPage() {
       }
     };
 
-    if (user?.role === 'super-admin') {
+    if (user?.role === 'super_admin') {
       fetchBranches();
     }
   }, [user, request]);
@@ -121,16 +105,13 @@ export default function SuperAdminPendingFeesPage() {
       setActionLoading(true);
       setError(null);
 
-      // Use super admin approve/reject endpoints
-      const endpoint =
-        actionType === 'approve'
-          ? '/api/super-admin/fee-vouchers/approve-payment'
-          : '/api/super-admin/fee-vouchers/reject-payment';
+      // Use super admin approve/reject endpoint (single endpoint handles both)
+      const endpoint = `/api/super-admin/fee-vouchers/${selectedPayment.voucherId}/approve-payment`;
 
       const payload = {
-        voucherId: selectedPayment.voucherId,
-        paymentIndex: selectedPayment.paymentIndex,
-        ...(actionType === 'reject' && { rejectionReason }),
+        paymentId: selectedPayment.paymentId.split('-')[1], // Extract payment ID from paymentId format
+        action: actionType,
+        remarks: actionType === 'reject' ? rejectionReason : '',
       };
 
       const response = await request(endpoint, {
@@ -237,7 +218,7 @@ export default function SuperAdminPendingFeesPage() {
                   <td style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>{payment.studentName}</td>
                   <td style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>{payment.className}</td>
                   <td style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd', fontWeight: 'bold', color: '#28a745' }}>
-                    <strong>{payment.currency || '₹'} {payment.amount?.toFixed(2)}</strong>
+                    <strong>{payment.currency || 'PKR'} {payment.amount?.toFixed(2)}</strong>
                   </td>
                   <td style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>
                     <span style={{ display: 'inline-block', padding: '4px 8px', backgroundColor: '#007bff', color: 'white', borderRadius: '4px', fontSize: '12px' }}>
@@ -262,13 +243,13 @@ export default function SuperAdminPendingFeesPage() {
                       >
                         Reject
                       </button>
-                      <button
+                      {/* <button
                         style={{ padding: '8px 16px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px', transition: 'background-color 0.3s', backgroundColor: '#6c757d', color: 'white' }}
                         onClick={() => setSelectedPayment(payment)}
                         title="View receipt"
                       >
                         📄
-                      </button>
+                      </button> */}
                     </div>
                   </td>
                 </tr>
@@ -295,7 +276,7 @@ export default function SuperAdminPendingFeesPage() {
                 <strong>Student:</strong> {selectedPayment.studentName}
               </p>
               <p>
-                <strong>Amount:</strong> {selectedPayment.currency || '₹'}{' '}
+                <strong>Amount:</strong> {selectedPayment.currency || 'PKR'}{' '}
                 {selectedPayment.amount?.toFixed(2)}
               </p>
               <p>
@@ -371,8 +352,8 @@ export default function SuperAdminPendingFeesPage() {
                     ? 'Approving...'
                     : 'Rejecting...'
                   : actionType === 'approve'
-                  ? 'Approve'
-                  : 'Reject'}
+                    ? 'Approve'
+                    : 'Reject'}
               </button>
             </div>
           </div>

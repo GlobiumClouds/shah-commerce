@@ -87,6 +87,7 @@ async function sendNotification(request, currentUser, userDoc) {
       message,
       targetUser: user._id,
       metadata: enhancedMetadata,
+      metadata: enhancedMetadata,
       isRead: false
     }));
 

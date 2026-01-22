@@ -2,50 +2,39 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Notification from '@/backend/models/Notification';
+import User from '@/backend/models/User';
 
-/**
- * 🛰️ Global Notification Tracking API
- * Super Admin: Sees EVERYTHING
- * Branch Admin: Sees only THEIR OWN
- */
 export const GET = withAuth(async (request, user) => {
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 20;
+    const limit = parseInt(searchParams.get('limit')) || 10;
     const skip = (page - 1) * limit;
 
-    // Filter Logic
-    let matchQuery = {};
+    const senderId = user.userId;
 
-    // Agar Branch Admin hai to sirf uski apni dikhao
-    if (user.role === 'branch_admin') {
-      matchQuery["metadata.senderId"] = user.userId;
-    }
-    // Note: Super Admin ke liye matchQuery empty rahegi (Everything)
-
+    // Aggregate to group individual notifications into "Campaigns"
     const pipeline = [
-      { $match: matchQuery },
-      {
+      { 
+        $match: { 
+          "metadata.senderId": senderId 
+        } 
+      },
+      { 
         $group: {
-          _id: {
+          _id: { 
             title: "$title",
             message: "$message",
-            // Group by minute to identify same "Campaign"
-            timeMinute: {
-              $dateToString: { format: "%Y-%m-%d %H:%M", date: "$createdAt" }
-            },
-            senderId: "$metadata.senderId"
-          }
-          ,
-          count: { $sum: 1 },
-          readCount: { $sum: { $cond: [{ $eq: ["$isRead", true] }, 1, 0] } },
-          createdAt: { $max: "$createdAt" },
+             // Group close timestamps (e.g. within same minute) to treat as one campaign
+            timeMinute: { 
+              $dateToString: { format: "%Y-%m-%d %H:%M", date: "$createdAt" } 
+            }
+          },
+          count: { $sum: 1 }, // How many users received this
+          createdAt: { $max: "$createdAt" }, // Use latest timestamp
           type: { $first: "$type" },
-          senderName: { $first: "$metadata.senderName" },
-          senderRole: { $first: "$metadata.senderRole" },
-          notificationIds: { $push: "$_id" }
+          sampleMetadata: { $first: "$metadata" }
         }
       },
       { $sort: { createdAt: -1 } },
@@ -58,36 +47,37 @@ export const GET = withAuth(async (request, user) => {
     ];
 
     const results = await Notification.aggregate(pipeline);
-
+    
     const campaigns = results[0].data || [];
     const totalCount = results[0].total[0]?.count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
 
     return NextResponse.json({
       success: true,
       data: {
         notifications: campaigns.map(c => ({
-          _id: `${c._id.title}-${c._id.timeMinute}`,
+          _id: `${c._id.title}-${c._id.timeMinute}`, // Synthetic ID
           title: c._id.title,
           message: c._id.message,
           type: c.type,
           createdAt: c.createdAt,
           recipientCount: c.count,
-          readCount: c.readCount,
-          unreadCount: c.count - c.readCount,
-          senderName: c.senderName || 'System',
-          senderRole: c.senderRole || 'admin',
-          notificationIds: c.notificationIds
+          role: c.sampleMetadata?.role || 'Mixed' // We could store targetRole in metadata too
         })),
         pagination: {
           page,
+          limit,
           total: totalCount,
-          pages: Math.ceil(totalCount / limit)
+          pages: totalPages
         }
       }
     });
 
   } catch (error) {
-    console.error('Tracking API Error:', error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    console.error('Error fetching notification history:', error);
+    return NextResponse.json(
+      { success: false, message: 'Failed to fetch history', error: error.message },
+      { status: 500 }
+    );
   }
 });

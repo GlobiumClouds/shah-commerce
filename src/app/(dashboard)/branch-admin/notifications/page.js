@@ -11,9 +11,14 @@ import Textarea from '@/components/ui/textarea';
 import Dropdown from '@/components/ui/dropdown';
 import MultiSelectDropdown from '@/components/ui/multi-select';
 import ButtonLoader from '@/components/ui/button-loader';
+<<<<<<< HEAD
 import { Bell, Users, Type, Info, FileText, Calendar, DollarSign, PartyPopper, Palmtree, Megaphone, History, Clock, CheckCircle, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import NotificationStatsModal from '@/components/NotificationStatsModal';
+=======
+import { Bell, Users, Type, Info, FileText, Calendar, DollarSign, PartyPopper, Palmtree, Megaphone, History, Clock, CheckCircle } from 'lucide-react';
+import { toast } from 'sonner';
+>>>>>>> af779e0b1861a667f7b802c8b614e0a98ce2440f
 
 // Notification Types
 const NOTIFICATION_TYPES = [
@@ -34,6 +39,7 @@ const TARGET_ROLES = [
 
 export default function BranchAdminNotification() {
   const router = useRouter();
+<<<<<<< HEAD
 
   const [loading, setLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -49,11 +55,30 @@ export default function BranchAdminNotification() {
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
 
+=======
+  
+  const [loading, setLoading] = useState(false);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  
+  // Specific Targeting State
+  const [isSpecificTargeting, setIsSpecificTargeting] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState([]); // { value, label, subLabel }
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  
+  // History State
+  const [history, setHistory] = useState([]);
+
+>>>>>>> af779e0b1861a667f7b802c8b614e0a98ce2440f
   const [formData, setFormData] = useState({
     title: '',
     message: '',
     type: 'announcement',
+<<<<<<< HEAD
     targetRole: 'student',
+=======
+    targetRole: 'student', 
+>>>>>>> af779e0b1861a667f7b802c8b614e0a98ce2440f
   });
 
   // Fetch Users when role changes or specific targeting is toggled
@@ -85,7 +110,11 @@ export default function BranchAdminNotification() {
 
   const fetchHistory = async () => {
     try {
+<<<<<<< HEAD
       // Safe check in case API_ENDPOINTS structure is not yet updated in browser cache/hot reload
+=======
+        // Safe check in case API_ENDPOINTS structure is not yet updated in browser cache/hot reload
+>>>>>>> af779e0b1861a667f7b802c8b614e0a98ce2440f
       if (!API_ENDPOINTS.NOTIFICATIONS?.HISTORY) {
         setHistoryLoading(false);
         return;
@@ -94,8 +123,13 @@ export default function BranchAdminNotification() {
       const response = await apiClient.get(API_ENDPOINTS.NOTIFICATIONS.HISTORY);
       if (response.success && response.data) {
         // Extract notifications array from the response
+<<<<<<< HEAD
         const notifications = Array.isArray(response.data)
           ? response.data
+=======
+        const notifications = Array.isArray(response.data) 
+          ? response.data 
+>>>>>>> af779e0b1861a667f7b802c8b614e0a98ce2440f
           : (response.data.notifications || []);
         setHistory(notifications);
       } else {
@@ -138,7 +172,11 @@ export default function BranchAdminNotification() {
       if (response.success) {
         toast.success(`✅ Sent successfully!`);
         setFormData({
+<<<<<<< HEAD
           ...formData,
+=======
+            ...formData,
+>>>>>>> af779e0b1861a667f7b802c8b614e0a98ce2440f
           title: '',
           message: '',
           // Keep type and role same for convenience
@@ -159,6 +197,7 @@ export default function BranchAdminNotification() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
+<<<<<<< HEAD
 
       {/* Send Notification Card */}
       <Card>
@@ -181,6 +220,30 @@ export default function BranchAdminNotification() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
+=======
+      
+      {/* Send Notification Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+              <Bell className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <CardTitle>Branch Notification Center</CardTitle>
+              <CardDescription>
+                Send announcements, reminders, and alerts to your branch.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+>>>>>>> af779e0b1861a667f7b802c8b614e0a98ce2440f
               {/* Target Role */}
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -194,7 +257,11 @@ export default function BranchAdminNotification() {
                   icon={Users}
                   placeholder="Select Role"
                 />
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> af779e0b1861a667f7b802c8b614e0a98ce2440f
                 {/* Specific Targeting Toggle */}
                 <div className="flex items-center gap-2 pt-1">
                   <input
@@ -292,6 +359,7 @@ export default function BranchAdminNotification() {
           <History className="w-5 h-5" />
           Recent Campaigns
         </h3>
+<<<<<<< HEAD
 
         {historyLoading ? (
           <div className="text-center py-8 text-gray-500">Loading history...</div>
@@ -363,6 +431,54 @@ export default function BranchAdminNotification() {
         />
       )}
 
+=======
+        
+        {historyLoading ? (
+            <div className="text-center py-8 text-gray-500">Loading history...</div>
+        ) : !Array.isArray(history) || history.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                No notifications sent recently.
+            </div>
+        ) : (
+            <div className="grid gap-4">
+                {history.map((item, index) => (
+                    <Card key={index} className="overflow-hidden hover:shadow-md transition-shadow">
+                        <div className="p-4 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <span className={`px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 capitalize`}>
+                                        {item.type || 'general'}
+                                    </span>
+                                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        {new Date(item.createdAt).toLocaleString()}
+                                    </span>
+                                </div>
+                                <h4 className="font-semibold text-gray-900 dark:text-white">{item.title}</h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1">{item.message}</p>
+                            </div>
+                            
+                            <div className="flex items-center gap-6 text-sm text-gray-500">
+                                <div className="text-right">
+                                    <p className="text-xs uppercase tracking-wider font-semibold">Recipients</p>
+                                    <p className="font-medium text-gray-900 dark:text-gray-100">{item.recipientCount || 0} Users</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs uppercase tracking-wider font-semibold">Status</p>
+                                    <div className="flex items-center justify-end gap-1 text-green-600">
+                                        <CheckCircle className="w-4 h-4" />
+                                        <span className="font-medium">Sent</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                ))}
+            </div>
+        )}
+      </div>
+
+>>>>>>> af779e0b1861a667f7b802c8b614e0a98ce2440f
     </div>
   );
 }
