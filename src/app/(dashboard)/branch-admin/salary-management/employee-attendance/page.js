@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -22,6 +23,9 @@ import {
   AlertCircle,
   Search,
   Eye,
+  ChevronLeft,
+  ChevronRight,
+  BarChart3,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +33,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import Dropdown from '@/components/ui/dropdown';
 import Modal from '@/components/ui/modal';
+import Tabs, { TabPanel } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import ButtonLoader from '@/components/ui/button-loader';
 import FullPageLoader from '@/components/ui/full-page-loader';
 import AttendanceViewModal from '@/components/modals/AttendanceViewModal';
@@ -37,8 +43,12 @@ const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'Jul
 
 export default function BranchAdminEmployeeAttendancePage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  
+  // Tabs
+  const [activeTab, setActiveTab] = useState('list');
   
   // Filters
   const currentDate = new Date();
@@ -46,6 +56,12 @@ export default function BranchAdminEmployeeAttendancePage() {
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   
   // Data
   const [attendanceRecords, setAttendanceRecords] = useState([]);
@@ -79,10 +95,16 @@ export default function BranchAdminEmployeeAttendancePage() {
 
   useEffect(() => {
     if (user) {
+      setCurrentPage(1);
+    }
+  }, [selectedMonth, selectedYear, selectedStatus]);
+
+  useEffect(() => {
+    if (user) {
       fetchAttendanceRecords();
       fetchStats();
     }
-  }, [selectedMonth, selectedYear, selectedStatus]);
+  }, [user, currentPage, pageSize, selectedMonth, selectedYear, selectedStatus]);
 
   const fetchInitialData = async () => {
     try {
@@ -97,7 +119,7 @@ export default function BranchAdminEmployeeAttendancePage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.EMPLOYEES);
+      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.EMPLOYEES.LIST);
       if (response.success) {
         setUsers(response.data);
       }
@@ -215,29 +237,39 @@ export default function BranchAdminEmployeeAttendancePage() {
 
   const fetchAttendanceRecords = async () => {
     try {
+      setLoading(true);
       const params = {
         month: selectedMonth,
         year: selectedYear,
-        ...(selectedStatus !== 'all' && { status: selectedStatus }),
-        limit: 200,
+        page: currentPage,
+        limit: pageSize,
       };
 
+      if (selectedStatus !== 'all') {
+        params.status = selectedStatus;
+      }
+
       const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.EMPLOYEE_ATTENDANCE.LIST, params);
-      if (response.success && response.data && response.data.length > 0) {
+      if (response.success && response.data) {
         setAttendanceRecords(response.data);
+        setTotalRecords(response.pagination?.total || response.data.length);
+        setTotalPages(response.pagination?.pages || Math.ceil(response.data.length / pageSize));
       } else {
-        // Use mock data if API returns null or empty array
-        console.log('API returned no data, using mock data');
+        // Fallback to mock data if API fails
         const mockData = getMockAttendanceData();
         setAttendanceRecords(mockData);
+        setTotalRecords(mockData.length);
+        setTotalPages(Math.ceil(mockData.length / pageSize));
       }
     } catch (error) {
       console.error('Error fetching attendance records:', error);
-      // Use mock data on API error
-      console.log('API error, using mock data');
+      // Use mock data on error
       const mockData = getMockAttendanceData();
       setAttendanceRecords(mockData);
-      toast.error('Failed to fetch attendance records, showing sample data');
+      setTotalRecords(mockData.length);
+      setTotalPages(Math.ceil(mockData.length / pageSize));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -383,7 +415,84 @@ export default function BranchAdminEmployeeAttendancePage() {
     return userName.includes(searchQuery.toLowerCase());
   });
 
-  if (loading) {
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const renderPagination = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`px-3 py-1 rounded ${
+            currentPage === i
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-700 hover:bg-gray-100 border dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    return (
+      <div className="flex items-center justify-between mt-4 flex-wrap gap-4">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} records
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          {pages}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <Dropdown
+          value={pageSize.toString()}
+          onChange={(e) => {
+            setPageSize(parseInt(e.target.value));
+            setCurrentPage(1);
+          }}
+          options={[
+            { value: '10', label: '10 per page' },
+            { value: '25', label: '25 per page' },
+            { value: '50', label: '50 per page' },
+            { value: '100', label: '100 per page' },
+          ]}
+          className="w-40"
+        />
+      </div>
+    );
+  };
+
+  const tabs = [
+    { id: 'list', label: 'Attendance List', icon: <Users className="h-5 w-5" />, badge: totalRecords },
+    { id: 'overview', label: 'Overview', icon: <BarChart3 className="h-5 w-5" /> },
+  ];
+
+  if (loading && attendanceRecords.length === 0) {
     return <FullPageLoader />;
   }
 
@@ -460,70 +569,75 @@ export default function BranchAdminEmployeeAttendancePage() {
         </div>
       )}
 
-      {/* Filters */}
-      <Card className="p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5 text-gray-500" />
-          <h2 className="text-lg font-semibold">Filters</h2>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="text-sm font-medium mb-2 block">Month</label>
-            <Dropdown
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              options={monthNames.map((month, index) => ({
-                value: index + 1,
-                label: month
-              }))}
-              placeholder="Select Month"
-            />
-          </div>
+      {/* Tabs */}
+      <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
-          <div>
-            <label className="text-sm font-medium mb-2 block">Year</label>
-            <Dropdown
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              options={[2024, 2025, 2026].map(year => ({
-                value: year,
-                label: year.toString()
-              }))}
-              placeholder="Select Year"
-            />
+      <TabPanel value="list" activeTab={activeTab}>
+        {/* Filters */}
+        <Card className="p-6 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Filter className="w-5 h-5 text-gray-500" />
+            <h2 className="text-lg font-semibold">Filters</h2>
           </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search by name or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Month</label>
+              <Dropdown
+                value={selectedMonth.toString()}
+                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                options={monthNames.map((month, index) => ({
+                  value: (index + 1).toString(),
+                  label: month
+                }))}
+                placeholder="Select Month"
+              />
+            </div>
 
-          <div>
-            <label className="text-sm font-medium mb-2 block">Status</label>
-            <Dropdown
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              options={[
-                { value: 'all', label: 'All Status' },
-                { value: 'present', label: 'Present' },
-                { value: 'absent', label: 'Absent' },
-                { value: 'late', label: 'Late' },
-                { value: 'half-day', label: 'Half Day' },
-                { value: 'leave', label: 'Leave' },
-                { value: 'excused', label: 'Excused' }
-              ]}
-              placeholder="Select Status"
-            />
-          </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Year</label>
+              <Dropdown
+                value={selectedYear.toString()}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                options={[2024, 2025, 2026].map(year => ({
+                  value: year.toString(),
+                  label: year.toString()
+                }))}
+                placeholder="Select Year"
+              />
+            </div>
 
-          <div>
-            <label className="text-sm font-medium mb-2 block">Search</label>
-            <div className="relative">
-              <Input
-                placeholder="Search employee..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Status</label>
+              <Dropdown
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'present', label: 'Present' },
+                  { value: 'absent', label: 'Absent' },
+                  { value: 'late', label: 'Late' },
+                  { value: 'half-day', label: 'Half Day' },
+                  { value: 'leave', label: 'Leave' },
+                  { value: 'excused', label: 'Excused' }
+                ]}
+                placeholder="Select Status"
               />
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
 
       {/* Attendance Records Table */}
       <Card className="p-6">
@@ -635,10 +749,8 @@ export default function BranchAdminEmployeeAttendancePage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            setSelectedViewRecord(record);
-                            setShowViewModal(true);
-                          }}
+                          onClick={() => router.push(`/branch-admin/salary-management/employee-attendance/${record.userId._id}`)}
+                          title="View Details"
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -646,6 +758,7 @@ export default function BranchAdminEmployeeAttendancePage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => openEditModal(record)}
+                          title="Edit Attendance"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -657,7 +770,23 @@ export default function BranchAdminEmployeeAttendancePage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && renderPagination()}
       </Card>
+      </TabPanel>
+
+      <TabPanel value="overview" activeTab={activeTab}>
+        <Card className="p-6">
+          <div className="text-center py-12">
+            <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Overview Charts</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Detailed charts and analytics will be displayed here
+            </p>
+          </div>
+        </Card>
+      </TabPanel>
 
       {/* Mark Attendance Modal */}
       <Modal

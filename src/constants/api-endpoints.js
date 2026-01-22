@@ -122,6 +122,7 @@ export const API_ENDPOINTS = {
       SUMMARY: '/api/employee-attendance/summary',
       TODAY: '/api/employee-attendance/today',
       REPORTS: '/api/employee-attendance/reports',
+      UPDATE: '/api/employee-attendance', // PUT for [id]
     },
 
     // Users Management (Super Admin)
@@ -322,7 +323,10 @@ export const API_ENDPOINTS = {
     },
 
     // Employees Management
-    EMPLOYEES: '/api/super-admin/employees',
+    EMPLOYEES: {
+      LIST: '/api/super-admin/employees',
+      GET: '/api/super-admin/employees/:id',
+    },
 
     // Parent Approval Management
     PENDING_PARENTS: '/api/super-admin/pending-parents',
@@ -554,7 +558,10 @@ export const API_ENDPOINTS = {
     },
 
     // Employees Management
-    EMPLOYEES: '/api/branch-admin/employees', // GET
+    EMPLOYEES: {
+      LIST: '/api/branch-admin/employees',
+      GET: '/api/branch-admin/employees/:id',
+    },
 
     // Payroll Management
     PAYROLL: {
@@ -577,6 +584,7 @@ export const API_ENDPOINTS = {
       SUMMARY: '/api/employee-attendance/summary', // GET
       TODAY: '/api/employee-attendance/today', // GET
       REPORTS: '/api/employee-attendance/reports', // GET
+      UPDATE: '/api/employee-attendance', // PUT
     },
 
     // Teacher Attendance Management
