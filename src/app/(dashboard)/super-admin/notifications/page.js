@@ -11,8 +11,9 @@ import Textarea from '@/components/ui/textarea';
 import Dropdown from '@/components/ui/dropdown';
 import MultiSelectDropdown from '@/components/ui/multi-select';
 import ButtonLoader from '@/components/ui/button-loader';
-import { Bell, Users, Type, Building2, Megaphone, History, Clock, CheckCircle } from 'lucide-react';
+import { Bell, Users, Type, Building2, Megaphone, History, Clock, CheckCircle, BarChart3, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import NotificationStatsModal from '@/components/NotificationStatsModal';
 
 // Notification Types
 const NOTIFICATION_TYPES = [
@@ -27,6 +28,8 @@ const NOTIFICATION_TYPES = [
 ];
 
 const TARGET_ROLES = [
+  { value: 'all', label: '🌐 All (Everyone)' },
+  { value: 'branch_admin', label: '🔑 Branch Admins' },
   { value: 'student', label: '👨‍🎓 Students' },
   { value: 'parent', label: '👨‍👩‍👦 Parents' },
   { value: 'teacher', label: '👩‍🏫 Teachers' },
@@ -35,28 +38,30 @@ const TARGET_ROLES = [
 
 export default function SuperAdminNotification() {
   const router = useRouter();
-  
+
   const [loading, setLoading] = useState(false);
   const [branchesLoading, setBranchesLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
-  
+
   // Branches State
   const [branches, setBranches] = useState([]);
-  
+
   // Specific Targeting State
   const [isSpecificTargeting, setIsSpecificTargeting] = useState(false);
   const [availableUsers, setAvailableUsers] = useState([]);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
-  
-  // History State
+
+  // History & Tracking State
   const [history, setHistory] = useState([]);
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
 
   const [formData, setFormData] = useState({
     title: '',
     message: '',
     type: 'announcement',
-    targetRole: 'student',
+    targetRole: 'all',
     targetBranch: 'all',
   });
 
@@ -90,17 +95,17 @@ export default function SuperAdminNotification() {
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
-      const params = { 
+      const params = {
         role: formData.targetRole,
         branchId: formData.targetBranch,
         format: 'dropdown'
       };
       console.log('🔍 Fetching users with params:', params);
       console.log('📍 Endpoint:', API_ENDPOINTS.SUPER_ADMIN.USERS.LIST);
-      
+
       const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.USERS.LIST, params);
       console.log('✅ Users response:', response);
-      
+
       if (response.success) {
         setAvailableUsers(response.data);
       } else {
@@ -125,8 +130,8 @@ export default function SuperAdminNotification() {
 
       const response = await apiClient.get(API_ENDPOINTS.NOTIFICATIONS.HISTORY);
       if (response.success && response.data) {
-        const notifications = Array.isArray(response.data) 
-          ? response.data 
+        const notifications = Array.isArray(response.data)
+          ? response.data
           : (response.data.notifications || []);
         setHistory(notifications);
       } else {
@@ -167,12 +172,24 @@ export default function SuperAdminNotification() {
       const response = await apiClient.post(API_ENDPOINTS.NOTIFICATIONS.SEND, payload);
 
       if (response.success) {
-        const targetDesc = isSpecificTargeting 
-          ? `${selectedUserIds.length} specific users`
-          : formData.targetBranch === 'all' 
-            ? 'all branches' 
-            : branches.find(b => b._id === formData.targetBranch)?.name || 'selected branch';
-        
+        let targetDesc = '';
+
+        if (isSpecificTargeting) {
+          targetDesc = `${selectedUserIds.length} specific users`;
+        } else if (formData.targetRole === 'all') {
+          targetDesc = formData.targetBranch === 'all'
+            ? 'everyone (all roles, all branches)'
+            : `everyone in ${branches.find(b => b._id === formData.targetBranch)?.name || 'selected branch'}`;
+        } else if (formData.targetRole === 'branch_admin') {
+          targetDesc = formData.targetBranch === 'all'
+            ? 'all branch admins'
+            : `branch admin of ${branches.find(b => b._id === formData.targetBranch)?.name || 'selected branch'}`;
+        } else {
+          targetDesc = formData.targetBranch === 'all'
+            ? `all ${formData.targetRole}s (all branches)`
+            : `${formData.targetRole}s in ${branches.find(b => b._id === formData.targetBranch)?.name || 'selected branch'}`;
+        }
+
         toast.success(`✅ Notification sent to ${targetDesc}!`);
         setFormData({
           ...formData,
@@ -195,7 +212,7 @@ export default function SuperAdminNotification() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
-      
+
       {/* Send Notification Card */}
       <Card>
         <CardHeader>
@@ -214,9 +231,9 @@ export default function SuperAdminNotification() {
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
+
               {/* Target Branch */}
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -249,7 +266,7 @@ export default function SuperAdminNotification() {
                   icon={Users}
                   placeholder="Select Role"
                 />
-                
+
                 {/* Specific Targeting Toggle */}
                 <div className="flex items-center gap-2 pt-1">
                   <input
@@ -333,11 +350,19 @@ export default function SuperAdminNotification() {
                 {loading ? <ButtonLoader /> : (
                   <>
                     <Bell className="w-4 h-4 mr-2" />
-                    {isSpecificTargeting 
-                      ? `Send to ${selectedUserIds.length} Users` 
-                      : formData.targetBranch === 'all' 
-                        ? 'Broadcast to All Branches' 
-                        : 'Send to Selected Branch'}
+                    {isSpecificTargeting
+                      ? `Send to ${selectedUserIds.length} Users`
+                      : formData.targetRole === 'all'
+                        ? (formData.targetBranch === 'all'
+                          ? 'Broadcast to Everyone (All Branches)'
+                          : 'Send to Everyone in Branch')
+                        : formData.targetRole === 'branch_admin'
+                          ? (formData.targetBranch === 'all'
+                            ? 'Send to All Branch Admins'
+                            : 'Send to Branch Admin')
+                          : (formData.targetBranch === 'all'
+                            ? `Broadcast to All ${formData.targetRole}s`
+                            : `Send to ${formData.targetRole}s in Branch`)}
                   </>
                 )}
               </Button>
@@ -353,51 +378,80 @@ export default function SuperAdminNotification() {
           <History className="w-5 h-5" />
           Recent Campaigns
         </h3>
-        
+
         {historyLoading ? (
-            <div className="text-center py-8 text-gray-500">Loading history...</div>
+          <div className="text-center py-8 text-gray-500">Loading history...</div>
         ) : !Array.isArray(history) || history.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                No notifications sent recently.
-            </div>
+          <div className="text-center py-8 text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            No notifications sent recently.
+          </div>
         ) : (
-            <div className="grid gap-4">
-                {history.map((item, index) => (
-                    <Card key={index} className="overflow-hidden hover:shadow-md transition-shadow">
-                        <div className="p-4 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <span className={`px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 capitalize`}>
-                                        {item.type || 'general'}
-                                    </span>
-                                    <span className="text-xs text-gray-500 flex items-center gap-1">
-                                        <Clock className="w-3 h-3" />
-                                        {new Date(item.createdAt).toLocaleString()}
-                                    </span>
-                                </div>
-                                <h4 className="font-semibold text-gray-900 dark:text-white">{item.title}</h4>
-                                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1">{item.message}</p>
-                            </div>
-                            
-                            <div className="flex items-center gap-6 text-sm text-gray-500">
-                                <div className="text-right">
-                                    <p className="text-xs uppercase tracking-wider font-semibold">Recipients</p>
-                                    <p className="font-medium text-gray-900 dark:text-gray-100">{item.recipientCount || 0} Users</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs uppercase tracking-wider font-semibold">Status</p>
-                                    <div className="flex items-center justify-end gap-1 text-green-600">
-                                        <CheckCircle className="w-4 h-4" />
-                                        <span className="font-medium">Sent</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
-                ))}
-            </div>
+          <div className="grid gap-4">
+            {history.map((item, index) => (
+              <Card key={index} className="overflow-hidden hover:shadow-md transition-shadow group border-l-4 border-l-indigo-500">
+                <div className="p-4 flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center flex-wrap gap-2">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase`}>
+                        {item.type || 'general'}
+                      </span>
+                      <span className="text-xs text-gray-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(item.createdAt).toLocaleString()}
+                      </span>
+                      <span className="text-xs font-medium px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center gap-1 text-gray-600 dark:text-gray-400">
+                        <ShieldCheck className="w-3 h-3" />
+                        By: {item.senderName} ({item.senderRole})
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-gray-900 dark:text-white uppercase text-sm mt-1">{item.title}</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-1">{item.message}</p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-5 text-sm">
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase font-bold text-gray-400">Recipients</p>
+                      <p className="font-bold text-gray-900 dark:text-gray-100">{item.recipientCount || 0}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase font-bold text-green-500">Parha Gaya</p>
+                      <p className="font-bold text-green-600">{item.readCount || 0}</p>
+                    </div>
+                    <div className="text-right border-r dark:border-gray-800 pr-5">
+                      <p className="text-[10px] uppercase font-bold text-orange-400">Pending</p>
+                      <p className="font-bold text-orange-600">{item.unreadCount || 0}</p>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/30 hover:bg-indigo-600 hover:text-white transition-all"
+                      onClick={() => {
+                        setSelectedCampaign(item);
+                        setShowStatsModal(true);
+                      }}
+                    >
+                      <BarChart3 className="w-4 h-4 mr-1.5" />
+                      Full Track Report
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
         )}
       </div>
+
+      {/* Notification Stats Modal */}
+      {showStatsModal && (
+        <NotificationStatsModal
+          notification={selectedCampaign}
+          onClose={() => {
+            setShowStatsModal(false);
+            setSelectedCampaign(null);
+          }}
+        />
+      )}
 
     </div>
   );
