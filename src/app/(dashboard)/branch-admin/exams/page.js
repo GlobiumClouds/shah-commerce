@@ -15,7 +15,7 @@ import ExamFormModal from '@/components/modals/ExamFormModal';
 import ExamDetailsModal from '@/components/modals/ExamDetailsModal';
 import ConfirmDeleteModal from '@/components/modals/ConfirmDeleteModal';
 import { toast } from 'sonner';
-import apiClient from '@/lib/api-client';ka
+import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import {
   Plus,
