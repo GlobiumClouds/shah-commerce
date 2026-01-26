@@ -108,6 +108,7 @@ const ROLE_MENUS = {
           icon: FileText,
         },
         { name: "Timetable", path: "/super-admin/timetable", icon: Clock },
+        { name: "Exam Management", path: "/super-admin/exams", icon: FileText },
       ],
     },
     {
