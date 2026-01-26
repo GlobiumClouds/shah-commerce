@@ -1,59 +1,117 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Card } from '@/components/ui/card';
 import ChartFilters from './ChartFilters';
-import apiClient from '@/lib/api-client';
-import { API_ENDPOINTS } from '@/constants/api-endpoints';
+
+// Constants
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const FILTER_CONFIGS = {
+  weekly: { periods: 7, labelType: 'date' },
+  monthly: { periods: 6, labelType: 'month' },
+  yearly: { periods: 3, labelType: 'year' }
+};
+
+// Utility functions
+const formatDateLabel = (date) => {
+  const month = date.toLocaleString('default', { month: 'short' });
+  const day = date.getDate();
+  return `${month} ${day}`;
+};
+
+const getPeriodKey = (date, filter) => {
+  switch (filter) {
+    case 'weekly':
+      return formatDateLabel(date);
+    case 'yearly':
+      return date.getFullYear().toString();
+    case 'monthly':
+    default:
+      return MONTH_NAMES[date.getMonth()];
+  }
+};
+
+const generateLabels = (filter) => {
+  const { periods, labelType } = FILTER_CONFIGS[filter];
+  const labels = [];
+
+  for (let i = periods - 1; i >= 0; i--) {
+    let label;
+    switch (labelType) {
+      case 'date':
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        label = formatDateLabel(date);
+        break;
+      case 'year':
+        label = (new Date().getFullYear() - i).toString();
+        break;
+      case 'month':
+      default:
+        const monthIndex = (new Date().getMonth() - i + 12) % 12;
+        label = MONTH_NAMES[monthIndex];
+        break;
+    }
+    labels.push(label);
+  }
+
+  return labels;
+};
 
 const MonthlyFeeCollection = () => {
   const [selectedFilter, setSelectedFilter] = useState('monthly');
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const currentMonth = new Date().toLocaleString('default', { month: 'short' });
 
-  // Mock data for fallback
-  const getMockData = (filter) => {
-    const periods = filter === 'weekly' ? 7 : filter === 'yearly' ? 3 : 6;
-    const mockData = [];
+  // Memoized values
+  const currentMonth = useMemo(() => new Date().toLocaleString('default', { month: 'short' }), []);
+  const labels = useMemo(() => generateLabels(selectedFilter), [selectedFilter]);
 
-    for (let i = periods - 1; i >= 0; i--) {
-      let label;
-      if (filter === 'weekly') {
-        const dayStart = new Date();
-        dayStart.setDate(dayStart.getDate() - i);
-        const dayMonth = dayStart.toLocaleString('default', { month: 'short' });
-        const dayDate = dayStart.getDate();
-        label = `${dayMonth} ${dayDate}`;
-      } else if (filter === 'yearly') {
-        label = `${new Date().getFullYear() - i}`;
-      } else {
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const currentMonth = new Date().getMonth();
-        const monthIndex = (currentMonth - i + 12) % 12;
-        label = monthNames[monthIndex];
+  // Mock data generation
+  const getMockData = useCallback(() => {
+    return labels.map(label => ({
+      period: label,
+      collected: Math.floor(Math.random() * 5000) + 2000,
+      pending: Math.floor(Math.random() * 3000) + 1000
+    }));
+  }, [labels]);
+
+  // Data processing
+  const processFeeData = useCallback((approvedPayments, pendingPayments) => {
+    const dataMap = labels.reduce((acc, label) => {
+      acc[label] = { period: label, collected: 0, pending: 0 };
+      return acc;
+    }, {});
+
+    // Process approved payments
+    approvedPayments.forEach(payment => {
+      const date = new Date(payment.approvedAt || payment.paymentDate);
+      const periodKey = getPeriodKey(date, selectedFilter);
+      if (dataMap[periodKey]) {
+        dataMap[periodKey].collected += payment.amount || 0;
       }
+    });
 
-      mockData.push({
-        period: label,
-        collected: Math.floor(Math.random() * 5000) + 2000,
-        pending: Math.floor(Math.random() * 3000) + 1000
-      });
-    }
-    return mockData;
-  };
+    // Process pending payments
+    pendingPayments.forEach(payment => {
+      const date = new Date(payment.paymentDate);
+      const periodKey = getPeriodKey(date, selectedFilter);
+      if (dataMap[periodKey]) {
+        dataMap[periodKey].pending += payment.amount || 0;
+      }
+    });
 
-  useEffect(() => {
-    fetchData();
-  }, [selectedFilter]);
+    return Object.values(dataMap);
+  }, [labels, selectedFilter]);
 
-  const fetchData = async () => {
+  // API call
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      // Get data from pending fees API instead of charts API
       const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
       const response = await fetch('/api/branch-admin/pending-fees', {
         method: 'GET',
@@ -66,93 +124,23 @@ const MonthlyFeeCollection = () => {
       const result = await response.json();
 
       if (result.success) {
-        // Process the data to show monthly collection trends
-        const processedData = processFeeData(result.approvedPayments || [], result.data || [], selectedFilter);
+        const processedData = processFeeData(result.approvedPayments || [], result.data || []);
         setData(processedData);
       } else {
-        // Use mock data if API fails
-        setData(getMockData(selectedFilter));
+        setData(getMockData());
       }
     } catch (err) {
       console.error('Monthly fee collection fetch error:', err);
-      // Use mock data on error
-      setData(getMockData(selectedFilter));
+      setError('Failed to load data');
+      setData(getMockData());
     } finally {
       setLoading(false);
     }
-  };
+  }, [processFeeData, getMockData]);
 
-  // Process fee data to show monthly trends
-  const processFeeData = (approvedPayments, pendingPayments, filter) => {
-    const periods = filter === 'weekly' ? 7 : filter === 'yearly' ? 3 : 6;
-    const monthlyData = {};
-
-    // Initialize data structure
-    for (let i = periods - 1; i >= 0; i--) {
-      let label;
-      if (filter === 'weekly') {
-        const dayStart = new Date();
-        dayStart.setDate(dayStart.getDate() - i);
-        const dayMonth = dayStart.toLocaleString('default', { month: 'short' });
-        const dayDate = dayStart.getDate();
-        label = `${dayMonth} ${dayDate}`;
-      } else if (filter === 'yearly') {
-        label = `${new Date().getFullYear() - i}`;
-      } else {
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const currentMonth = new Date().getMonth();
-        const monthIndex = (currentMonth - i + 12) % 12;
-        label = monthNames[monthIndex];
-      }
-      monthlyData[label] = { period: label, collected: 0, pending: 0 };
-    }
-
-    // Process approved payments (collected fees)
-    approvedPayments.forEach(payment => {
-      const date = new Date(payment.approvedAt || payment.paymentDate);
-      let periodKey;
-
-      if (filter === 'weekly') {
-        // Use actual date for last 7 days
-        const dayMonth = date.toLocaleString('default', { month: 'short' });
-        const dayDate = date.getDate();
-        periodKey = `${dayMonth} ${dayDate}`;
-      } else if (filter === 'yearly') {
-        periodKey = date.getFullYear().toString();
-      } else {
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        periodKey = monthNames[date.getMonth()];
-      }
-
-      if (monthlyData[periodKey]) {
-        monthlyData[periodKey].collected += payment.amount || 0;
-      }
-    });
-
-    // Process pending payments (uncollected fees)
-    pendingPayments.forEach(payment => {
-      const date = new Date(payment.paymentDate);
-      let periodKey;
-
-      if (filter === 'weekly') {
-        // Use actual date for last 7 days
-        const dayMonth = date.toLocaleString('default', { month: 'short' });
-        const dayDate = date.getDate();
-        periodKey = `${dayMonth} ${dayDate}`;
-      } else if (filter === 'yearly') {
-        periodKey = date.getFullYear().toString();
-      } else {
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        periodKey = monthNames[date.getMonth()];
-      }
-
-      if (monthlyData[periodKey]) {
-        monthlyData[periodKey].pending += payment.amount || 0;
-      }
-    });
-
-    return Object.values(monthlyData);
-  };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (

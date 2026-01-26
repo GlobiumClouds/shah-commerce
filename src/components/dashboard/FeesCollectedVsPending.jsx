@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card } from '@/components/ui/card';
 import ChartFilters from './ChartFilters';
@@ -13,16 +13,18 @@ const FeesCollectedVsPending = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Mock data for fallback
-  const getMockData = (filter) => {
-    const periods = filter === 'weekly' ? 12 : filter === 'yearly' ? 3 : 6;
+
+
+  // Memoized mock data generation
+  const getMockData = useCallback(() => {
+    const periods = selectedFilter === 'weekly' ? 12 : selectedFilter === 'yearly' ? 3 : 6;
     const mockData = [];
 
     for (let i = periods - 1; i >= 0; i--) {
       let label;
-      if (filter === 'weekly') {
+      if (selectedFilter === 'weekly') {
         label = `W${periods - i}`;
-      } else if (filter === 'yearly') {
+      } else if (selectedFilter === 'yearly') {
         label = `${new Date().getFullYear() - i}`;
       } else {
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -38,31 +40,33 @@ const FeesCollectedVsPending = () => {
       });
     }
     return mockData;
-  };
-
-  useEffect(() => {
-    fetchData();
   }, [selectedFilter]);
 
-  const fetchData = async () => {
+  // Memoized fetch function
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await apiClient.get(`${API_ENDPOINTS.BRANCH_ADMIN.CHARTS.FEES_COLLECTED_PENDING}?filter=${selectedFilter}`);
 
       if (response.success && response.data !== null && response.data !== undefined && response.data.length > 0) {
         setData(response.data);
       } else {
         // Use mock data if API returns null, undefined, or empty data
-        setData(getMockData(selectedFilter));
+        setData(getMockData());
       }
     } catch (err) {
       console.error('Fees collected vs pending fetch error:', err);
-      // Use mock data on error
-      setData(getMockData(selectedFilter));
+      setError('Failed to load data');
+      setData(getMockData());
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedFilter, getMockData]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (

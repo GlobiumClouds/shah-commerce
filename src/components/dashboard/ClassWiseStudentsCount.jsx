@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card } from '@/components/ui/card';
 import ChartFilters from './ChartFilters';
@@ -13,22 +13,20 @@ const ClassWiseStudentsCount = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Mock data for fallback
-  const getMockData = () => {
+  // Memoized mock data generation
+  const getMockData = useCallback(() => {
     const classes = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8'];
     return classes.map(className => ({
       class: className,
       count: Math.floor(Math.random() * 30) + 10
     }));
-  };
+  }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [selectedFilter]);
-
-  const fetchData = async () => {
+  // Memoized fetch function
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await apiClient.get(`${API_ENDPOINTS.BRANCH_ADMIN.CHARTS.CLASS_WISE_STUDENTS}?filter=${selectedFilter}`);
 
       // Always use mock data for now to ensure it shows
@@ -53,12 +51,16 @@ const ClassWiseStudentsCount = () => {
       */
     } catch (err) {
       console.error('Class-wise students fetch error:', err);
-      // Use mock data on error
+      setError('Failed to load data');
       setData(getMockData());
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedFilter, getMockData]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
