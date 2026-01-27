@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import FeeVoucher from '@/backend/models/FeeVoucher';
+import Class from '@/backend/models/Class';
+import Branch from '@/backend/models/Branch';
+import User from '@/backend/models/User';
 
 
 // Helper to ensure we always return JSON
@@ -22,9 +25,9 @@ const handler = withAuth(async (request, user, userDoc, context) => {
       return jsonResponse({ success: false, message: 'Unauthorized: Super Admin access required' }, 403);
     }
 
-    // 2. Fetch data
+    // 2. Fetch data for all payment statuses
     const feeVouchers = await FeeVoucher.find({
-      'paymentHistory.status': 'pending'
+      'paymentHistory.0': { $exists: true } // Has at least one payment in history
     })
       .populate('studentId', 'firstName lastName fullName')
       .populate('classId', 'name')
@@ -32,32 +35,58 @@ const handler = withAuth(async (request, user, userDoc, context) => {
       .sort({ createdAt: -1 });
 
     const pendingPayments = [];
+    const approvedPayments = [];
+    const rejectedPayments = [];
 
     feeVouchers.forEach(voucher => {
       voucher.paymentHistory.forEach((payment, index) => {
+        const paymentData = {
+          paymentId: `${voucher._id}-${index}`,
+          voucherId: voucher._id.toString(),
+          paymentIndex: index,
+          voucherNumber: voucher.voucherNumber,
+          studentName: voucher.studentId?.fullName || 'Unknown',
+          className: voucher.classId?.name || 'N/A',
+          branchName: voucher.branchId?.name || 'N/A',
+          amount: payment.amount,
+          paymentMethod: payment.paymentMethod,
+          paymentDate: payment.paymentDate,
+          transactionId: payment.transactionId,
+          screenshotUrl: payment.screenshot?.url,
+          status: payment.status
+        };
+
         if (payment.status === 'pending') {
-          pendingPayments.push({
-            paymentId: `${voucher._id}-${index}`,
-            voucherId: voucher._id.toString(),
-            paymentIndex: index,
-            voucherNumber: voucher.voucherNumber,
-            studentName: voucher.studentId?.fullName || 'Unknown',
-            className: voucher.classId?.name || 'N/A',
-            branchName: voucher.branchId?.name || 'N/A',
-            amount: payment.amount,
-            paymentMethod: payment.paymentMethod,
-            paymentDate: payment.paymentDate,
-            transactionId: payment.transactionId,
-            screenshotUrl: payment.screenshot?.url,
-            status: payment.status
+          pendingPayments.push(paymentData);
+        } else if (payment.status === 'approved') {
+          approvedPayments.push({
+            ...paymentData,
+            approvedAt: payment.approvedAt
+          });
+        } else if (payment.status === 'rejected') {
+          rejectedPayments.push({
+            ...paymentData,
+            rejectedReason: payment.rejectionReason || payment.rejectedReason
           });
         }
       });
     });
 
+    // Sort by latest payment date first
+    pendingPayments.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+    approvedPayments.sort((a, b) => new Date(b.approvedAt || b.paymentDate) - new Date(a.approvedAt || a.paymentDate));
+    rejectedPayments.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
     return jsonResponse({
       success: true,
       data: pendingPayments,
+      approvedPayments: approvedPayments,
+      rejectedPayments: rejectedPayments,
+      statistics: {
+        pending: { count: pendingPayments.length, totalAmount: pendingPayments.reduce((sum, p) => sum + (p.amount || 0), 0) },
+        approved: { count: approvedPayments.length, totalAmount: approvedPayments.reduce((sum, p) => sum + (p.amount || 0), 0) },
+        rejected: { count: rejectedPayments.length, totalAmount: rejectedPayments.reduce((sum, p) => sum + (p.amount || 0), 0) }
+      },
       total: pendingPayments.length
     });
 

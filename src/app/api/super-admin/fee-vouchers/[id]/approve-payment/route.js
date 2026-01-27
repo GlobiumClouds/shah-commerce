@@ -3,9 +3,9 @@ import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import FeeVoucher from '@/backend/models/FeeVoucher';
 
-const handler = withAuth(async (request, user, userDoc, context) => {
+export const POST = withAuth(async (request, user, userDoc, { params }) => {
   try {
-    const { id } = context.params || {};
+    const { id } = params || {};
     await connectDB();
 
     // Verify user is super admin
@@ -17,16 +17,16 @@ const handler = withAuth(async (request, user, userDoc, context) => {
     const { paymentId, action, remarks } = body;
 
     if (!paymentId || !action) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Payment ID and action are required' 
+      return NextResponse.json({
+        success: false,
+        message: 'Payment ID and action are required'
       }, { status: 400 });
     }
 
     if (!['approve', 'reject'].includes(action)) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Action must be approve or reject' 
+      return NextResponse.json({
+        success: false,
+        message: 'Action must be approve or reject'
       }, { status: 400 });
     }
 
@@ -48,9 +48,9 @@ const handler = withAuth(async (request, user, userDoc, context) => {
     }
 
     if (payment.status !== 'pending') {
-      return NextResponse.json({ 
-        success: false, 
-        message: `Payment already ${payment.status}` 
+      return NextResponse.json({
+        success: false,
+        message: `Payment already ${payment.status}`
       }, { status: 400 });
     }
 
@@ -96,13 +96,9 @@ const handler = withAuth(async (request, user, userDoc, context) => {
     });
   } catch (error) {
     console.error('Error processing payment approval:', error);
-    return NextResponse.json({ 
-      success: false, 
-      message: error.message || 'Failed to process payment approval' 
+    return NextResponse.json({
+      success: false,
+      message: error.message || 'Failed to process payment approval'
     }, { status: 500 });
   }
-});
-
-export async function POST(request, context) {
-  return handler(request, context);
-}
+}, [requireRole(['super_admin'])]);
