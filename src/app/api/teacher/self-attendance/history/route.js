@@ -13,7 +13,22 @@ export async function GET(req) {
       );
     }
 
-    req.user = authResult.user;
+    // Extract query parameters from URL using Next.js req.query
+    const url = new URL(req.url);
+    const query = {
+      filterType: url.searchParams.get('filterType') || 'monthly',
+      month: url.searchParams.get('month'),
+      year: url.searchParams.get('year'),
+      date: url.searchParams.get('date'),
+      weekStart: url.searchParams.get('weekStart')
+    };
+
+    // Create request object with user and query
+    const reqWithQuery = {
+      ...req,
+      user: authResult.user,
+      query: query
+    };
 
     // Create a mock response object that captures the response
     let responseData = null;
@@ -29,7 +44,7 @@ export async function GET(req) {
     };
 
     // Call controller
-    await teacherAttendanceHistory(req, mockRes);
+    await teacherAttendanceHistory(reqWithQuery, mockRes);
 
     // Return the response from controller
     return NextResponse.json(responseData, { status: responseStatus });

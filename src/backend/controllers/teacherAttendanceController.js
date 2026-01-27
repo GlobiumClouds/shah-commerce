@@ -360,37 +360,93 @@ export const teacherAttendanceHistory = async (req, res) => {
     console.log('👤 User ID:', req.user?.userId);
 
     const teacherId = req.user.userId;
-    const { month, year } = req.query;
+    const { filterType = 'monthly', month, year, date, weekStart } = req.query;
 
-    // Default to current month/year if not provided
+    console.log('📅 Filter type:', filterType);
+
+    let startDate, endDate, queryMonth, queryYear;
+
+    // Calculate date range based on filter type
     const currentDate = new Date();
-    const queryMonth = month ? parseInt(month) : currentDate.getMonth() + 1;
-    const queryYear = year ? parseInt(year) : currentDate.getFullYear();
 
-    console.log('📅 Query month/year:', queryMonth, queryYear);
+    if (filterType === 'daily') {
+      // Daily filter - show records for today
+      startDate = new Date(currentDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(currentDate);
+      endDate.setHours(23, 59, 59, 999);
+      queryMonth = currentDate.getMonth() + 1;
+      queryYear = currentDate.getFullYear();
+    } else if (filterType === 'weekly') {
+      // Weekly filter - show records for current week (Monday to Sunday)
+      const currentDay = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay; // Adjust to get Monday
 
-    // Validate month and year
-    if (queryMonth < 1 || queryMonth > 12) {
+      startDate = new Date(currentDate);
+      startDate.setDate(currentDate.getDate() + mondayOffset);
+      startDate.setHours(0, 0, 0, 0);
+
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+
+      queryMonth = startDate.getMonth() + 1;
+      queryYear = startDate.getFullYear();
+    } else if (filterType === 'monthly') {
+      // Monthly filter - default behavior
+      queryMonth = month ? parseInt(month) : currentDate.getMonth() + 1;
+      queryYear = year ? parseInt(year) : currentDate.getFullYear();
+
+      // Validate month and year
+      if (queryMonth < 1 || queryMonth > 12) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid month. Must be between 1 and 12.'
+        });
+      }
+
+      if (queryYear < 2020 || queryYear > 2030) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid year. Must be between 2020 and 2030.'
+        });
+      }
+
+      startDate = new Date(queryYear, queryMonth - 1, 1);
+      endDate = new Date(queryYear, queryMonth - 1, new Date(queryYear, queryMonth, 0).getDate(), 23, 59, 59);
+    } else if (filterType === 'date') {
+      // Specific date filter
+      if (!date) {
+        return res.status(400).json({
+          success: false,
+          message: 'Date parameter is required for date filter type.'
+        });
+      }
+
+      const selectedDate = new Date(date);
+      if (isNaN(selectedDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid date format. Use YYYY-MM-DD format.'
+        });
+      }
+
+      startDate = new Date(selectedDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(selectedDate);
+      endDate.setHours(23, 59, 59, 999);
+      queryMonth = selectedDate.getMonth() + 1;
+      queryYear = selectedDate.getFullYear();
+    } else {
       return res.status(400).json({
         success: false,
-        message: 'Invalid month. Must be between 1 and 12.'
+        message: 'Invalid filter type. Must be one of: daily, weekly, monthly, date.'
       });
     }
-
-    if (queryYear < 2020 || queryYear > 2030) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid year. Must be between 2020 and 2030.'
-      });
-    }
-
-    // Calculate date range for the month
-    const startDate = new Date(queryYear, queryMonth - 1, 1);
-    const endDate = new Date(queryYear, queryMonth - 1, new Date(queryYear, queryMonth, 0).getDate(), 23, 59, 59);
 
     console.log('📅 Date range:', startDate.toISOString(), 'to', endDate.toISOString());
 
-    // Get all attendance records for the month
+    // Get all attendance records for the date range
     const attendanceRecords = await EmployeeAttendance.find({
       userId: teacherId,
       date: { $gte: startDate, $lte: endDate }
@@ -409,7 +465,7 @@ export const teacherAttendanceHistory = async (req, res) => {
 
     console.log('📈 Statistics:', { totalDays, presentDays, lateDays, absentDays });
 
-    // Calculate working days (excluding weekends)
+    // Calculate working days (excluding weekends) for percentage calculation
     const workingDays = [];
     const tempDate = new Date(startDate);
     while (tempDate <= endDate) {
@@ -443,8 +499,11 @@ export const teacherAttendanceHistory = async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
+        filterType,
         month: queryMonth,
         year: queryYear,
+        date: filterType === 'date' ? date : null,
+        weekStart: filterType === 'weekly' ? startDate.toISOString().split('T')[0] : null,
         statistics: {
           totalDays,
           workingDays: totalWorkingDays,

@@ -15,6 +15,10 @@ import {
   LogOut,
   AlertCircle,
   Loader2,
+  CalendarDays,
+  CalendarRange,
+  Calendar as CalendarIcon,
+  Filter,
 } from "lucide-react";
 import { toast } from "sonner";
 import apiClient from "@/lib/api-client";
@@ -30,12 +34,19 @@ export default function TeacherSelfAttendancePage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [filterType, setFilterType] = useState('monthly'); // 'daily', 'weekly', 'monthly', 'date'
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedWeek, setSelectedWeek] = useState(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+    return startOfWeek.toISOString().split('T')[0];
+  });
 
   useEffect(() => {
     loadAttendanceStatus();
     getCurrentLocation();
     loadAttendanceHistory();
-  }, []);
+  }, [selectedMonth, selectedYear, filterType]);
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -81,16 +92,28 @@ export default function TeacherSelfAttendancePage() {
     }
   };
 
-  const loadAttendanceHistory = async (month = selectedMonth, year = selectedYear) => {
+  const loadAttendanceHistory = async (filter = filterType, month = selectedMonth, year = selectedYear, date = selectedDate) => {
     try {
       setHistoryLoading(true);
+      let queryParams = `filterType=${filter}`;
+
+      if (filter === 'monthly') {
+        queryParams += `&month=${month}&year=${year}`;
+      } else if (filter === 'date') {
+        queryParams += `&date=${date}`;
+      }
+
+      console.log('Loading attendance history with params:', queryParams);
+
       const response = await apiClient.get(
-        `${API_ENDPOINTS.TEACHER.SELF_ATTENDANCE.HISTORY}?month=${month}&year=${year}`
+        `${API_ENDPOINTS.TEACHER.SELF_ATTENDANCE.HISTORY}?${queryParams}`
       );
 
       if (response.success) {
         setAttendanceHistory(response.data);
+        console.log('Attendance history loaded successfully:', response.data);
       } else {
+        console.error('Failed to load attendance history:', response.message);
         toast.error(response.message || "Failed to load attendance history");
       }
     } catch (error) {
@@ -414,37 +437,71 @@ export default function TeacherSelfAttendancePage() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">Attendance History</h2>
           <div className="flex items-center gap-2">
+            {/* Filter Type Selector */}
             <select
-              value={selectedMonth}
+              value={filterType}
               onChange={(e) => {
-                setSelectedMonth(parseInt(e.target.value));
-                loadAttendanceHistory(parseInt(e.target.value), selectedYear);
+                const newFilterType = e.target.value;
+                setFilterType(newFilterType);
+                loadAttendanceHistory(newFilterType);
               }}
               className="px-3 py-2 border border-border rounded-lg text-sm"
             >
-              {Array.from({ length: 12 }, (_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {new Date(0, i).toLocaleString('default', { month: 'long' })}
-                </option>
-              ))}
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="date">Specific Date</option>
             </select>
-            <select
-              value={selectedYear}
-              onChange={(e) => {
-                setSelectedYear(parseInt(e.target.value));
-                loadAttendanceHistory(selectedMonth, parseInt(e.target.value));
-              }}
-              className="px-3 py-2 border border-border rounded-lg text-sm"
-            >
-              {Array.from({ length: 5 }, (_, i) => {
-                const year = new Date().getFullYear() - i;
-                return (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                );
-              })}
-            </select>
+
+            {/* Conditional Controls Based on Filter Type */}
+            {filterType === 'monthly' && (
+              <>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    setSelectedMonth(parseInt(e.target.value));
+                    loadAttendanceHistory('monthly', parseInt(e.target.value), selectedYear);
+                  }}
+                  className="px-3 py-2 border border-border rounded-lg text-sm"
+                >
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => {
+                    setSelectedYear(parseInt(e.target.value));
+                    loadAttendanceHistory('monthly', selectedMonth, parseInt(e.target.value));
+                  }}
+                  className="px-3 py-2 border border-border rounded-lg text-sm"
+                >
+                  {Array.from({ length: 5 }, (_, i) => {
+                    const year = new Date().getFullYear() - i;
+                    return (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    );
+                  })}
+                </select>
+              </>
+            )}
+
+            {filterType === 'date' && (
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value);
+                  loadAttendanceHistory('date', undefined, undefined, e.target.value);
+                }}
+                className="px-3 py-2 border border-border rounded-lg text-sm"
+                max={new Date().toISOString().split('T')[0]}
+              />
+            )}
           </div>
         </div>
 
@@ -453,39 +510,39 @@ export default function TeacherSelfAttendancePage() {
             <Loader2 className="w-6 h-6 animate-spin" />
             <span className="ml-2">Loading history...</span>
           </div>
-        ) : attendanceHistory?.data?.records?.length > 0 ? (
+        ) : attendanceHistory?.records?.length > 0 ? (
           <>
             {/* Statistics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-sm text-muted-foreground">Present</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {attendanceHistory.data.statistics.presentDays}
+                  {attendanceHistory.statistics.presentDays}
                 </p>
               </div>
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-muted-foreground">Absent</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {attendanceHistory.data.statistics.absentDays}
+                  {attendanceHistory.statistics.absentDays}
                 </p>
               </div>
               <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-muted-foreground">Late</p>
                 <p className="text-2xl font-bold text-yellow-600">
-                  {attendanceHistory.data.statistics.lateDays}
+                  {attendanceHistory.statistics.lateDays}
                 </p>
               </div>
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-muted-foreground">Attendance Rate</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {attendanceHistory.data.statistics.attendancePercentage}%
+                  {attendanceHistory.statistics.attendancePercentage}%
                 </p>
               </div>
             </div>
 
             {/* Records List */}
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {attendanceHistory.data.records.map((record, index) => (
+              {attendanceHistory.records.map((record, index) => (
                 <motion.div
                   key={record.id}
                   initial={{ opacity: 0, x: -20 }}
