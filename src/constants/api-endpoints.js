@@ -334,6 +334,20 @@ export const API_ENDPOINTS = {
     CHECK_CHILDREN_MATCHES: '/api/super-admin/check-children-matches',
     APPROVE_PARENT: '/api/super-admin/approve-parent/:id',
     REJECT_PARENT: '/api/super-admin/reject-parent/:id',
+
+    // Charts and Analytics
+    CHARTS: {
+      STUDENT_TRENDS: '/api/super-admin/charts/student-trends', // GET
+      CLASS_WISE_STUDENTS: '/api/super-admin/charts/class-wise-students', // GET
+      BRANCH_WISE_STUDENTS: '/api/super-admin/charts/branch-wise-students', // GET
+      STUDENT_ATTENDANCE: '/api/super-admin/charts/student-attendance', // GET
+      REVENUE_EXPENSE: '/api/super-admin/charts/revenue-expense', // GET
+      MONTHLY_FEE_COLLECTION: '/api/super-admin/charts/monthly-fee-collection', // GET
+      PASS_FAIL_RATIO: '/api/super-admin/charts/pass-fail-ratio', // GET
+      BRANCH_PERFORMANCE: '/api/super-admin/charts/branch-performance', // GET
+      USER_DISTRIBUTION: '/api/super-admin/charts/user-distribution', // GET
+      FINANCIAL_OVERVIEW: '/api/super-admin/charts/financial-overview', // GET
+    },
   },
 
   // Branch Admin Endpoints
