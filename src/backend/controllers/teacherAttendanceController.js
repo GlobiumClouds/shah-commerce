@@ -250,12 +250,14 @@ export const teacherCheckOut = async (req, res, body = null) => {
 
     const isEarly = isEarlyCheckOut(checkOutTime, workEndTime);
 
-    // Determine final status
+    // Determine final status - preserve both late and early checkout conditions
     let finalStatus = existingAttendance.status;
-    if (isEarly && existingAttendance.status === 'present') {
-      finalStatus = 'early_checkout';
-    } else if (isEarly && existingAttendance.status === 'late') {
-      finalStatus = 'early_checkout'; // Keep as early checkout even if was late
+    if (isEarly) {
+      if (existingAttendance.status === 'present') {
+        finalStatus = 'early_checkout';
+      } else if (existingAttendance.status === 'late') {
+        finalStatus = 'late_early_checkout'; // Preserve both late check-in and early checkout
+      }
     }
 
     const updateData = {

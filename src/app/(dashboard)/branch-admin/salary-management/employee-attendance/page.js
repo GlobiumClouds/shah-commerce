@@ -41,6 +41,20 @@ import AttendanceViewModal from '@/components/modals/AttendanceViewModal';
 
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+// Check if check-out is early
+const isEarlyCheckOut = (checkOutTime, workEndTime = '17:00') => {
+  const [endHour, endMin] = workEndTime.split(':').map(Number);
+  const endThreshold = new Date(checkOutTime);
+  endThreshold.setHours(endHour, endMin, 0, 0);
+  return checkOutTime < endThreshold;
+};
+
+// Get checkout status for display
+const getCheckOutStatus = (checkOutTime) => {
+  if (!checkOutTime) return null;
+  return isEarlyCheckOut(new Date(checkOutTime)) ? 'early' : 'on-time';
+};
+
 export default function BranchAdminEmployeeAttendancePage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -185,7 +199,7 @@ export default function BranchAdminEmployeeAttendancePage() {
           workingHours = Math.max(0, diffMs / (1000 * 60 * 60));
 
           // Determine check-out status
-          checkOutStatus = checkOutTime.getHours() >= 17 ? 'on-time' : 'early';
+          checkOutStatus = isEarlyCheckOut(checkOutTime) ? 'early' : 'on-time';
 
           // Adjust status based on working hours
           if (workingHours < 4) {
@@ -647,7 +661,7 @@ export default function BranchAdminEmployeeAttendancePage() {
               <tr className="border-b">
                 <th className="text-left p-3 font-semibold">Employee</th>
                 <th className="text-left p-3 font-semibold">Date</th>
-                <th className="text-left p-3 font-semibold">Status</th>
+
                 <th className="text-left p-3 font-semibold">Check In</th>
                 <th className="text-left p-3 font-semibold">Check-in Status</th>
                 <th className="text-left p-3 font-semibold">Check Out</th>
@@ -680,7 +694,7 @@ export default function BranchAdminEmployeeAttendancePage() {
                         {new Date(record.date).toLocaleDateString()}
                       </p>
                     </td>
-                    <td className="p-3">{getStatusBadge(record.status)}</td>
+
                     <td className="p-3">
                       {record.checkIn?.time ? (
                         <div className="flex items-center gap-1">
@@ -727,13 +741,13 @@ export default function BranchAdminEmployeeAttendancePage() {
                       )}
                     </td>
                     <td className="p-3">
-                      {record.checkOut?.status ? (
+                      {record.checkOut?.time ? (
                         <Badge className={`text-xs ${
-                          record.checkOut.status === 'on-time'
+                          getCheckOutStatus(record.checkOut.time) === 'on-time'
                             ? 'bg-green-100 text-green-800'
                             : 'bg-orange-100 text-orange-800'
                         }`}>
-                          {record.checkOut.status === 'on-time' ? '✓ On Time' : '⚠ Early'}
+                          {getCheckOutStatus(record.checkOut.time) === 'on-time' ? '✓ On Time' : '⚠ Early'}
                         </Badge>
                       ) : (
                         <span className="text-gray-400 text-sm">-</span>

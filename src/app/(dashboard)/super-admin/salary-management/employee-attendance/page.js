@@ -40,6 +40,20 @@ import { toast } from 'sonner';
 
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+// Check if check-out is early
+const isEarlyCheckOut = (checkOutTime, workEndTime = '17:00') => {
+  const [endHour, endMin] = workEndTime.split(':').map(Number);
+  const endThreshold = new Date(checkOutTime);
+  endThreshold.setHours(endHour, endMin, 0, 0);
+  return checkOutTime < endThreshold;
+};
+
+// Get checkout status for display
+const getCheckOutStatus = (checkOutTime) => {
+  if (!checkOutTime) return null;
+  return isEarlyCheckOut(new Date(checkOutTime)) ? 'early' : 'on-time';
+};
+
 export default function SuperAdminEmployeeAttendancePage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -575,7 +589,7 @@ export default function SuperAdminEmployeeAttendancePage() {
                     <TableHead>Employee</TableHead>
                     <TableHead>Branch</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Check-out Status</TableHead>
                     <TableHead>Check In</TableHead>
                     <TableHead>Check Out</TableHead>
                     <TableHead>Working Hours</TableHead>

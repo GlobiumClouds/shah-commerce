@@ -23,6 +23,7 @@ export default function BranchAdminTeacherAttendancePage() {
     present: 0,
     late: 0,
     earlyCheckout: 0,
+    lateEarlyCheckout: 0,
     absent: 0
   });
 
@@ -68,43 +69,40 @@ export default function BranchAdminTeacherAttendancePage() {
         const present = data.filter(a => a.status === 'present').length;
         const late = data.filter(a => a.status === 'late').length;
         const earlyCheckout = data.filter(a => a.status === 'early_checkout').length;
+        const lateEarlyCheckout = data.filter(a => a.status === 'late_early_checkout').length;
         const absent = data.filter(a => a.status === 'absent').length;
 
-        setStats({ total, present, late, earlyCheckout, absent });
+        setStats({ total, present, late, earlyCheckout, lateEarlyCheckout, absent });
       } else {
         setAttendanceData([]);
-        setStats({ total: 0, present: 0, late: 0, earlyCheckout: 0, absent: 0 });
+        setStats({ total: 0, present: 0, late: 0, earlyCheckout: 0, lateEarlyCheckout: 0, absent: 0 });
       }
     } catch (error) {
       console.error('Error fetching attendance:', error);
       toast.error('Failed to fetch teacher attendance');
       setAttendanceData([]);
-      setStats({ total: 0, present: 0, late: 0, earlyCheckout: 0, absent: 0 });
+      setStats({ total: 0, present: 0, late: 0, earlyCheckout: 0, lateEarlyCheckout: 0, absent: 0 });
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusBadge = (status) => {
-    const variants = {
-      present: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      late: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      early_checkout: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-      absent: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-    };
+  const getCheckOutStatusBadge = (checkOutTime) => {
+    if (!checkOutTime) return <Badge className="bg-gray-100 text-gray-800">Not Checked Out</Badge>;
 
-    const labels = {
-      present: 'Present',
-      late: 'Late',
-      early_checkout: 'Early Checkout',
-      absent: 'Absent'
-    };
+    const workEndTime = '17:00'; // 5:00 PM
+    const [endHour, endMin] = workEndTime.split(':').map(Number);
+    const checkOutDate = new Date(checkOutTime);
+    const endThreshold = new Date(checkOutTime);
+    endThreshold.setHours(endHour, endMin, 0, 0);
 
-    return (
-      <Badge className={variants[status] || 'bg-gray-100 text-gray-800'}>
-        {labels[status] || status}
-      </Badge>
-    );
+    if (checkOutDate < endThreshold) {
+      return <Badge className="bg-orange-100 text-orange-800">Early Checkout</Badge>;
+    } else if (checkOutDate > endThreshold) {
+      return <Badge className="bg-blue-100 text-blue-800">Late Checkout</Badge>;
+    } else {
+      return <Badge className="bg-green-100 text-green-800">On Time Checkout</Badge>;
+    }
   };
 
   const getStatusIcon = (status) => {
@@ -273,9 +271,9 @@ export default function BranchAdminTeacherAttendancePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Teacher</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead>Check-in Time</TableHead>
                   <TableHead>Check-out Time</TableHead>
+                  <TableHead>Check-out Status</TableHead>
                   <TableHead>Duration</TableHead>
                   <TableHead>Distance (m)</TableHead>
                   <TableHead>Location</TableHead>
@@ -296,12 +294,6 @@ export default function BranchAdminTeacherAttendancePage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        {getStatusIcon(record.status)}
-                        {getStatusBadge(record.status)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         <span>{formatTime(record.checkInTime)}</span>
                       </div>
@@ -311,6 +303,9 @@ export default function BranchAdminTeacherAttendancePage() {
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         <span>{formatTime(record.checkOutTime)}</span>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {getCheckOutStatusBadge(record.checkOutTime)}
                     </TableCell>
                     <TableCell>
                       {formatDuration(record.checkInTime, record.checkOutTime)}
