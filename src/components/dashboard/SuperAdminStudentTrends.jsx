@@ -8,22 +8,23 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 
-const SuperAdminStudentTrends = ({ selectedBranch = 'all' }) => {
+const SuperAdminStudentTrends = ({ selectedBranch = 'all', branchPerformance = [] }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTimeRange, setSelectedTimeRange] = useState('6months');
+  const [selectedChartBranch, setSelectedChartBranch] = useState('all');
   const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     fetchStudentTrends();
-  }, [selectedBranch, selectedTimeRange]);
+  }, [selectedChartBranch, selectedTimeRange]);
 
   const fetchStudentTrends = async () => {
     try {
       setLoading(true);
       const params = {
-        branch: selectedBranch,
+        branch: selectedChartBranch,
         timeRange: selectedTimeRange
       };
 
@@ -93,6 +94,19 @@ const SuperAdminStudentTrends = ({ selectedBranch = 'all' }) => {
           </CardTitle>
           <div className="flex items-center gap-2">
             <Dropdown
+              value={selectedChartBranch}
+              onChange={(e) => setSelectedChartBranch(e.target.value)}
+              options={[
+                { value: 'all', label: 'All Branches' },
+                ...branchPerformance.map(branch => ({
+                  value: branch.id,
+                  label: branch.name
+                }))
+              ]}
+              placeholder="Select Branch"
+              className="w-32"
+            />
+            <Dropdown
               value={selectedTimeRange}
               onChange={(e) => setSelectedTimeRange(e.target.value)}
               options={[
@@ -114,7 +128,7 @@ const SuperAdminStudentTrends = ({ selectedBranch = 'all' }) => {
           <span className={growth >= 0 ? 'text-green-600' : 'text-red-600'}>
             {growth >= 0 ? '+' : ''}{growth}% growth
           </span>
-          <span>• {selectedBranch === 'all' ? 'All Branches' : `Branch: ${selectedBranch}`}</span>
+          <span>• {selectedChartBranch === 'all' ? 'All Branches' : `Branch: ${selectedChartBranch}`}</span>
         </div>
       </CardHeader>
       <CardContent>

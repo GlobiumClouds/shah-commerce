@@ -2,26 +2,28 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import Dropdown from '@/components/ui/dropdown';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Building2 } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 
-const SuperAdminBranchWiseStudents = ({ selectedBranch = 'all' }) => {
+const SuperAdminBranchWiseStudents = ({ selectedBranch = 'all', branchPerformance = [] }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedChartBranch, setSelectedChartBranch] = useState('all');
   const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     fetchBranchWiseStudents();
-  }, [selectedBranch]);
+  }, [selectedChartBranch]);
 
   const fetchBranchWiseStudents = async () => {
     try {
       setLoading(true);
       const params = {
-        branch: selectedBranch
+        branch: selectedChartBranch
       };
 
       const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CHARTS.BRANCH_WISE_STUDENTS, { params });
@@ -90,9 +92,24 @@ const SuperAdminBranchWiseStudents = ({ selectedBranch = 'all' }) => {
             </div>
             Branch-wise Student Distribution
           </CardTitle>
+          <div className="flex items-center gap-2">
+            <Dropdown
+              value={selectedChartBranch}
+              onChange={(e) => setSelectedChartBranch(e.target.value)}
+              options={[
+                { value: 'all', label: 'All Branches' },
+                ...branchPerformance.map(branch => ({
+                  value: branch.id,
+                  label: branch.name
+                }))
+              ]}
+              placeholder="Select Branch"
+              className="w-32"
+            />
+          </div>
         </div>
         <div className="text-sm text-muted-foreground">
-          Total Students: {totalStudents} • {selectedBranch === 'all' ? 'All Branches' : `Branch: ${selectedBranch}`}
+          Total Students: {totalStudents} • {selectedChartBranch === 'all' ? 'All Branches' : `Branch: ${selectedChartBranch}`}
         </div>
       </CardHeader>
       <CardContent>

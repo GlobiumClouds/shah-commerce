@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import { authenticate } from '@/backend/middleware/auth';
+import User from '@/backend/models/User';
+import Class from '@/backend/models/Class';
 
 export async function GET(request) {
   try {
@@ -19,21 +21,64 @@ export async function GET(request) {
 
     await connectDB();
 
-    // Mock data for now - replace with actual database queries
-    const mockData = [
-      { class: 'Class 1', students: 25, branch: 'Branch A' },
-      { class: 'Class 2', students: 28, branch: 'Branch A' },
-      { class: 'Class 3', students: 30, branch: 'Branch A' },
-      { class: 'Class 4', students: 26, branch: 'Branch A' },
-      { class: 'Class 5', students: 32, branch: 'Branch A' },
-      { class: 'Class 6', students: 29, branch: 'Branch A' },
-      { class: 'Class 7', students: 31, branch: 'Branch A' },
-      { class: 'Class 8', students: 27, branch: 'Branch A' }
+    // Build aggregation pipeline for class-wise student count
+    const pipeline = [
+      {
+        $match: {
+          role: 'student',
+          ...(branch !== 'all' && { branchId: branch })
+        }
+      },
+      {
+        $lookup: {
+          from: 'classes',
+          localField: 'studentProfile.classId',
+          foreignField: '_id',
+          as: 'classInfo'
+        }
+      },
+      {
+        $unwind: '$classInfo'
+      },
+      {
+        $lookup: {
+          from: 'branches',
+          localField: 'branchId',
+          foreignField: '_id',
+          as: 'branchInfo'
+        }
+      },
+      {
+        $unwind: '$branchInfo'
+      },
+      {
+        $group: {
+          _id: {
+            classId: '$classInfo._id',
+            className: '$classInfo.name',
+            branchName: '$branchInfo.name'
+          },
+          students: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          class: '$_id.className',
+          students: 1,
+          branch: '$_id.branchName'
+        }
+      },
+      {
+        $sort: { class: 1 }
+      }
     ];
+
+    const data = await User.aggregate(pipeline);
 
     return NextResponse.json({
       success: true,
-      data: mockData
+      data
     });
 
   } catch (error) {

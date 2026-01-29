@@ -720,20 +720,20 @@ export default function SuperAdminDashboard() {
 
         {/* Row 1: Student Trends and Class-wise Students Count */}
         <div className="grid gap-6 md:grid-cols-2">
-          <SuperAdminStudentTrends selectedBranch={selectedBranch} />
-          <SuperAdminClassWiseStudents selectedBranch={selectedBranch} />
+          <SuperAdminStudentTrends selectedBranch={selectedBranch} branchPerformance={branchPerformance} />
+          <SuperAdminClassWiseStudents selectedBranch={selectedBranch} branchPerformance={branchPerformance} />
         </div>
 
         {/* Row 2: Branch-wise Students and Student Attendance Percentage */}
         <div className="grid gap-6 md:grid-cols-2">
-          <SuperAdminBranchWiseStudents selectedBranch={selectedBranch} />
-          <SuperAdminStudentAttendance selectedBranch={selectedBranch} />
+          <SuperAdminBranchWiseStudents selectedBranch={selectedBranch} branchPerformance={branchPerformance} />
+          <SuperAdminStudentAttendance selectedBranch={selectedBranch} branchPerformance={branchPerformance} />
         </div>
 
         {/* Row 3: Monthly Fee Collection and Pass vs Fail Ratio */}
         <div className="grid gap-6 md:grid-cols-2">
-          <SuperAdminMonthlyFeeCollection selectedBranch={selectedBranch} />
-          <SuperAdminPassFailRatio selectedBranch={selectedBranch} />
+          <SuperAdminMonthlyFeeCollection selectedBranch={selectedBranch} branchPerformance={branchPerformance} />
+          <SuperAdminPassFailRatio selectedBranch={selectedBranch} branchPerformance={branchPerformance} />
         </div>
       </div>
     </div>

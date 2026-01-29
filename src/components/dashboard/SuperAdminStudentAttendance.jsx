@@ -8,11 +8,12 @@ import { UserCheck } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 
-const SuperAdminStudentAttendance = ({ selectedBranch = 'all' }) => {
+const SuperAdminStudentAttendance = ({ selectedBranch = 'all', branchPerformance = [] }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTimeRange, setSelectedTimeRange] = useState('current_month');
+  const [selectedChartBranch, setSelectedChartBranch] = useState('all');
 
   useEffect(() => {
     fetchStudentAttendance();
@@ -22,7 +23,7 @@ const SuperAdminStudentAttendance = ({ selectedBranch = 'all' }) => {
     try {
       setLoading(true);
       const params = {
-        branch: selectedBranch,
+        branch: selectedChartBranch,
         timeRange: selectedTimeRange
       };
 
@@ -86,6 +87,19 @@ const SuperAdminStudentAttendance = ({ selectedBranch = 'all' }) => {
           </CardTitle>
           <div className="flex items-center gap-2">
             <Dropdown
+              value={selectedChartBranch}
+              onChange={(e) => setSelectedChartBranch(e.target.value)}
+              options={[
+                { value: 'all', label: 'All Branches' },
+                ...branchPerformance.map(branch => ({
+                  value: branch.id,
+                  label: branch.name
+                }))
+              ]}
+              placeholder="Select Branch"
+              className="w-32"
+            />
+            <Dropdown
               value={selectedTimeRange}
               onChange={(e) => setSelectedTimeRange(e.target.value)}
               options={[
@@ -100,7 +114,7 @@ const SuperAdminStudentAttendance = ({ selectedBranch = 'all' }) => {
         </div>
         <div className="text-sm text-muted-foreground">
           Average Attendance: {averageAttendance}% •
-          {selectedBranch === 'all' ? 'All Branches' : `Branch: ${selectedBranch}`}
+          {selectedChartBranch === 'all' ? 'All Branches' : `Branch: ${selectedChartBranch}`}
         </div>
       </CardHeader>
       <CardContent>

@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -8,22 +8,23 @@ import { Users } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 
-const SuperAdminClassWiseStudents = ({ selectedBranch = 'all' }) => {
+const SuperAdminClassWiseStudents = ({ selectedBranch = 'all', branchPerformance = [] }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedChartBranch, setSelectedChartBranch] = useState('all');
   const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     fetchClassWiseStudents();
-  }, [selectedBranch, selectedFilter]);
+  }, [selectedChartBranch, selectedFilter]);
 
   const fetchClassWiseStudents = async () => {
     try {
       setLoading(true);
       const params = {
-        branch: selectedBranch,
+        branch: selectedChartBranch,
         filter: selectedFilter
       };
 
@@ -82,6 +83,19 @@ const SuperAdminClassWiseStudents = ({ selectedBranch = 'all' }) => {
           </CardTitle>
           <div className="flex items-center gap-2">
             <Dropdown
+              value={selectedChartBranch}
+              onChange={(e) => setSelectedChartBranch(e.target.value)}
+              options={[
+                { value: 'all', label: 'All Branches' },
+                ...branchPerformance.map(branch => ({
+                  value: branch.id,
+                  label: branch.name
+                }))
+              ]}
+              placeholder="Select Branch"
+              className="w-32"
+            />
+            <Dropdown
               value={selectedFilter}
               onChange={(e) => setSelectedFilter(e.target.value)}
               options={[
@@ -95,7 +109,7 @@ const SuperAdminClassWiseStudents = ({ selectedBranch = 'all' }) => {
           </div>
         </div>
         <div className="text-sm text-muted-foreground">
-          Total Students: {totalStudents} • {selectedBranch === 'all' ? 'All Branches' : `Branch: ${selectedBranch}`}
+          Total Students: {totalStudents} • {selectedChartBranch === 'all' ? 'All Branches' : `Branch: ${selectedChartBranch}`}
         </div>
       </CardHeader>
       <CardContent>

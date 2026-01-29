@@ -8,21 +8,22 @@ import { Receipt } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 
-const SuperAdminMonthlyFeeCollection = ({ selectedBranch = 'all' }) => {
+const SuperAdminMonthlyFeeCollection = ({ selectedBranch = 'all', branchPerformance = [] }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedTimeRange, setSelectedTimeRange] = useState('6months');
+  const [selectedChartBranch, setSelectedChartBranch] = useState('all');
 
   useEffect(() => {
     fetchMonthlyFeeCollection();
-  }, [selectedBranch, selectedTimeRange]);
+  }, [selectedChartBranch, selectedTimeRange]);
 
   const fetchMonthlyFeeCollection = async () => {
     try {
       setLoading(true);
       const params = {
-        branch: selectedBranch,
+        branch: selectedChartBranch,
         timeRange: selectedTimeRange
       };
 
@@ -85,6 +86,19 @@ const SuperAdminMonthlyFeeCollection = ({ selectedBranch = 'all' }) => {
           </CardTitle>
           <div className="flex items-center gap-2">
             <Dropdown
+              value={selectedChartBranch}
+              onChange={(e) => setSelectedChartBranch(e.target.value)}
+              options={[
+                { value: 'all', label: 'All Branches' },
+                ...branchPerformance.map(branch => ({
+                  value: branch.id,
+                  label: branch.name
+                }))
+              ]}
+              placeholder="Select Branch"
+              className="w-32"
+            />
+            <Dropdown
               value={selectedTimeRange}
               onChange={(e) => setSelectedTimeRange(e.target.value)}
               options={[
@@ -100,7 +114,7 @@ const SuperAdminMonthlyFeeCollection = ({ selectedBranch = 'all' }) => {
         <div className="text-sm text-muted-foreground">
           Total Collected: PKR {totalCollected.toLocaleString()} •
           Avg Monthly: PKR {averageMonthly.toLocaleString()} •
-          {selectedBranch === 'all' ? 'All Branches' : `Branch: ${selectedBranch}`}
+          {selectedChartBranch === 'all' ? 'All Branches' : `Branch: ${selectedChartBranch}`}
         </div>
       </CardHeader>
       <CardContent>
