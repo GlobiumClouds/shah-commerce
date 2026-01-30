@@ -53,9 +53,11 @@ export async function DELETE(request, { params }) {
   return withAuth(
     async (request, user) => {
       try {
-        const { id } = params;
+        const { id } = await params;
+        console.log('Delete branch request for ID:', id);
+
         const result = await deleteBranch(id);
-        
+
         return NextResponse.json(result, { status: 200 });
       } catch (error) {
         console.error('Delete branch error:', error);

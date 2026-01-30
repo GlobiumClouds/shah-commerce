@@ -51,11 +51,11 @@ const ROLE_MENUS = {
           path: "/super-admin/branch-management/branches",
           icon: FolderOpen,
         },
-        {
-          name: "Library",
-          path: "/super-admin/library",
-          icon: Library,
-        }
+        // {
+        //   name: "Library",
+        //   path: "/super-admin/library",
+        //   icon: Library,
+        // }
       ],
     },
     {
@@ -111,17 +111,17 @@ const ROLE_MENUS = {
         { name: "Exam Management", path: "/super-admin/exams", icon: FileText },
       ],
     },
-    {
-      category: "Library Management",
-      isCollapsible: true,
-      items: [
-        {
-          name: "Library Books",
-          path: "/super-admin/library",
-          icon: BookOpen,
-        },
-      ],
-    },
+    // {
+    //   category: "Library Management",
+    //   isCollapsible: true,
+    //   items: [
+    //     {
+    //       name: "Library Books",
+    //       path: "/super-admin/library",
+    //       icon: BookOpen,
+    //     },
+    //   ],
+    // },
     {
       category: "Student Management",
       isCollapsible: true,
@@ -261,13 +261,13 @@ const ROLE_MENUS = {
         { name: "Academic Structure", path: "/branch-admin/academic-structure", icon: GraduationCap },
       ],
     },
-    {
-      category: "Library Management",
-      isCollapsible: true,
-      items: [
-        { name: "Library Books", path: "/branch-admin/library", icon: BookOpen },
-      ],
-    },
+    // {
+    //   category: "Library Management",
+    //   isCollapsible: true,
+    //   items: [
+    //     { name: "Library Books", path: "/branch-admin/library", icon: BookOpen },
+    //   ],
+    // },
     {
       category: "Operations",
       isCollapsible: true,

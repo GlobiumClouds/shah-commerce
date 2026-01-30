@@ -32,24 +32,17 @@ const SuperAdminStudentAttendance = ({ selectedBranch = 'all', branchPerformance
       if (response.success && response.data) {
         setData(response.data);
       } else {
-        // Fallback mock data
-        setData(generateMockData());
+        setData([]);
       }
     } catch (err) {
       console.error('Failed to fetch student attendance:', err);
-      setData(generateMockData());
+      setData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateMockData = () => {
-    const classes = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8'];
-    return classes.map(className => ({
-      class: className,
-      percentage: Math.floor(Math.random() * 30) + 70 // 70-100%
-    }));
-  };
+
 
   const averageAttendance = data.length > 0
     ? (data.reduce((sum, item) => sum + (item.percentage || 0), 0) / data.length).toFixed(1)

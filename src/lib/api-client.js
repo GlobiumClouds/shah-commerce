@@ -187,9 +187,10 @@ class ApiClient {
       console.error('API Client Error:', {
         method,
         endpoint,
-        error, // Log the full error object
+        message: error?.message,
         status: error?.status,
-        response: error?.response?.data
+        response: error?.response?.data,
+        stack: error?.stack
       });
       throw error;
     }

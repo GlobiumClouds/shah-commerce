@@ -4,6 +4,7 @@ import { ROLES } from '@/constants/roles';
 import {
   getAllBranches,
   createBranch,
+  deleteBranch,
   getBranchStats,
 } from '@/backend/controllers/branchController';
 
@@ -24,6 +25,35 @@ export async function GET(request) {
         console.error('Get branches error:', error);
         return NextResponse.json(
           { success: false, message: error.message || 'Failed to fetch branches' },
+          { status: 500 }
+        );
+      }
+    },
+    [requireRole(ROLES.SUPER_ADMIN)]
+  )(request);
+}
+
+export async function DELETE(request) {
+  return withAuth(
+    async (request, user) => {
+      try {
+        const { searchParams } = new URL(request.url);
+        const branchId = searchParams.get('id');
+
+        if (!branchId) {
+          return NextResponse.json(
+            { success: false, message: 'Branch ID is required' },
+            { status: 400 }
+          );
+        }
+
+        const result = await deleteBranch(branchId);
+
+        return NextResponse.json(result, { status: 200 });
+      } catch (error) {
+        console.error('Delete branch error:', error);
+        return NextResponse.json(
+          { success: false, message: error.message || 'Failed to delete branch' },
           { status: 500 }
         );
       }

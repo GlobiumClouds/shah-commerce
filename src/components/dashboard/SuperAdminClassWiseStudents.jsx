@@ -33,25 +33,17 @@ const SuperAdminClassWiseStudents = ({ selectedBranch = 'all', branchPerformance
       if (response.success && response.data) {
         setData(response.data);
       } else {
-        // Fallback mock data
-        setData(generateMockData());
+        setData([]);
       }
     } catch (err) {
       console.error('Failed to fetch class-wise students:', err);
-      setData(generateMockData());
+      setData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateMockData = () => {
-    const classes = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8'];
-    return classes.map(className => ({
-      class: className,
-      students: Math.floor(Math.random() * 40) + 20,
-      branch: selectedBranch === 'all' ? 'Branch A' : selectedBranch
-    }));
-  };
+
 
   const totalStudents = data.reduce((sum, item) => sum + (item.students || 0), 0);
 

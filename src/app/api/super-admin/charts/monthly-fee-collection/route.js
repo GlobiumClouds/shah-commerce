@@ -95,32 +95,31 @@ export async function GET(request) {
     console.log('Start date:', startDate);
     console.log('Raw aggregated data:', data);
 
-    // If no data found, use mock data based on timeRange
+    // If no data found, return data with zero values for axes
     if (!data || data.length === 0) {
-      console.log('No fee collection data found, using mock data for', months, 'months');
+      console.log('No fee collection data found, returning zero values for axes');
 
       const monthNames = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
       ];
 
-      const mockData = [];
+      const zeroData = [];
       const currentDate = new Date();
 
       for (let i = months - 1; i >= 0; i--) {
         const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
         const monthIndex = date.getMonth();
-        const amount = Math.floor(Math.random() * 20000) + 30000; // Random amount between 30k-50k
 
-        mockData.push({
+        zeroData.push({
           month: monthNames[monthIndex],
-          amount: amount
+          amount: 0
         });
       }
 
       return NextResponse.json({
         success: true,
-        data: mockData
+        data: zeroData
       });
     }
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import { authenticate } from '@/backend/middleware/auth';
+import Branch from '@/backend/models/Branch';
+import User from '@/backend/models/User';
 
 export async function GET(request) {
   try {
@@ -18,18 +20,36 @@ export async function GET(request) {
 
     await connectDB();
 
-    // Mock data for now - replace with actual database queries
-    const mockData = [
-      { branch: 'Main Campus', students: 245, code: 'MC' },
-      { branch: 'North Branch', students: 189, code: 'NB' },
-      { branch: 'South Branch', students: 156, code: 'SB' },
-      { branch: 'East Branch', students: 203, code: 'EB' },
-      { branch: 'West Branch', students: 178, code: 'WB' }
-    ];
+    // Get all branches and count students per branch
+    const branches = await Branch.find({}).select('name code').lean();
+
+    if (!branches || branches.length === 0) {
+      console.log('No branches found, returning empty data');
+      return NextResponse.json({
+        success: true,
+        data: []
+      });
+    }
+
+    // Get student counts for each branch
+    const branchData = await Promise.all(
+      branches.map(async (branch) => {
+        const studentCount = await User.countDocuments({
+          role: 'student',
+          branchId: branch._id
+        });
+
+        return {
+          branch: branch.name,
+          students: studentCount,
+          code: branch.code
+        };
+      })
+    );
 
     return NextResponse.json({
       success: true,
-      data: mockData
+      data: branchData
     });
 
   } catch (error) {

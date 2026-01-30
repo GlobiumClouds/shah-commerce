@@ -116,17 +116,18 @@ export async function GET(request) {
       failCount = result[0].failCount;
     }
 
-    // If no data found, use mock data
+    // If no data found, return data with zero values for axes
     if (passCount === 0 && failCount === 0) {
-      console.log('No exam data found, using mock data for pass-fail ratio');
-      const mockData = [
-        { name: 'Pass', value: 85, color: '#10b981' },
-        { name: 'Fail', value: 15, color: '#ef4444' }
+      console.log('No exam data found, returning zero values for axes');
+
+      const zeroData = [
+        { name: 'Pass', value: 0, color: '#10b981' },
+        { name: 'Fail', value: 0, color: '#ef4444' }
       ];
 
       return NextResponse.json({
         success: true,
-        data: mockData
+        data: zeroData
       });
     }
 

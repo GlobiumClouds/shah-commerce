@@ -32,25 +32,17 @@ const SuperAdminPassFailRatio = ({ selectedBranch = 'all', branchPerformance = [
       if (response.success && response.data) {
         setData(response.data);
       } else {
-        // Fallback mock data
-        setData(generateMockData());
+        setData([]);
       }
     } catch (err) {
       console.error('Failed to fetch pass fail ratio:', err);
-      setData(generateMockData());
+      setData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateMockData = () => {
-    const passPercentage = Math.floor(Math.random() * 30) + 70; // 70-100%
-    const failPercentage = 100 - passPercentage;
-    return [
-      { name: 'Pass', value: passPercentage, color: '#10b981' },
-      { name: 'Fail', value: failPercentage, color: '#ef4444' }
-    ];
-  };
+
 
   const totalStudents = data.reduce((sum, item) => sum + (item.value || 0), 0);
   const passRate = data.find(item => item.name === 'Pass')?.value || 0;

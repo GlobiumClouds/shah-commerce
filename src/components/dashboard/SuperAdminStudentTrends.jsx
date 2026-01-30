@@ -33,25 +33,17 @@ const SuperAdminStudentTrends = ({ selectedBranch = 'all', branchPerformance = [
       if (response.success && response.data) {
         setData(response.data);
       } else {
-        // Fallback mock data
-        setData(generateMockData());
+        setData([]);
       }
     } catch (err) {
       console.error('Failed to fetch student trends:', err);
-      setData(generateMockData());
+      setData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateMockData = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    return months.map(month => ({
-      month,
-      students: Math.floor(Math.random() * 100) + 50,
-      growth: Math.floor(Math.random() * 20) - 10
-    }));
-  };
+
 
   const calculateGrowth = () => {
     if (data.length < 2) return 0;

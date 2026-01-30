@@ -31,25 +31,17 @@ const SuperAdminBranchWiseStudents = ({ selectedBranch = 'all', branchPerformanc
       if (response.success && response.data) {
         setData(response.data);
       } else {
-        // Fallback mock data
-        setData(generateMockData());
+        setData([]);
       }
     } catch (err) {
       console.error('Failed to fetch branch-wise students:', err);
-      setData(generateMockData());
+      setData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateMockData = () => {
-    const branches = ['Main Campus', 'North Branch', 'South Branch', 'East Branch', 'West Branch'];
-    return branches.map(branch => ({
-      branch: branch,
-      students: Math.floor(Math.random() * 200) + 50,
-      code: branch.split(' ')[0].toUpperCase()
-    }));
-  };
+
 
   const totalStudents = data.reduce((sum, item) => sum + (item.students || 0), 0);
 

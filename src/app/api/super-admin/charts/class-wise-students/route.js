@@ -76,6 +76,23 @@ export async function GET(request) {
 
     const data = await User.aggregate(pipeline);
 
+    // If no data found, return zero values for all classes to show axes
+    if (!data || data.length === 0) {
+      console.log('No class-wise student data found, returning zero values for axes');
+
+      const classes = ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8'];
+      const zeroData = classes.map(className => ({
+        class: className,
+        students: 0,
+        branch: branch === 'all' ? 'All Branches' : branch
+      }));
+
+      return NextResponse.json({
+        success: true,
+        data: zeroData
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data

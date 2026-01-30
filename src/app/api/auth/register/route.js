@@ -5,12 +5,12 @@ export async function POST(request) {
   try {
     const body = await request.json();
 
-    const { email, password, firstName, lastName, role, ...otherData } = body;
+    const { email, password, fullName, phone, role, ...otherData } = body;
 
     // Validate required fields
-    if (!email || !password || !firstName || !role) {
+    if (!email || !password || !fullName || !role) {
       return NextResponse.json(
-        { success: false, message: 'Email, password, firstName, and role are required' },
+        { success: false, message: 'Email, password, fullName, and role are required' },
         { status: 400 }
       );
     }
@@ -19,8 +19,8 @@ export async function POST(request) {
     const userData = {
       email,
       password,
-      firstName,
-      lastName,
+      fullName,
+      phone,
       role,
       ...otherData
     };

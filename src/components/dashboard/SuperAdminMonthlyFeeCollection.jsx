@@ -32,24 +32,17 @@ const SuperAdminMonthlyFeeCollection = ({ selectedBranch = 'all', branchPerforma
       if (response.success && response.data) {
         setData(response.data);
       } else {
-        // Fallback mock data
-        setData(generateMockData());
+        setData([]);
       }
     } catch (err) {
       console.error('Failed to fetch monthly fee collection:', err);
-      setData(generateMockData());
+      setData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateMockData = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    return months.map(month => ({
-      month,
-      amount: Math.floor(Math.random() * 40000) + 20000
-    }));
-  };
+
 
   const totalCollected = data.reduce((sum, item) => sum + (item.amount || 0), 0);
   const averageMonthly = data.length > 0 ? (totalCollected / data.length).toFixed(0) : 0;
