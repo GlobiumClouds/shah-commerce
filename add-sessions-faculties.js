@@ -35,10 +35,72 @@ async function loginSuperAdmin() {
 }
 
 /**
+ * Create a new session
+ */
+async function createSession(name, code, sessionYear, description = '') {
+  console.log(`\n📅 Creating session: ${name} (${sessionYear})`);
+
+  try {
+    const response = await axios.post(`${API_BASE_URL}/api/super-admin/sessions`, {
+      name,
+      code,
+      sessionYear,
+      description
+    }, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.data.success) {
+      console.log('✅ Session created successfully!');
+      const session = response.data.data;
+      console.log(`   Name: ${session.name}`);
+      console.log(`   Year: ${session.sessionYear}`);
+      console.log(`   ID: ${session._id}`);
+      return session;
+    } else {
+      console.log('❌ Failed to create session:', response.data.message);
+      return null;
+    }
+  } catch (error) {
+    console.log('❌ Create session error:', error.response?.data?.message || error.message);
+    return null;
+  }
+}
+
+/**
+ * Create default sessions
+ */
+async function createDefaultSessions() {
+  console.log('\n📅 Creating default sessions...');
+
+  const defaultSessions = [
+    { name: 'Session 2025', code: 'SESS-2025', sessionYear: 2025, description: 'Academic Session 2025' },
+    { name: 'Session 2026', code: 'SESS-2026', sessionYear: 2026, description: 'Academic Session 2026' }
+  ];
+
+  const createdSessions = [];
+
+  for (const session of defaultSessions) {
+    const created = await createSession(session.name, session.code, session.sessionYear, session.description);
+    if (created) {
+      createdSessions.push(created);
+    }
+    // Small delay to avoid overwhelming the API
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  console.log(`\n✅ Created ${createdSessions.length} default sessions!`);
+  return createdSessions;
+}
+
+/**
  * Create a new faculty
  */
 async function createFaculty(name, code, description = '') {
-  console.log(`\n📝 Creating faculty: ${name}`);
+  console.log(`\n🏫 Creating faculty: ${name}`);
 
   try {
     const response = await axios.post(`${API_BASE_URL}/api/super-admin/faculties`, {
@@ -99,10 +161,53 @@ async function createDefaultFaculties() {
 }
 
 /**
+ * Fetch all sessions
+ */
+async function fetchSessions() {
+  console.log('\n📅 Fetching all sessions...');
+
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/super-admin/sessions`, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.data.success) {
+      console.log('✅ Sessions fetched successfully!');
+      console.log(`📊 Total sessions: ${response.data.data.length}`);
+
+      if (response.data.data.length > 0) {
+        console.log('\n📅 Session Details:');
+        console.log('=' .repeat(60));
+
+        response.data.data.forEach((session, index) => {
+          console.log(`${index + 1}. ${session.name}`);
+          console.log(`   Year: ${session.sessionYear}`);
+          console.log(`   Description: ${session.description || 'No description'}`);
+          console.log(`   ID: ${session._id}`);
+          console.log(`   Created: ${new Date(session.createdAt).toLocaleDateString()}`);
+          console.log('-'.repeat(40));
+        });
+      }
+
+      return response.data.data;
+    } else {
+      console.log('❌ Failed to fetch sessions:', response.data.message);
+      return null;
+    }
+  } catch (error) {
+    console.log('❌ Fetch sessions error:', error.response?.data?.message || error.message);
+    return null;
+  }
+}
+
+/**
  * Fetch all faculties
  */
 async function fetchFaculties() {
-  console.log('\n📋 Fetching all faculties...');
+  console.log('\n🏫 Fetching all faculties...');
 
   try {
     const response = await axios.get(`${API_BASE_URL}/api/super-admin/faculties`, {
@@ -117,7 +222,7 @@ async function fetchFaculties() {
       console.log(`📊 Total faculties: ${response.data.data.length}`);
 
       if (response.data.data.length > 0) {
-        console.log('\n📋 Faculty Details:');
+        console.log('\n🏫 Faculty Details:');
         console.log('=' .repeat(60));
 
         response.data.data.forEach((faculty, index) => {
@@ -126,13 +231,8 @@ async function fetchFaculties() {
           console.log(`   Description: ${faculty.description || 'No description'}`);
           console.log(`   ID: ${faculty._id}`);
           console.log(`   Created: ${new Date(faculty.createdAt).toLocaleDateString()}`);
-          console.log(`   Updated: ${new Date(faculty.updatedAt).toLocaleDateString()}`);
           console.log('-'.repeat(40));
         });
-      } else {
-        console.log('📝 No faculties found. Creating default faculties...');
-        const createdFaculties = await createDefaultFaculties();
-        return createdFaculties;
       }
 
       return response.data.data;
@@ -142,83 +242,6 @@ async function fetchFaculties() {
     }
   } catch (error) {
     console.log('❌ Fetch faculties error:', error.response?.data?.message || error.message);
-    console.log('❌ Status code:', error.response?.status);
-    return null;
-  }
-}
-
-/**
- * Fetch faculties with stats
- */
-async function fetchFacultiesWithStats() {
-  console.log('\n📊 Fetching faculties with subject count stats...');
-
-  try {
-    const response = await axios.get(`${API_BASE_URL}/api/super-admin/faculties?stats=true`, {
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (response.data.success) {
-      console.log('✅ Faculties with stats fetched successfully!');
-      console.log(`📊 Total faculties: ${response.data.data.length}`);
-
-      if (response.data.data.length > 0) {
-        console.log('\n📋 Faculty Stats:');
-        console.log('=' .repeat(60));
-
-        response.data.data.forEach((faculty, index) => {
-          console.log(`${index + 1}. ${faculty.name} (${faculty.code})`);
-          console.log(`   Subject Count: ${faculty.subjectCount || 0}`);
-          console.log(`   Description: ${faculty.description || 'No description'}`);
-          console.log('-'.repeat(40));
-        });
-      }
-
-      return response.data.data;
-    } else {
-      console.log('❌ Failed to fetch faculties with stats:', response.data.message);
-      return null;
-    }
-  } catch (error) {
-    console.log('❌ Fetch faculties with stats error:', error.response?.data?.message || error.message);
-    return null;
-  }
-}
-
-/**
- * Fetch single faculty by ID
- */
-async function fetchFacultyById(facultyId) {
-  console.log(`\n🔍 Fetching faculty by ID: ${facultyId}`);
-
-  try {
-    const response = await axios.get(`${API_BASE_URL}/api/super-admin/faculties/${facultyId}`, {
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (response.data.success) {
-      console.log('✅ Faculty fetched successfully!');
-      const faculty = response.data.data;
-      console.log(`📋 Faculty Details:`);
-      console.log(`   Name: ${faculty.name}`);
-      console.log(`   Code: ${faculty.code}`);
-      console.log(`   Description: ${faculty.description || 'No description'}`);
-      console.log(`   ID: ${faculty._id}`);
-      console.log(`   Created: ${new Date(faculty.createdAt).toLocaleDateString()}`);
-      console.log(`   Updated: ${new Date(faculty.updatedAt).toLocaleDateString()}`);
-      return faculty;
-    } else {
-      console.log('❌ Failed to fetch faculty:', response.data.message);
-      return null;
-    }
-  } catch (error) {
-    console.log('❌ Fetch faculty by ID error:', error.response?.data?.message || error.message);
     return null;
   }
 }
@@ -227,8 +250,8 @@ async function fetchFacultyById(facultyId) {
  * Main function
  */
 async function main() {
-  console.log('🚀 Fetching Faculties through API');
-  console.log('=' .repeat(50));
+  console.log('🚀 Adding Sessions and Faculties through Super Admin APIs');
+  console.log('=' .repeat(70));
 
   // Step 1: Login as super admin
   const loginSuccess = await loginSuperAdmin();
@@ -237,24 +260,30 @@ async function main() {
     return;
   }
 
-  // Step 2: Fetch all faculties
-  const faculties = await fetchFaculties();
-  if (!faculties) {
-    console.log('❌ Script failed: Could not fetch faculties');
+  // Step 2: Create default sessions
+  console.log('\n📅 Creating Sessions...');
+  const sessions = await createDefaultSessions();
+  if (!sessions) {
+    console.log('❌ Script failed: Could not create sessions');
     return;
   }
 
-  // Step 3: Fetch faculties with stats
-  await fetchFacultiesWithStats();
-
-  // Step 4: If we have faculties, fetch one by ID
-  if (faculties.length > 0) {
-    const firstFacultyId = faculties[0]._id;
-    await fetchFacultyById(firstFacultyId);
+  // Step 3: Create default faculties
+  console.log('\n🏫 Creating Faculties...');
+  const faculties = await createDefaultFaculties();
+  if (!faculties) {
+    console.log('❌ Script failed: Could not create faculties');
+    return;
   }
 
-  console.log('\n🎉 Faculty fetching completed successfully!');
-  console.log('=' .repeat(50));
+  // Step 4: Fetch and display all sessions
+  await fetchSessions();
+
+  // Step 5: Fetch and display all faculties
+  await fetchFaculties();
+
+  console.log('\n🎉 Sessions and faculties setup completed successfully!');
+  console.log('=' .repeat(70));
 }
 
 // Run the script

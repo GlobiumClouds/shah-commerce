@@ -15,7 +15,7 @@ const FacultyForm = ({ faculty, onSuccess, onCancel }) => {
     description: ''
   });
   const [loading, setLoading] = useState(false);
-  const { execute: apiCall } = useApi();
+  const { apiCall } = useApi();
 
   useEffect(() => {
     if (faculty) {
@@ -25,6 +25,7 @@ const FacultyForm = ({ faculty, onSuccess, onCancel }) => {
         description: faculty.description || ''
       });
     } else {
+      // Reset form for new faculty
       setFormData({
         name: '',
         code: '',
@@ -41,7 +42,7 @@ const FacultyForm = ({ faculty, onSuccess, onCancel }) => {
 
     // Auto-generate code when name changes for new faculties
     if (field === 'name' && !faculty) {
-      const code = value.toUpperCase().replace(/\s+/g, '-').substring(0, 10);
+      const code = value.toUpperCase().replace(/\s+/g, '_').substring(0, 10);
       setFormData(prev => ({
         ...prev,
         code: code
@@ -97,7 +98,7 @@ const FacultyForm = ({ faculty, onSuccess, onCancel }) => {
                 id="code"
                 value={formData.code}
                 onChange={(e) => handleInputChange('code', e.target.value)}
-                placeholder="e.g., PRE-ENG"
+                placeholder="e.g., PRE_ENG"
                 required
               />
             </div>

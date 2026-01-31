@@ -12,7 +12,7 @@ const FacultyList = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null);
-  const { execute: apiCall } = useApi();
+  const { execute: apiCall, loading: apiLoading } = useApi();
 
   const fetchFaculties = async () => {
     try {

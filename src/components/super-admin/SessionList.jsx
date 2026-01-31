@@ -1,35 +1,56 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useApi } from '../../hooks/useApi';
+import { API_ENDPOINTS } from '../../constants/api-endpoints';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 import SessionForm from './SessionForm';
 
-const SessionList = () => {
+const SessionList = ({ sessions: propSessions, onEdit, onDelete, loading: propLoading, showHeader = true }) => {
   const [sessions, setSessions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!propSessions && showHeader && !onEdit && !onDelete);
   const [showForm, setShowForm] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
-  const { apiCall, loading: apiLoading } = useApi();
+  const { execute: apiCall } = useApi();
+
+  // Use props if provided or if callbacks are provided (controlled component), otherwise fetch data
+  useEffect(() => {
+    if (propSessions !== undefined || onEdit || onDelete) {
+      setSessions(propSessions || []);
+      setLoading(false);
+    } else if (showHeader) {
+      fetchSessions();
+    }
+  }, [propSessions, showHeader, onEdit, onDelete]);
 
   const fetchSessions = async () => {
     try {
-      const response = await apiCall('/super-admin/sessions');
+      console.log('Fetching sessions from frontend...');
+      const response = await apiCall(API_ENDPOINTS.SUPER_ADMIN.SESSIONS.LIST);
+      console.log('Frontend response:', response);
       if (response.success) {
-        setSessions(response.data);
+        console.log('Setting sessions data:', response.data);
+        setSessions(response.data || []);
+      } else {
+        throw new Error(response.message || 'Failed to fetch sessions');
       }
     } catch (error) {
       console.error('Error fetching sessions:', error);
+      // Handle authentication errors
+      if (error.status === 401 || error.message?.includes('Authentication')) {
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+        return;
+      }
+      // For other errors, you could set an error state to display to user
+      // setError(error.message || 'Failed to load sessions');
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchSessions();
-  }, []);
 
   const handleCreate = () => {
     setEditingSession(null);
@@ -37,20 +58,29 @@ const SessionList = () => {
   };
 
   const handleEdit = (session) => {
-    setEditingSession(session);
-    setShowForm(true);
+    if (onEdit) {
+      onEdit(session);
+    } else {
+      setEditingSession(session);
+      setShowForm(true);
+    }
   };
 
   const handleDelete = async (sessionId) => {
-    if (!confirm('Are you sure you want to delete this session?')) return;
+    if (onDelete) {
+      onDelete(sessionId);
+    } else {
+      if (!confirm('Are you sure you want to delete this session?')) return;
 
-    try {
-      const response = await apiCall(`/super-admin/sessions/${sessionId}`, 'DELETE');
-      if (response.success) {
-        setSessions(sessions.filter(s => s._id !== sessionId));
+      try {
+        const deleteEndpoint = API_ENDPOINTS.SUPER_ADMIN.SESSIONS.DELETE.replace(':id', sessionId);
+        const response = await apiCall(deleteEndpoint, 'DELETE');
+        if (response.success) {
+          setSessions(sessions.filter(s => s._id !== sessionId));
+        }
+      } catch (error) {
+        console.error('Error deleting session:', error);
       }
-    } catch (error) {
-      console.error('Error deleting session:', error);
     }
   };
 
@@ -70,7 +100,7 @@ const SessionList = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      {/* <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Academic Sessions</h1>
           <p className="text-gray-600">Manage academic sessions (2025, 2026, etc.)</p>
@@ -79,7 +109,7 @@ const SessionList = () => {
           <Plus className="h-4 w-4" />
           Add Session
         </Button>
-      </div>
+      </div> */}
 
       {showForm && (
         <SessionForm

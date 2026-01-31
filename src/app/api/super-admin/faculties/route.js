@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import connectDB from '../../../../lib/database';
-import { getAllFaculties, createFaculty, getFacultiesWithStats } from '../../../../backend/controllers/facultyController';
+import { getAllFaculties, createFaculty, getFacultiesWithStats, updateFaculty, deleteFaculty } from '../../../../backend/controllers/facultyController';
 import { authenticate, requireRole } from '../../../../backend/middleware/auth';
 
 // GET /api/super-admin/faculties - Get all faculties
@@ -89,6 +89,25 @@ export async function POST(request) {
 
     const body = await request.json();
 
+    // Mock response object for controller
+    let responseData = null;
+    let statusCode = 201;
+
+    const mockRes = {
+      json: (data, status = 201) => {
+        responseData = data;
+        statusCode = status;
+        return { data, status };
+      },
+      status: (code) => ({
+        json: (data) => {
+          responseData = data;
+          statusCode = code;
+          return { data, status: code };
+        }
+      })
+    };
+
     // Mock request object
     const mockReq = {
       user: authResult.user,
@@ -96,9 +115,9 @@ export async function POST(request) {
     };
 
     // Call controller function
-    const result = await createFaculty(mockReq);
+    await createFaculty(mockReq, mockRes);
 
-    return Response.json(result, { status: result.status });
+    return Response.json(responseData, { status: statusCode });
   } catch (error) {
     console.error('Error in POST /api/super-admin/faculties:', error);
     return Response.json(

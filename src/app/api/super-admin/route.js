@@ -96,7 +96,10 @@ async function getSystemOverview() {
     totalNotifications,
     totalFeeTemplates,
     totalFeeVouchers,
-    totalAttendanceRecords
+    totalAttendanceRecords,
+    totalSessions,
+    totalFaculties,
+    totalSubjects
   ] = await Promise.all([
     User.countDocuments(),
     Branch.countDocuments(),
@@ -114,7 +117,22 @@ async function getSystemOverview() {
     Notification.countDocuments(),
     FeeTemplate.countDocuments(),
     FeeVoucher.countDocuments(),
-    Attendance.countDocuments()
+    Attendance.countDocuments(),
+    // Import Level model for sessions
+    (async () => {
+      const Level = (await import('@/backend/models/Level')).default;
+      return Level.countDocuments();
+    })(),
+    // Import Stream model for faculties
+    (async () => {
+      const Stream = (await import('@/backend/models/Stream')).default;
+      return Stream.countDocuments();
+    })(),
+    // Import Subject model
+    (async () => {
+      const Subject = (await import('@/backend/models/Subject')).default;
+      return Subject.countDocuments();
+    })()
   ]);
 
   return NextResponse.json({
@@ -134,7 +152,10 @@ async function getSystemOverview() {
         inactive: inactiveBranches
       },
       academic: {
+        sessions: totalSessions,
+        faculties: totalFaculties,
         classes: totalClasses,
+        subjects: totalSubjects,
         events: totalEvents,
         exams: 0, // TODO: Add exam count when model exists
         feeTemplates: totalFeeTemplates,
@@ -275,7 +296,11 @@ async function getAcademicOverview() {
     totalAttendance,
     presentCount,
     totalEvents,
-    upcomingEvents
+    upcomingEvents,
+    totalSessions,
+    activeSessions,
+    totalFaculties,
+    totalSubjects
   ] = await Promise.all([
     Class.countDocuments(),
     Class.countDocuments({ status: 'active' }),
@@ -288,7 +313,26 @@ async function getAcademicOverview() {
       { $count: 'present' }
     ]),
     Event.countDocuments(),
-    Event.countDocuments({ startDate: { $gt: new Date() }, status: 'scheduled' })
+    Event.countDocuments({ startDate: { $gt: new Date() }, status: 'scheduled' }),
+    // Import Level model for sessions
+    (async () => {
+      const Level = (await import('@/backend/models/Level')).default;
+      return Level.countDocuments();
+    })(),
+    (async () => {
+      const Level = (await import('@/backend/models/Level')).default;
+      return Level.countDocuments({ isActive: true });
+    })(),
+    // Import Stream model for faculties
+    (async () => {
+      const Stream = (await import('@/backend/models/Stream')).default;
+      return Stream.countDocuments();
+    })(),
+    // Import Subject model
+    (async () => {
+      const Subject = (await import('@/backend/models/Subject')).default;
+      return Subject.countDocuments();
+    })()
   ]);
 
   const attendanceRate = totalAttendance > 0 ?
@@ -297,10 +341,21 @@ async function getAcademicOverview() {
   return NextResponse.json({
     success: true,
     data: {
+      sessions: {
+        total: totalSessions,
+        active: activeSessions,
+        inactive: totalSessions - activeSessions
+      },
+      faculties: {
+        total: totalFaculties
+      },
       classes: {
         total: totalClasses,
         active: activeClasses,
         inactive: totalClasses - activeClasses
+      },
+      subjects: {
+        total: totalSubjects
       },
       students: totalStudents,
       teachers: totalTeachers,

@@ -4,7 +4,7 @@ import { useApi } from '../../hooks/useApi';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import textarea from '../ui/textarea';
+import { textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { X } from 'lucide-react';
@@ -18,7 +18,7 @@ const SessionForm = ({ session, onSuccess, onCancel }) => {
     description: ''
   });
   const [loading, setLoading] = useState(false);
-  const { apiCall } = useApi();
+  const { execute: apiCall } = useApi();
 
   useEffect(() => {
     if (session) {

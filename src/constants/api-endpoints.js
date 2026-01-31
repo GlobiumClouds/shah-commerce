@@ -31,6 +31,23 @@ export const API_ENDPOINTS = {
       MARK_READ: '/api/notifications', // PATCH
     },
 
+    //Faculty Management
+    FACULTIES: {
+      CREATE: '/api/super-admin/faculties', // POST
+      LIST: '/api/super-admin/faculties', // GET
+      GET: '/api/super-admin/faculties/:id', // GET
+      UPDATE: '/api/super-admin/faculties/:id', // PUT
+      DELETE: '/api/super-admin/faculties/:id', // DELETE
+    },
+    // Session Management
+    SESSIONS: {
+      CREATE: '/api/super-admin/sessions', // POST
+      LIST: '/api/super-admin/sessions', // GET
+      GET: '/api/super-admin/sessions/:id', // GET
+      UPDATE: '/api/super-admin/sessions/:id', // PUT
+      DELETE: '/api/super-admin/sessions/:id', // DELETE
+    },
+
     // Branch Management
     BRANCHES: {
       CREATE: '/api/super-admin/branches', // POST

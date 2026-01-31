@@ -132,12 +132,9 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const authzResult = authorize(['super_admin'])(authResult.user);
-    if (!authzResult) {
-      return Response.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 403 }
-      );
+    const authzResult = await requireRole(['super_admin'])(request, authResult.user);
+    if (authzResult) {
+      return authzResult;
     }
 
     // Mock response object for controller

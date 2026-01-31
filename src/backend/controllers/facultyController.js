@@ -1,13 +1,23 @@
-import Stream from '../models/Stream.js';
+import Faculty from '../models/Faculty.js';
 import { successResponse, errorResponse, notFoundResponse } from '../middleware/response.js';
 // Get all faculties
 export const getAllFaculties = async (req, res) => {
   try {
-    const faculties = await Stream.find({}).sort({ name: 1 });
-    return successResponse(res, faculties, 'Faculties retrieved successfully');
+    console.log('Fetching faculties...');
+    console.log('Faculty model:', Faculty);
+    const faculties = await Faculty.find({}).sort({ name: 1 });
+    console.log('Faculties found:', faculties.length);
+    res.status(200).json({
+      success: true,
+      message: 'Faculties retrieved successfully',
+      data: faculties
+    });
   } catch (error) {
     console.error('Error fetching faculties:', error);
-    return errorResponse(res, 'Failed to retrieve faculties', 500);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve faculties'
+    });
   }
 };
 
@@ -15,16 +25,26 @@ export const getAllFaculties = async (req, res) => {
 export const getFacultyById = async (req, res) => {
   try {
     const { id } = req.params;
-    const faculty = await Stream.findById(id);
+    const faculty = await Faculty.findById(id);
 
     if (!faculty) {
-      return notFoundResponse('Faculty not found');
+      return res.status(404).json({
+        success: false,
+        message: 'Faculty not found'
+      });
     }
 
-    return successResponse(faculty, 'Faculty retrieved successfully');
+    res.status(200).json({
+      success: true,
+      message: 'Faculty retrieved successfully',
+      data: faculty
+    });
   } catch (error) {
     console.error('Error fetching faculty:', error);
-    return errorResponse('Failed to retrieve faculty', 500);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve faculty'
+    });
   }
 };
 
@@ -35,48 +55,44 @@ export const createFaculty = async (req, res) => {
 
     // Validate required fields
     if (!name) {
-      return {
+      return res.status(400).json({
         success: false,
-        message: 'Faculty name is required',
-        status: 400
-      };
+        message: 'Faculty name is required'
+      });
     }
 
     // Check if faculty name already exists
-    const existingFaculty = await Stream.findOne({ name });
+    const existingFaculty = await Faculty.findOne({ name });
     if (existingFaculty) {
-      return {
+      return res.status(400).json({
         success: false,
-        message: 'Faculty name already exists',
-        status: 400
-      };
+        message: 'Faculty name already exists'
+      });
     }
 
     // Generate code if not provided
     const facultyCode = code || name.toUpperCase().replace(/\s+/g, '_');
 
-    const faculty = new Stream({
+    const faculty = new Faculty({
       name,
       code: facultyCode,
       description,
-      createdBy: req.user?.id,
-      updatedBy: req.user?.id
+      createdBy: req.user?.userId,
+      updatedBy: req.user?.userId
     });
 
     await faculty.save();
-    return {
+    res.status(201).json({
       success: true,
       message: 'Faculty created successfully',
-      data: faculty,
-      status: 201
-    };
+      data: faculty
+    });
   } catch (error) {
     console.error('Error creating faculty:', error);
-    return {
+    res.status(500).json({
       success: false,
-      message: 'Failed to create faculty',
-      status: 500
-    };
+      message: 'Failed to create faculty'
+    });
   }
 };
 
@@ -86,16 +102,22 @@ export const updateFaculty = async (req, res) => {
     const { id } = req.params;
     const { name, code, description } = req.body;
 
-    const faculty = await Stream.findById(id);
+    const faculty = await Faculty.findById(id);
     if (!faculty) {
-      return errorResponse(res, 'Faculty not found', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'Faculty not found'
+      });
     }
 
     // Check if name is being changed and if it conflicts
     if (name && name !== faculty.name) {
-      const existingFaculty = await Stream.findOne({ name, _id: { $ne: id } });
+      const existingFaculty = await Faculty.findOne({ name, _id: { $ne: id } });
       if (existingFaculty) {
-        return errorResponse(res, 'Faculty name already exists', 400);
+        return res.status(400).json({
+          success: false,
+          message: 'Faculty name already exists'
+        });
       }
     }
 
@@ -104,13 +126,20 @@ export const updateFaculty = async (req, res) => {
     if (code) faculty.code = code;
     if (description !== undefined) faculty.description = description;
 
-    faculty.updatedBy = req.user?.id;
+    faculty.updatedBy = req.user?.userId;
     await faculty.save();
 
-    return successResponse(res, faculty, 'Faculty updated successfully');
+    res.status(200).json({
+      success: true,
+      message: 'Faculty updated successfully',
+      data: faculty
+    });
   } catch (error) {
     console.error('Error updating faculty:', error);
-    return errorResponse(res, 'Failed to update faculty', 500);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update faculty'
+    });
   }
 };
 
@@ -119,9 +148,12 @@ export const deleteFaculty = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const faculty = await Stream.findById(id);
+    const faculty = await Faculty.findById(id);
     if (!faculty) {
-      return notFoundResponse('Faculty not found');
+      return res.status(404).json({
+        success: false,
+        message: 'Faculty not found'
+      });
     }
 
     // Check if faculty has associated classes
@@ -129,7 +161,10 @@ export const deleteFaculty = async (req, res) => {
     const associatedClasses = await Class.countDocuments({ facultyId: id });
 
     if (associatedClasses > 0) {
-      return errorResponse('Cannot delete faculty with associated classes', 400);
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete faculty with associated classes'
+      });
     }
 
     // Check if faculty has associated subjects
@@ -137,20 +172,29 @@ export const deleteFaculty = async (req, res) => {
     const associatedSubjects = await Subject.countDocuments({ facultyId: id });
 
     if (associatedSubjects > 0) {
-      return errorResponse('Cannot delete faculty with associated subjects', 400);
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete faculty with associated subjects'
+      });
     }
 
-    await Stream.findByIdAndDelete(id);
-    return successResponse(null, 'Faculty deleted successfully');
+    await Faculty.findByIdAndDelete(id);
+    res.status(200).json({
+      success: true,
+      message: 'Faculty deleted successfully'
+    });
   } catch (error) {
     console.error('Error deleting faculty:', error);
-    return errorResponse('Failed to delete faculty', 500);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete faculty'
+    });
   }
 };
 // Get faculties with subject count
 export const getFacultiesWithStats = async (req, res) => {
   try {
-    const faculties = await Stream.find({}).sort({ name: 1 });
+    const faculties = await Faculty.find({}).sort({ name: 1 });
 
     // Get subject counts for each faculty
     const Subject = (await import('../models/Subject.js')).default;
@@ -164,9 +208,16 @@ export const getFacultiesWithStats = async (req, res) => {
       })
     );
 
-    return successResponse(facultiesWithStats, 'Faculties with stats retrieved successfully');
+    res.status(200).json({
+      success: true,
+      message: 'Faculties with stats retrieved successfully',
+      data: facultiesWithStats
+    });
   } catch (error) {
     console.error('Error fetching faculties with stats:', error);
-    return errorResponse('Failed to retrieve faculties with stats', 500);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve faculties with stats'
+    });
   }
 };

@@ -4,6 +4,8 @@ const levelSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     code: { type: String, trim: true, uppercase: true },
+    sessionYear: { type: Number, sparse: true }, // For sessions like 2025, 2026
+    isActive: { type: Boolean, default: true }, // For session status
     order: { type: Number, default: 0 },
     description: String,
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

@@ -5,10 +5,17 @@ import { successResponse, errorResponse } from '../middleware/response';
 export const getAllSessions = async (req, res) => {
   try {
     const sessions = await Level.find({}).sort({ sessionYear: -1 });
-    return successResponse(res, 'Sessions retrieved successfully', sessions);
+    res.status(200).json({
+      success: true,
+      message: 'Sessions retrieved successfully',
+      data: sessions
+    });
   } catch (error) {
     console.error('Error fetching sessions:', error);
-    return errorResponse(res, 'Failed to fetch sessions', 500);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch sessions'
+    });
   }
 };
 
@@ -36,13 +43,19 @@ export const createSession = async (req, res) => {
 
     // Validate required fields
     if (!name || !code || !sessionYear) {
-      return errorResponse(res, 'Name, code, and session year are required', 400);
+      return res.status(400).json({
+        success: false,
+        message: 'Name, code, and session year are required'
+      });
     }
 
     // Check if session year already exists
     const existingSession = await Level.findOne({ sessionYear });
     if (existingSession) {
-      return errorResponse(res, 'Session with this year already exists', 400);
+      return res.status(400).json({
+        success: false,
+        message: 'Session with this year already exists'
+      });
     }
 
     // Create new session
@@ -51,19 +64,29 @@ export const createSession = async (req, res) => {
       code: code.toUpperCase(),
       sessionYear,
       description,
-      createdBy: req.user.id,
-      updatedBy: req.user.id
+      createdBy: req.user.userId,
+      updatedBy: req.user.userId
     });
 
     await session.save();
 
-    return successResponse(res, 'Session created successfully', session, 201);
+    res.status(201).json({
+      success: true,
+      message: 'Session created successfully',
+      data: session
+    });
   } catch (error) {
     console.error('Error creating session:', error);
     if (error.code === 11000) {
-      return errorResponse(res, 'Session code already exists', 400);
+      return res.status(400).json({
+        success: false,
+        message: 'Session code already exists'
+      });
     }
-    return errorResponse(res, 'Failed to create session', 500);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create session'
+    });
   }
 };
 
