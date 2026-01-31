@@ -24,6 +24,10 @@ const subjectSchema = new mongoose.Schema(
       ref: 'Class',
       required: true,
     },
+    facultyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Stream',
+    },
     // Grade numeric (backwards compatible) and optional reference to Grade model
     grade: {
       type: Number,

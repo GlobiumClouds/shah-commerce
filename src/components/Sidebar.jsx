@@ -83,6 +83,16 @@ const ROLE_MENUS = {
       isCollapsible: true,
       items: [
         {
+          name: "Sessions",
+          path: "/super-admin/sessions",
+          icon: Calendar,
+        },
+        {
+        name: "Faculties",
+          path: "/super-admin/faculties",
+          icon: Building2,
+        },
+        {
           name: "Departments",
           path: "/super-admin/academic/departments",
           icon: Briefcase,
@@ -259,6 +269,8 @@ const ROLE_MENUS = {
         { name: "Syllabus", path: "/branch-admin/syllabus", icon: FileText },
         { name: "Timetable", path: "/branch-admin/timetable", icon: Clock },
         { name: "Academic Structure", path: "/branch-admin/academic-structure", icon: GraduationCap },
+        { name: "Exams", path: "/branch-admin/exams", icon: FileText },
+        
       ],
     },
     // {

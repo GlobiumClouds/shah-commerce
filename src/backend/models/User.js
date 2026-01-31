@@ -161,7 +161,29 @@ const userSchema = new mongoose.Schema(
       academicYear: {
         type: String,
       },
-      
+      sessionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Level',
+      },
+      facultyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Stream',
+      },
+      selectedSubjects: [{
+        subjectId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Subject',
+        },
+        subjectName: {
+          type: String,
+          trim: true,
+        },
+        creditHours: {
+          type: Number,
+          default: 3,
+        },
+      }],
+
       // Previous School Information
       previousSchool: {
         name: { type: String, trim: true },

@@ -1,15 +1,12 @@
 import { NextRequest } from 'next/server';
-import connectDB from '../../../../lib/database';
+import connectDB from '../../../../../lib/database';
 import {
-  getAllClasses,
-  createClass,
-  getClassesBySession,
-  getClassesByFaculty,
-  getClassesBySessionFaculty
-} from '../../../../backend/controllers/classController';
-import { authenticate, authorize } from '../../../../backend/middleware/auth';
+  enrollStudent,
+  getStudentsBySessionFaculty
+} from '../../../../../backend/controllers/studentController';
+import { authenticate, authorize } from '../../../../../backend/middleware/auth';
 
-// GET /api/branch-admin/classes - Get all classes
+// GET /api/branch-admin/students/enroll - Get students by session/faculty (for enrollment management)
 export async function GET(request) {
   try {
     await connectDB();
@@ -31,10 +28,17 @@ export async function GET(request) {
       );
     }
 
-    // Check query parameters for filtering
+    // Check query parameters
     const url = new URL(request.url);
     const sessionId = url.searchParams.get('sessionId');
     const facultyId = url.searchParams.get('facultyId');
+
+    if (!sessionId || !facultyId) {
+      return Response.json(
+        { success: false, message: 'sessionId and facultyId are required' },
+        { status: 400 }
+      );
+    }
 
     // Mock response object for controller
     let responseData = null;
@@ -58,39 +62,14 @@ export async function GET(request) {
     // Mock request object
     const mockReq = {
       user: authResult.user,
-      query: {
-        sessionId,
-        facultyId,
-        branchId: authResult.user.role === 'branch_admin' ? authResult.user.branchId : undefined
-      }
+      params: { sessionId, facultyId }
     };
 
-    if (sessionId && facultyId) {
-      // Get classes by session and faculty
-      await getClassesBySessionFaculty({
-        ...mockReq,
-        params: { sessionId, facultyId }
-      }, mockRes);
-    } else if (sessionId) {
-      // Get classes by session
-      await getClassesBySession({
-        ...mockReq,
-        params: { sessionId }
-      }, mockRes);
-    } else if (facultyId) {
-      // Get classes by faculty
-      await getClassesByFaculty({
-        ...mockReq,
-        params: { facultyId }
-      }, mockRes);
-    } else {
-      // Get all classes
-      await getAllClasses(mockReq, mockRes);
-    }
+    await getStudentsBySessionFaculty(mockReq, mockRes);
 
     return Response.json(responseData, { status: statusCode });
   } catch (error) {
-    console.error('Error in GET /api/branch-admin/classes:', error);
+    console.error('Error in GET /api/branch-admin/students/enroll:', error);
     return Response.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }
@@ -98,7 +77,7 @@ export async function GET(request) {
   }
 }
 
-// POST /api/branch-admin/classes - Create new class
+// POST /api/branch-admin/students/enroll - Enroll new student
 export async function POST(request) {
   try {
     await connectDB();
@@ -147,11 +126,11 @@ export async function POST(request) {
       body
     };
 
-    await createClass(mockReq, mockRes);
+    await enrollStudent(mockReq, mockRes);
 
     return Response.json(responseData, { status: statusCode });
   } catch (error) {
-    console.error('Error in POST /api/branch-admin/classes:', error);
+    console.error('Error in POST /api/branch-admin/students/enroll:', error);
     return Response.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }

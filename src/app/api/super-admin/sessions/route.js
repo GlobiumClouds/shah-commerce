@@ -1,15 +1,9 @@
 import { NextRequest } from 'next/server';
 import connectDB from '../../../../lib/database';
-import {
-  getAllClasses,
-  createClass,
-  getClassesBySession,
-  getClassesByFaculty,
-  getClassesBySessionFaculty
-} from '../../../../backend/controllers/classController';
-import { authenticate, authorize } from '../../../../backend/middleware/auth';
+import { getAllSessions, createSession } from '../../../../backend/controllers/sessionController';
+import { authenticate, requireRole } from '../../../../backend/middleware/auth';
 
-// GET /api/branch-admin/classes - Get all classes
+// GET /api/super-admin/sessions - Get all sessions
 export async function GET(request) {
   try {
     await connectDB();
@@ -23,18 +17,10 @@ export async function GET(request) {
       );
     }
 
-    const authzResult = authorize(['super_admin', 'branch_admin'])(authResult.user);
-    if (!authzResult) {
-      return Response.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 403 }
-      );
+    const authzResult = await requireRole(['super_admin'])(request, authResult.user);
+    if (authzResult) {
+      return authzResult;
     }
-
-    // Check query parameters for filtering
-    const url = new URL(request.url);
-    const sessionId = url.searchParams.get('sessionId');
-    const facultyId = url.searchParams.get('facultyId');
 
     // Mock response object for controller
     let responseData = null;
@@ -57,40 +43,14 @@ export async function GET(request) {
 
     // Mock request object
     const mockReq = {
-      user: authResult.user,
-      query: {
-        sessionId,
-        facultyId,
-        branchId: authResult.user.role === 'branch_admin' ? authResult.user.branchId : undefined
-      }
+      user: authResult.user
     };
 
-    if (sessionId && facultyId) {
-      // Get classes by session and faculty
-      await getClassesBySessionFaculty({
-        ...mockReq,
-        params: { sessionId, facultyId }
-      }, mockRes);
-    } else if (sessionId) {
-      // Get classes by session
-      await getClassesBySession({
-        ...mockReq,
-        params: { sessionId }
-      }, mockRes);
-    } else if (facultyId) {
-      // Get classes by faculty
-      await getClassesByFaculty({
-        ...mockReq,
-        params: { facultyId }
-      }, mockRes);
-    } else {
-      // Get all classes
-      await getAllClasses(mockReq, mockRes);
-    }
+    await getAllSessions(mockReq, mockRes);
 
     return Response.json(responseData, { status: statusCode });
   } catch (error) {
-    console.error('Error in GET /api/branch-admin/classes:', error);
+    console.error('Error in GET /api/super-admin/sessions:', error);
     return Response.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }
@@ -98,7 +58,7 @@ export async function GET(request) {
   }
 }
 
-// POST /api/branch-admin/classes - Create new class
+// POST /api/super-admin/sessions - Create new session
 export async function POST(request) {
   try {
     await connectDB();
@@ -112,12 +72,9 @@ export async function POST(request) {
       );
     }
 
-    const authzResult = authorize(['super_admin', 'branch_admin'])(authResult.user);
-    if (!authzResult) {
-      return Response.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 403 }
-      );
+    const authzResult = await requireRole(['super_admin'])(request, authResult.user);
+    if (authzResult) {
+      return authzResult;
     }
 
     const body = await request.json();
@@ -147,11 +104,11 @@ export async function POST(request) {
       body
     };
 
-    await createClass(mockReq, mockRes);
+    await createSession(mockReq, mockRes);
 
     return Response.json(responseData, { status: statusCode });
   } catch (error) {
-    console.error('Error in POST /api/branch-admin/classes:', error);
+    console.error('Error in POST /api/super-admin/sessions:', error);
     return Response.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }

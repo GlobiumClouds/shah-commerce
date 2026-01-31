@@ -45,6 +45,15 @@ const classSchema = new mongoose.Schema(
       ref: 'Branch',
       required: [true, 'Branch is required'],
     },
+    sessionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Level',
+      required: [true, 'Session is required'],
+    },
+    facultyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Stream',
+    },
     academicYear: {
       type: String,
       required: [true, 'Academic year is required'],

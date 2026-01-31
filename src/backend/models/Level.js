@@ -14,6 +14,8 @@ const levelSchema = new mongoose.Schema(
 
 levelSchema.index({ name: 1 });
 levelSchema.index({ code: 1 });
+levelSchema.index({ sessionYear: 1 });
+levelSchema.index({ isActive: 1 });
 
 const Level = mongoose.models.Level || mongoose.model('Level', levelSchema);
 
